@@ -15,4 +15,5 @@
     <project name="ramdisk"/>
     <project name="u-boot-2021.10"/>
     <project name="buildroot-2021.05"/>
+    <project name="SensorSupportList" path="middleware/v2/component/isp" revision="v4.1.0"/>
 </manifest>
