@@ -104,7 +104,7 @@ sudo apt install bison
 
 ## 获取SDK
 ```
-git clone git@github.com:sophgo/sophpi.git
+git clone -b 'BranchName' git@github.com:sophgo/sophpi.git
 cd sophpi
 ./scripts/repo_clone.sh --gitclone scripts/subtree.xml
 ```
