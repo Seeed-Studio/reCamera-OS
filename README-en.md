@@ -20,7 +20,7 @@
 
 
 # Project Introduction
-- This is a release SDK repository for the [SOPHGO](https://www.sophgo.com/) `cv181x` and `cv180x` series of Edge chips.
+- This is a release SDK repository for the [SOPHGO](https://www.sophgo.com/) `cv181x` and `cv180x` series of Edge processors.
 - Mainly applicable to official EVB
 
 <br>
@@ -183,8 +183,11 @@ mars_c906#
 <br><br>
 
 # About SOPHGO
-** SOPHGO is committed to becoming the world's leading general computing power provider.<br>
-SOPHGO focuses on the development and promotion of AI, RISC-V CPU and other computing products. With the self-developed chips as the core, SOPHGO has created a matrix of computing power products, which covers the whole scene of "cloud, edge and terminal" and provides computing power products and overall solutions for urban brains, intelligent computing centers, intelligent security, intelligent transportation, safety production, industrial quality inspection, intelligent terminals and others.SOPHGO has set up R&D centers in more than 10 cities and countries, including Beijing, Shanghai, Shenzhen, Qingdao, Xiamen, the United States and Singapore. **
+
+**SOPHGO is committed to becoming the world's leading universal computing power provider, focusing on the development and promotion of RISC-V, TPU processor and other computing power products. <br>
+SOPHGO follows the ecological concept of full open source and joins hands with industry partners to promote RISC-V high-performance general computing industry landing; creates a full-scene product matrix covering "cloud, edge, and terminal", and provides computing products and overall solutions for multiple scenarios such as data centers, AIGC, urban operations, intelligent manufacturing, and intelligent terminals. 
+SOPHGO has R&D centers in more than 10 domestic cities such as Beijing, Shanghai, Shenzhen, Qingdao, Xiamen, and the United States, Singapore and other countries. 
+Since 2016, its brand SOPHON series products have completed several iterations, and each generation of products has achieved multiple levels of energy consumption compared with the previous generation of products.**
 - [Official Website](https://www.sophgo.com/)
 
 <br><br>
