@@ -1,0 +1,52 @@
+[submodule "host-tools"]
+	path = host-tools
+	url = https://github.com/sophgo/host-tools.git
+	branch = master
+[submodule "build"]
+	path = build
+	url = https://github.com/sophgo/build.git
+	branch = cv18xx-v4.1.x
+[submodule "freertos"]
+	path = freertos
+	url = https://github.com/sophgo/freertos.git
+	branch = cv18xx-v4.1.x
+[submodule "fsbl"]
+	path = fsbl
+	url = https://github.com/sophgo/fsbl.git
+	branch = cv18xx-v4.1.x
+[submodule "isp_tuning"]
+	path = isp_tuning
+	url = https://github.com/sophgo/isp_tuning.git
+	branch = cv18xx-v4.1.x
+[submodule "linux_5.10"]
+	path = linux_5.10
+	url = https://github.com/sophgo/linux_5.10.git
+	branch = cv18xx-v4.1.x
+[submodule "middleware"]
+	path = middleware
+	url = https://github.com/sophgo/middleware.git
+	branch = cv18xx-v4.1.x
+[submodule "opensbi"]
+	path = opensbi
+	url = https://github.com/sophgo/opensbi.git
+	branch = cv18xx-v4.1.x
+[submodule "osdrv"]
+	path = osdrv
+	url = https://github.com/sophgo/osdrv.git
+	branch = cv18xx-v4.1.x
+[submodule "ramdisk"]
+	path = ramdisk
+	url = https://github.com/sophgo/ramdisk.git
+	branch = cv18xx-v4.1.x
+[submodule "u-boot-2021.10"]
+	path = u-boot-2021.10
+	url = https://github.com/sophgo/u-boot-2021.10.git
+	branch = cv18xx-v4.1.x
+[submodule "buildroot-2021.05"]
+	path = buildroot-2021.05
+	url = https://github.com/sophgo/buildroot-2021.05.git
+	branch = cv18xx-v4.1.x
+[submodule "SensorSupportList"]
+	path = SensorSupportList
+	url = https://github.com/sophgo/SensorSupportList.git
+	branch = cv18xx-v4.1.x

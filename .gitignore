@@ -1,13 +1,27 @@
-build
-freertos
-fsbl
-host-tools
-isp_tuning
-linux_5.10
-middleware
-opensbi
-osdrv
-ramdisk
-u-boot-2021.10
-buildroot-2021.05
+#host-tools
+#build
+#freertos
+#fsbl
+#isp_tuning
+#linux_5.10
+#middleware
+#opensbi
+#osdrv
+#ramdisk
+#u-boot-2021.10
+#buildroot-2021.05
 install
+
+
+# OS generated files
+.DS_Store
+
+# Build output dirs
+/release
+output*/
+
+# Certificates
+*.pem
+
+# vscode generated files
+.vscode*
