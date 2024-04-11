@@ -6,6 +6,7 @@ export PROJECT_OUT
 
 source $EXTERNAL/setenv.sh
 
-echo "defconfig $1"
-# defconfig $1
+defconfig $1
 
+build_uboot
+echo build_uboot $?
