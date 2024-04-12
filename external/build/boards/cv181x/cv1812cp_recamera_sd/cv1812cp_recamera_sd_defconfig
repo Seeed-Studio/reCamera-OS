@@ -1,5 +1,5 @@
 CONFIG_CHIP_cv1812cp=y
-CONFIG_BOARD_reCamera_sd=y
+CONFIG_BOARD_recamera_sd=y
 CONFIG_DDR_CFG_ddr3_1866_x16=y
 CONFIG_ARCH="riscv"
 CONFIG_CROSS_COMPILE="riscv64-unknown-linux-musl-"

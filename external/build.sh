@@ -8,14 +8,17 @@ source $EXTERNAL/setenv.sh
 
 defconfig $1
 
-# build_uboot
-# echo build_uboot $?
+build_uboot
+echo build_uboot $?
 
-# build_kernel
-# echo $?
+build_kernel
+echo build_kernel $?
 
-# build_osdrv
-# echo $?
+build_osdrv
+echo build_osdrv $?
 
 build_middleware
-echo $?
+echo build_middleware $?
+
+pack_boot
+echo pack_boot $?
