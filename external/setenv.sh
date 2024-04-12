@@ -1,24 +1,24 @@
 #!/bin/bash
 
 mkdir -p $PROJECT_OUT
-rsync -a --exclude='.git' ./build $PROJECT_OUT/
-rsync -a --exclude='.git' ./freertos $PROJECT_OUT/
-rsync -a --exclude='.git' ./fsbl $PROJECT_OUT/
-rsync -a --exclude='.git' ./isp_tuning $PROJECT_OUT/
-rsync -a --exclude='.git' ./linux_5.10 $PROJECT_OUT/
-rsync -a --exclude='.git' ./middleware $PROJECT_OUT/
-rsync -a --exclude='.git' ./opensbi $PROJECT_OUT/
-rsync -a --exclude='.git' ./osdrv $PROJECT_OUT/
-rsync -a --exclude='.git' ./ramdisk $PROJECT_OUT/
-rsync -a --exclude='.git' ./u-boot-2021.10 $PROJECT_OUT/
-rsync -a --exclude='.git' ./buildroot-2021.05 $PROJECT_OUT/
+echo "rsync ./build"; rsync -a --exclude='.git' ./build $PROJECT_OUT/
+echo "rsync ./freertos"; rsync -a --exclude='.git' ./freertos $PROJECT_OUT/
+echo "rsync ./fsbl"; rsync -a --exclude='.git' ./fsbl $PROJECT_OUT/
+echo "rsync ./isp_tuning"; rsync -a --exclude='.git' ./isp_tuning $PROJECT_OUT/
+echo "rsync ./linux_5.10"; rsync -a --exclude='.git' ./linux_5.10 $PROJECT_OUT/
+echo "rsync ./middleware"; rsync -a --exclude='.git' ./middleware $PROJECT_OUT/
+echo "rsync ./opensbi"; rsync -a --exclude='.git' ./opensbi $PROJECT_OUT/
+echo "rsync ./osdrv"; rsync -a --exclude='.git' ./osdrv $PROJECT_OUT/
+echo "rsync ./ramdisk"; rsync -a --exclude='.git' ./ramdisk $PROJECT_OUT/
+echo "rsync ./u-boot-2021.10"; rsync -a --exclude='.git' ./u-boot-2021.10 $PROJECT_OUT/
+echo "rsync ./buildroot-2021.05"; rsync -a --exclude='.git' ./buildroot-2021.05 $PROJECT_OUT/
+echo "rsync ./SensorSupportList"; rsync -a --exclude='.git' ./SensorSupportList $PROJECT_OUT/
 
 ###################################
 # patch externals
 ###################################
-rsync -a $EXTERNAL/build $PROJECT_OUT/
-rsync -a $EXTERNAL/fsbl $PROJECT_OUT/
-
+echo "rsync $EXTERNAL/build"; rsync -av $EXTERNAL/build $PROJECT_OUT/
+echo "rsync $EXTERNAL/fsbl"; rsync -av $EXTERNAL/fsbl $PROJECT_OUT/
 
 ###################################
 # modify cvisetup.sh
