@@ -1,5 +1,8 @@
 #!/bin/bash
 
+###################################
+# rsync codes
+###################################
 mkdir -p $PROJECT_OUT
 echo "rsync ./build"; rsync -a --exclude='.git' ./build $PROJECT_OUT/
 echo "rsync ./freertos"; rsync -a --exclude='.git' ./freertos $PROJECT_OUT/
@@ -12,7 +15,7 @@ echo "rsync ./osdrv"; rsync -a --exclude='.git' ./osdrv $PROJECT_OUT/
 echo "rsync ./ramdisk"; rsync -a --exclude='.git' ./ramdisk $PROJECT_OUT/
 echo "rsync ./u-boot-2021.10"; rsync -a --exclude='.git' ./u-boot-2021.10 $PROJECT_OUT/
 echo "rsync ./buildroot-2021.05"; rsync -a --exclude='.git' ./buildroot-2021.05 $PROJECT_OUT/
-echo "rsync ./SensorSupportList"; rsync -a --exclude='.git' ./SensorSupportList $PROJECT_OUT/
+echo "rsync ./SensorSupportList"; rsync -a --exclude='.git' ./SensorSupportList $PROJECT_OUT/middleware/v2/component/isp
 
 ###################################
 # patch externals
