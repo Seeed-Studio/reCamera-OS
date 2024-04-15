@@ -1,0 +1,74 @@
+From 7d3c5874463cb375ade8148678fb2eca2e1ac5ba Mon Sep 17 00:00:00 2001
+From: Lesords <2385342343@qq.com>
+Date: Mon, 15 Apr 2024 03:35:18 +0000
+Subject: [PATCH 1/4] chore: add some compilation options for rust
+
+---
+ configs/cvitek_CV181X_musl_riscv64_defconfig       |  1 +
+ .../toolchain-external/pkg-toolchain-external.mk   | 14 ++++++++++++++
+ .../toolchain-external-custom/Config.in.options    |  3 +++
+ 3 files changed, 18 insertions(+)
+
+diff --git a/configs/cvitek_CV181X_musl_riscv64_defconfig b/configs/cvitek_CV181X_musl_riscv64_defconfig
+index bf2b1d0644..d18313294e 100644
+--- a/configs/cvitek_CV181X_musl_riscv64_defconfig
++++ b/configs/cvitek_CV181X_musl_riscv64_defconfig
+@@ -140,6 +140,7 @@ BR2_TOOLCHAIN_EXTERNAL_CUSTOM_PREFIX="riscv64-unknown-linux-musl"
+ BR2_TOOLCHAIN_EXTERNAL_GCC_10=y
+ BR2_TOOLCHAIN_EXTERNAL_HEADERS_5_10=y
+ BR2_TOOLCHAIN_EXTERNAL_CUSTOM_MUSL=y
++BR2_TOOLCHAIN_EXTERNAL_RUST=y
+ BR2_TOOLCHAIN_EXTERNAL_HAS_SSP=y
+ BR2_TOOLCHAIN_EXTERNAL_HAS_SSP_STRONG=y
+ BR2_TOOLCHAIN_EXTERNAL_CXX=y
+diff --git a/toolchain/toolchain-external/pkg-toolchain-external.mk b/toolchain/toolchain-external/pkg-toolchain-external.mk
+index 6d91cb5d1e..4a575570a1 100644
+--- a/toolchain/toolchain-external/pkg-toolchain-external.mk
++++ b/toolchain/toolchain-external/pkg-toolchain-external.mk
+@@ -137,8 +137,21 @@ ifeq ($(BR2_TOOLCHAIN_EXTERNAL_MUSL),y)
+ TOOLCHAIN_EXTERNAL_LIBS += libc.so
+ endif
+ 
++ifeq ($(BR2_TOOLCHAIN_EXTERNAL_RUST),y)
++define TOOLCHAIN_EXTERNAL_INSTALL_RUST
++	LIBPATHS=`find $(TOOLCHAIN_EXTERNAL_INSTALL_DIR)/ -name "ld-musl-riscv64*" 2>/dev/null` ; \
++	for LIBPATH in $${LIBPATHS} ; do \
++		LIBDIR=`dirname $${LIBPATH}` ; \
++		LIBNAME=`basename $${LIBPATH}` ; \
++		LIBPATH="`readlink $${LIBPATH}`" ; \
++		$(INSTALL) -D -m0755 $${LIBDIR}/$${LIBPATH} $(TARGET_DIR)/lib/$${LIBNAME} ; \
++	done
++endef
++endif
++
+ ifeq ($(BR2_INSTALL_LIBSTDCPP),y)
+ TOOLCHAIN_EXTERNAL_LIBS += libstdc++.so.*
++
+ endif
+ 
+ ifeq ($(BR2_TOOLCHAIN_HAS_FORTRAN),y)
+@@ -600,6 +613,7 @@ define $(2)_INSTALL_TARGET_CMDS
+ 	$$(TOOLCHAIN_EXTERNAL_INSTALL_TARGET_GDBSERVER)
+ 	$$(TOOLCHAIN_EXTERNAL_FIXUP_UCLIBCNG_LDSO)
+ 	$$(TOOLCHAIN_EXTERNAL_INSTALL_TARGET_LDD)
++	$$(TOOLCHAIN_EXTERNAL_INSTALL_RUST)
+ endef
+ 
+ # Call the generic package infrastructure to generate the necessary
+diff --git a/toolchain/toolchain-external/toolchain-external-custom/Config.in.options b/toolchain/toolchain-external/toolchain-external-custom/Config.in.options
+index ba9aeb29ad..4f73e48b43 100644
+--- a/toolchain/toolchain-external/toolchain-external-custom/Config.in.options
++++ b/toolchain/toolchain-external/toolchain-external-custom/Config.in.options
+@@ -435,6 +435,9 @@ endif # BR2_TOOLCHAIN_EXTERNAL_HAS_THREADS
+ 
+ endif # BR2_TOOLCHAIN_EXTERNAL_CUSTOM_UCLIBC
+ 
++config BR2_TOOLCHAIN_EXTERNAL_RUST
++	bool "External toolchain Rust library"
++
+ config BR2_TOOLCHAIN_EXTERNAL_HAS_SSP
+ 	bool "Toolchain has SSP support?"
+ 	default y if BR2_TOOLCHAIN_EXTERNAL_GLIBC
+-- 
+2.25.1
+

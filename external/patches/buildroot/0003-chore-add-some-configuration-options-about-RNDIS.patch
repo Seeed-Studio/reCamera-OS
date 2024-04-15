@@ -1,0 +1,27 @@
+From 09023396b484fe3abad0b65c5c84768db31a496c Mon Sep 17 00:00:00 2001
+From: Lesords <2385342343@qq.com>
+Date: Mon, 15 Apr 2024 05:48:20 +0000
+Subject: [PATCH 3/4] chore: add some configuration options about RNDIS
+
+---
+ configs/cvitek_CV181X_musl_riscv64_defconfig | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/configs/cvitek_CV181X_musl_riscv64_defconfig b/configs/cvitek_CV181X_musl_riscv64_defconfig
+index 3bc28c42c8..5cd391744f 100644
+--- a/configs/cvitek_CV181X_musl_riscv64_defconfig
++++ b/configs/cvitek_CV181X_musl_riscv64_defconfig
+@@ -363,6 +363,10 @@ BR2_PACKAGE_PROTOBUF_ARCH_SUPPORTS=y
+ # BR2_PACKAGE_PROTOBUF is not set
+ # BR2_PACKAGE_PROTOBUF_C is not set
+ 
++BR2_PACKAGE_DNSMASQ=y
++BR2_PACKAGE_DNSMASQ_TFTP=y
++BR2_PACKAGE_DNSMASQ_DHCP=y
++
+ #
+ # vdr needs a glibc toolchain w/ C++, dynamic library, NPTL, wchar, headers >= 3.9
+ #
+-- 
+2.25.1
+

@@ -1,0 +1,661 @@
+From 352455f573f415bca7da2cdbd47af2ed8225ee5d Mon Sep 17 00:00:00 2001
+From: Lesords <2385342343@qq.com>
+Date: Mon, 15 Apr 2024 05:45:20 +0000
+Subject: [PATCH] chore: add some Node.js configuration files
+
+---
+ configs/cvitek_CV181X_musl_riscv64_defconfig  |   9 +
+ package/nodejs/0001-build-issue-fixes.patch   | 149 +++++++++++++
+ ...heck-if-uclibc-has-backtrace-support.patch |  26 ---
+ package/nodejs/Config.in                      |  17 +-
+ package/nodejs/Config.in.host                 |  31 +++
+ package/nodejs/nodejs.hash                    |   6 +-
+ package/nodejs/nodejs.mk                      | 201 ++++++++++--------
+ package/nodejs/v8-qemu-wrapper.in             |  10 +
+ 8 files changed, 328 insertions(+), 121 deletions(-)
+ create mode 100644 package/nodejs/0001-build-issue-fixes.patch
+ delete mode 100644 package/nodejs/0001-check-if-uclibc-has-backtrace-support.patch
+ create mode 100644 package/nodejs/Config.in.host
+ create mode 100644 package/nodejs/v8-qemu-wrapper.in
+
+diff --git a/configs/cvitek_CV181X_musl_riscv64_defconfig b/configs/cvitek_CV181X_musl_riscv64_defconfig
+index d18313294e..3bc28c42c8 100644
+--- a/configs/cvitek_CV181X_musl_riscv64_defconfig
++++ b/configs/cvitek_CV181X_musl_riscv64_defconfig
+@@ -341,6 +341,15 @@ BR2_PACKAGE_JSON_C=y
+ BR2_PACKAGE_LIBCAMERA_ARCH_SUPPORTS=y
+ # BR2_PACKAGE_LIBCAMERA is not set
+ 
++#
++# Interpreter languages and scripting
++#
++BR2_PACKAGE_NODEJS_ARCH_SUPPORTS=y
++BR2_PACKAGE_NODEJS=y
++# BR2_PACKAGE_NODEJS_NPM is not set
++BR2_PACKAGE_NODEJS_MODULES_ADDITIONAL=""
++BR2_PACKAGE_NODEJS_MODULES_ADDITIONAL_DEPS=""
++
+ #
+ # libcgroup needs a glibc toolchain w/ C++
+ #
+diff --git a/package/nodejs/0001-build-issue-fixes.patch b/package/nodejs/0001-build-issue-fixes.patch
+new file mode 100644
+index 0000000000..39f03aead0
+--- /dev/null
++++ b/package/nodejs/0001-build-issue-fixes.patch
+@@ -0,0 +1,149 @@
++From 063a8ec67d496543d47f71d265f2a924b4425c79 Mon Sep 17 00:00:00 2001
++From: Ang Chee Hong <cheehong.ang@starfivetech.com>
++Date: Thu, 28 Oct 2021 19:46:35 +0800
++Subject: [PATCH] Build issue fixes: - Pass the correct data type to template
++ parameter to avoid template   ambiguity issue - C++ standard does not allow
++ explicit specialization of a   member of a class at class scope. Move the
++ struct specialization   outside of the class
++
++---
++ .../src/builtins/riscv64/builtins-riscv64.cc  |  2 +-
++ .../src/execution/riscv64/simulator-riscv64.h | 98 ++++++++++---------
++ 2 files changed, 51 insertions(+), 49 deletions(-)
++
++diff --git a/deps/v8/src/builtins/riscv64/builtins-riscv64.cc b/deps/v8/src/builtins/riscv64/builtins-riscv64.cc
++index c90352bea1..dd6e7bb1a3 100644
++--- a/deps/v8/src/builtins/riscv64/builtins-riscv64.cc
+++++ b/deps/v8/src/builtins/riscv64/builtins-riscv64.cc
++@@ -3851,7 +3851,7 @@ void Builtins::Generate_DynamicCheckMapsTrampoline(
++ 
++   Label deopt, bailout;
++   __ Branch(&deopt, ne, a0,
++-            Operand(static_cast<int>(DynamicCheckMapsStatus::kSuccess)),
+++            Operand(static_cast<int64_t>(DynamicCheckMapsStatus::kSuccess)),
++             Label::Distance::kNear);
++ 
++   __ MaybeRestoreRegisters(registers);
++diff --git a/deps/v8/src/execution/riscv64/simulator-riscv64.h b/deps/v8/src/execution/riscv64/simulator-riscv64.h
++index 90f0edec4c..da0481543f 100644
++--- a/deps/v8/src/execution/riscv64/simulator-riscv64.h
+++++ b/deps/v8/src/execution/riscv64/simulator-riscv64.h
++@@ -668,58 +668,10 @@ class Simulator : public SimulatorBase {
++   // MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
++   template <uint64_t N>
++   struct type_usew_t;
++-  template <>
++-  struct type_usew_t<8> {
++-    using type = uint8_t;
++-  };
++-
++-  template <>
++-  struct type_usew_t<16> {
++-    using type = uint16_t;
++-  };
++-
++-  template <>
++-  struct type_usew_t<32> {
++-    using type = uint32_t;
++-  };
++-
++-  template <>
++-  struct type_usew_t<64> {
++-    using type = uint64_t;
++-  };
++ 
++-  template <>
++-  struct type_usew_t<128> {
++-    using type = __uint128_t;
++-  };
++   template <uint64_t N>
++   struct type_sew_t;
++ 
++-  template <>
++-  struct type_sew_t<8> {
++-    using type = int8_t;
++-  };
++-
++-  template <>
++-  struct type_sew_t<16> {
++-    using type = int16_t;
++-  };
++-
++-  template <>
++-  struct type_sew_t<32> {
++-    using type = int32_t;
++-  };
++-
++-  template <>
++-  struct type_sew_t<64> {
++-    using type = int64_t;
++-  };
++-
++-  template <>
++-  struct type_sew_t<128> {
++-    using type = __int128_t;
++-  };
++-
++ #define VV_PARAMS(x)                                                       \
++   type_sew_t<x>::type& vd =                                                \
++       Rvvelt<type_sew_t<x>::type>(rvv_vd_reg(), i, true);                  \
++@@ -1149,6 +1101,56 @@ class Simulator : public SimulatorBase {
++   LocalMonitor local_monitor_;
++   GlobalMonitor::LinkedAddress global_monitor_thread_;
++ };
+++  template <>
+++  struct Simulator::type_usew_t<8> {
+++    using type = uint8_t;
+++  };
+++
+++  template <>
+++  struct Simulator::type_usew_t<16> {
+++    using type = uint16_t;
+++  };
+++
+++  template <>
+++  struct Simulator::type_usew_t<32> {
+++    using type = uint32_t;
+++  };
+++
+++  template <>
+++  struct Simulator::type_usew_t<64> {
+++    using type = uint64_t;
+++  };
+++
+++  template <>
+++  struct Simulator::type_usew_t<128> {
+++    using type = __uint128_t;
+++  };
+++
+++  template <>
+++  struct Simulator::type_sew_t<8> {
+++    using type = int8_t;
+++  };
+++
+++  template <>
+++  struct Simulator::type_sew_t<16> {
+++    using type = int16_t;
+++  };
+++
+++  template <>
+++  struct Simulator::type_sew_t<32> {
+++    using type = int32_t;
+++  };
+++
+++  template <>
+++  struct Simulator::type_sew_t<64> {
+++    using type = int64_t;
+++  };
+++
+++  template <>
+++  struct Simulator::type_sew_t<128> {
+++    using type = __int128_t;
+++  };
+++
++ }  // namespace internal
++ }  // namespace v8
++ 
++-- 
++2.17.1
++
+diff --git a/package/nodejs/0001-check-if-uclibc-has-backtrace-support.patch b/package/nodejs/0001-check-if-uclibc-has-backtrace-support.patch
+deleted file mode 100644
+index 079bbb4366..0000000000
+--- a/package/nodejs/0001-check-if-uclibc-has-backtrace-support.patch
++++ /dev/null
+@@ -1,26 +0,0 @@
+-From 7c69553d7275bbcaa88fada8ccd0d2d9f787e1ad Mon Sep 17 00:00:00 2001
+-From: Martin Bark <martin@barkynet.com>
+-Date: Sat, 4 Mar 2017 20:41:40 +0000
+-Subject: [PATCH] check if uclibc has backtrace support
+-
+-Signed-off-by: Martin Bark <martin@barkynet.com>
+----
+- deps/v8/src/base/debug/stack_trace_posix.cc | 2 +-
+- 1 file changed, 1 insertion(+), 1 deletion(-)
+-
+-diff --git a/deps/v8/src/base/debug/stack_trace_posix.cc b/deps/v8/src/base/debug/stack_trace_posix.cc
+-index 87c0a73..d2c182a 100644
+---- a/deps/v8/src/base/debug/stack_trace_posix.cc
+-+++ b/deps/v8/src/base/debug/stack_trace_posix.cc
+-@@ -25,7 +25,7 @@
+- #include <string>
+- #include <vector>
+- 
+--#if V8_LIBC_GLIBC || V8_LIBC_BSD || V8_LIBC_UCLIBC || V8_OS_SOLARIS
+-+#if V8_LIBC_GLIBC || V8_LIBC_BSD || ( V8_LIBC_UCLIBC && __UCLIBC_HAS_BACKTRACE__ ) || V8_OS_SOLARIS
+- #define HAVE_EXECINFO_H 1
+- #endif
+- 
+--- 
+-2.7.4
+-
+diff --git a/package/nodejs/Config.in b/package/nodejs/Config.in
+index ba3fde887d..2536ec047e 100644
+--- a/package/nodejs/Config.in
++++ b/package/nodejs/Config.in
+@@ -2,30 +2,37 @@ config BR2_PACKAGE_NODEJS_ARCH_SUPPORTS
+ 	bool
+ 	# On ARM, at least ARMv6+ with VFPv2+ is needed
+ 	default y if BR2_arm && !BR2_ARM_CPU_ARMV4 && !BR2_ARM_CPU_ARMV5 && BR2_ARM_CPU_HAS_VFPV2
+-	default y if BR2_mipsel && !BR2_MIPS_SOFT_FLOAT
+ 	default y if BR2_aarch64 || BR2_i386 || BR2_x86_64
++    default y if BR2_RISCV_64
+ 	# libuv
+ 	depends on BR2_TOOLCHAIN_HAS_SYNC_4
++	depends on BR2_PACKAGE_HOST_QEMU_USER_ARCH_SUPPORTS
+ 
+-comment "nodejs needs a toolchain w/ C++, dynamic library, NPTL, gcc >= 4.9, wchar"
++comment "nodejs needs a toolchain w/ C++, dynamic library, NPTL, gcc >= 7, wchar, host gcc >= 8"
+ 	depends on BR2_USE_MMU
+ 	depends on BR2_PACKAGE_NODEJS_ARCH_SUPPORTS
+ 	depends on !BR2_INSTALL_LIBSTDCPP || BR2_STATIC_LIBS || !BR2_TOOLCHAIN_HAS_THREADS_NPTL || \
+-		!BR2_HOST_GCC_AT_LEAST_4_9 || !BR2_TOOLCHAIN_GCC_AT_LEAST_4_9 || !BR2_USE_WCHAR
++		!BR2_HOST_GCC_AT_LEAST_8 || !BR2_TOOLCHAIN_GCC_AT_LEAST_7 || !BR2_USE_WCHAR
+ 
+ config BR2_PACKAGE_NODEJS
+ 	bool "nodejs"
+ 	depends on BR2_TOOLCHAIN_HAS_THREADS_NPTL # libuv
+ 	depends on BR2_INSTALL_LIBSTDCPP
+ 	depends on BR2_PACKAGE_NODEJS_ARCH_SUPPORTS
+-	depends on BR2_HOST_GCC_AT_LEAST_4_9
+-	depends on BR2_TOOLCHAIN_GCC_AT_LEAST_4_9
++	depends on BR2_HOST_GCC_AT_LEAST_8 # qemu
++	depends on BR2_TOOLCHAIN_GCC_AT_LEAST_7
+ 	depends on BR2_USE_WCHAR
+ 	# uses fork()
+ 	depends on BR2_USE_MMU
+ 	# uses dlopen(). On ARMv5, we could technically support static
+ 	# linking, but that's too much of a corner case to support it.
+ 	depends on !BR2_STATIC_LIBS
++	select BR2_PACKAGE_HOST_NODEJS if BR2_PACKAGE_NODEJS_MODULES_ADDITIONAL != ""
++	select BR2_PACKAGE_HOST_PYTHON3
++	select BR2_PACKAGE_HOST_PYTHON3_BZIP2
++	select BR2_PACKAGE_HOST_PYTHON3_SSL
++	select BR2_PACKAGE_HOST_QEMU
++	select BR2_PACKAGE_HOST_QEMU_LINUX_USER_MODE
+ 	select BR2_PACKAGE_C_ARES
+ 	select BR2_PACKAGE_LIBUV
+ 	select BR2_PACKAGE_ZLIB
+diff --git a/package/nodejs/Config.in.host b/package/nodejs/Config.in.host
+new file mode 100644
+index 0000000000..06a1ca22ad
+--- /dev/null
++++ b/package/nodejs/Config.in.host
+@@ -0,0 +1,31 @@
++comment "host nodejs needs a host gcc >= 8"
++	depends on !BR2_HOST_GCC_AT_LEAST_8
++
++config BR2_PACKAGE_HOST_NODEJS
++	bool "host nodejs"
++	depends on BR2_HOST_GCC_AT_LEAST_8
++	select BR2_PACKAGE_HOST_PYTHON3
++	select BR2_PACKAGE_HOST_PYTHON3_BZIP2
++	select BR2_PACKAGE_HOST_PYTHON3_SSL
++	help
++	  Event-driven I/O server-side JavaScript environment based on
++	  V8.
++
++	  http://nodejs.org/
++
++if BR2_PACKAGE_HOST_NODEJS
++
++config BR2_PACKAGE_HOST_NODEJS_COREPACK
++	bool "Corepack"
++	help
++	  Enable Corepack with host nodejs.
++
++	  Corepack is a zero-runtime-dependency Node.js script that
++	  acts as a bridge between Node.js projects and the package
++	  managers they are intended to be used with during
++	  development. In practical terms, Corepack will let you use
++	  Yarn and pnpm without having to install them - just like
++	  what currently happens with npm, which is shipped by Node.js
++	  by default.
++
++endif
+diff --git a/package/nodejs/nodejs.hash b/package/nodejs/nodejs.hash
+index 1e03587715..1036928499 100644
+--- a/package/nodejs/nodejs.hash
++++ b/package/nodejs/nodejs.hash
+@@ -1,5 +1,5 @@
+-# From https://nodejs.org/dist/v12.22.1/SHASUMS256.txt
+-sha256  dd650df7773a6ed3e390320ba51ef33cba6499f0e9397709ea3d1debdcbcb989  node-v12.22.1.tar.xz
++# From https://nodejs.org/dist/v17.1.0/SHASUMS256.txt
++sha256  6b803f37eb92b009f9162a489d647611aa95393e488fff0fc4fd8efd2effcac7  node-v17.1.0.tar.xz
+ 
+ # Hash for license file
+-sha256  221417a7ca275112a5ac54639b36ee3c5184e74631ea1e1b01b701293b655190  LICENSE
++sha256  ba325815d3df8819bebaf37cad67d6e1f82271e1e4a1189b53abd28e261977d6  LICENSE
+diff --git a/package/nodejs/nodejs.mk b/package/nodejs/nodejs.mk
+index 108fce0926..6ccfafa238 100644
+--- a/package/nodejs/nodejs.mk
++++ b/package/nodejs/nodejs.mk
+@@ -4,33 +4,57 @@
+ #
+ ################################################################################
+ 
+-NODEJS_VERSION = 12.22.1
++NODEJS_VERSION = 17.1.0
+ NODEJS_SOURCE = node-v$(NODEJS_VERSION).tar.xz
+ NODEJS_SITE = http://nodejs.org/dist/v$(NODEJS_VERSION)
+-NODEJS_DEPENDENCIES = host-python host-nodejs c-ares \
+-	libuv zlib nghttp2 \
++NODEJS_DEPENDENCIES = \
++	host-pkgconf \
++	host-python3 \
++	host-qemu \
+ 	$(call qstrip,$(BR2_PACKAGE_NODEJS_MODULES_ADDITIONAL_DEPS))
+-HOST_NODEJS_DEPENDENCIES = host-icu host-libopenssl host-python host-zlib
++HOST_NODEJS_DEPENDENCIES = \
++	host-icu \
++	host-libopenssl \
++	host-pkgconf \
++	host-python3 \
++	host-zlib
+ NODEJS_INSTALL_STAGING = YES
+ NODEJS_LICENSE = MIT (core code); MIT, Apache and BSD family licenses (Bundled components)
+ NODEJS_LICENSE_FILES = LICENSE
+ NODEJS_CPE_ID_VENDOR = nodejs
+ NODEJS_CPE_ID_PRODUCT = node.js
+-
+ NODEJS_CONF_OPTS = \
+-	--without-snapshot \
+-	--shared-zlib \
+-	--shared-cares \
+-	--shared-libuv \
+-	--shared-nghttp2 \
+-	--without-dtrace \
+-	--without-etw \
+ 	--cross-compiling \
+ 	--dest-os=linux
+ 
++HOST_NODEJS_MAKE_OPTS = \
++	$(HOST_CONFIGURE_OPTS) \
++	CXXFLAGS="$(HOST_NODEJS_CXXFLAGS)" \
++	LDFLAGS.host="$(HOST_LDFLAGS)" \
++	NO_LOAD=cctest.target.mk \
++	PATH=$(@D)/bin:$(BR_PATH) \
++	JOBS=$(PARALLEL_JOBS)
++
++NODEJS_MAKE_OPTS = \
++	$(TARGET_CONFIGURE_OPTS) \
++	NO_LOAD=cctest.target.mk \
++	PATH=$(@D)/bin:$(BR_PATH) \
++	LDFLAGS="$(NODEJS_LDFLAGS)" \
++	LD="$(TARGET_CXX)" \
++	JOBS=$(PARALLEL_JOBS)
++
++# nodejs's build system uses python which can be a symlink to an unsupported
++# python version (e.g. python 3.10 with nodejs 14.18.1). We work around this by
++# forcing host-python3 early in the PATH, via a python->python3 symlink.
++define NODEJS_PYTHON3_SYMLINK
++	mkdir -p $(@D)/bin
++	ln -sf $(HOST_DIR)/bin/python3 $(@D)/bin/python
++endef
++HOST_NODEJS_PRE_CONFIGURE_HOOKS += NODEJS_PYTHON3_SYMLINK
++NODEJS_PRE_CONFIGURE_HOOKS += NODEJS_PYTHON3_SYMLINK
++
+ ifeq ($(BR2_PACKAGE_OPENSSL),y)
+ NODEJS_DEPENDENCIES += openssl
+-NODEJS_CONF_OPTS += --shared-openssl
+ else
+ NODEJS_CONF_OPTS += --without-ssl
+ endif
+@@ -46,63 +70,42 @@ ifneq ($(BR2_PACKAGE_NODEJS_NPM),y)
+ NODEJS_CONF_OPTS += --without-npm
+ endif
+ 
+-# nodejs build system is based on python, but only support python-2.6 or
+-# python-2.7. So, we have to enforce PYTHON interpreter to be python2.
+ define HOST_NODEJS_CONFIGURE_CMDS
+-	# The build system directly calls python. Work around this by forcing python2
+-	# into PATH. See https://github.com/nodejs/node/issues/2735
+-	mkdir -p $(@D)/bin
+-	ln -sf $(HOST_DIR)/bin/python2 $(@D)/bin/python
+-
+-	(cd $(@D); \
++	cd $(@D); \
+ 		$(HOST_CONFIGURE_OPTS) \
+ 		PATH=$(@D)/bin:$(BR_PATH) \
+-		PYTHON=$(HOST_DIR)/bin/python2 \
+-		$(HOST_DIR)/bin/python2 ./configure \
++		PYTHON=$(HOST_DIR)/bin/python3 \
++		$(HOST_DIR)/bin/python3 configure.py \
+ 		--prefix=$(HOST_DIR) \
+-		--without-snapshot \
+ 		--without-dtrace \
+ 		--without-etw \
+ 		--shared-openssl \
+-		--shared-openssl-includes=$(HOST_DIR)/include/openssl \
++		--shared-openssl-includes=$(HOST_DIR)/include \
+ 		--shared-openssl-libpath=$(HOST_DIR)/lib \
+ 		--shared-zlib \
+ 		--no-cross-compiling \
+-		--with-intl=system-icu \
+-	)
++		--with-intl=system-icu
+ endef
+ 
+-NODEJS_HOST_TOOLS_V8 = \
+-	torque \
+-	gen-regexp-special-case \
+-	bytecode_builtins_list_generator
+-NODEJS_HOST_TOOLS_NODE = mkcodecache
+-NODEJS_HOST_TOOLS = $(NODEJS_HOST_TOOLS_V8) $(NODEJS_HOST_TOOLS_NODE)
+-
+-HOST_NODEJS_CXXFLAGS = $(HOST_CXXFLAGS) -DU_DISABLE_RENAMING=1
++HOST_NODEJS_CXXFLAGS = $(HOST_CXXFLAGS)
+ 
+ define HOST_NODEJS_BUILD_CMDS
+-	$(HOST_MAKE_ENV) PYTHON=$(HOST_DIR)/bin/python2 \
++	$(HOST_MAKE_ENV) PYTHON=$(HOST_DIR)/bin/python3 \
+ 		$(MAKE) -C $(@D) \
+-		$(HOST_CONFIGURE_OPTS) \
+-		CXXFLAGS="$(HOST_NODEJS_CXXFLAGS)" \
+-		LDFLAGS.host="$(HOST_LDFLAGS)" \
+-		NO_LOAD=cctest.target.mk \
+-		PATH=$(@D)/bin:$(BR_PATH)
++		$(HOST_NODEJS_MAKE_OPTS)
++endef
++
++ifeq ($(BR2_PACKAGE_HOST_NODEJS_COREPACK),y)
++define HOST_NODEJS_ENABLE_COREPACK
++	$(COREPACK) enable
+ endef
++endif
+ 
+ define HOST_NODEJS_INSTALL_CMDS
+-	$(HOST_MAKE_ENV) PYTHON=$(HOST_DIR)/bin/python2 \
++	$(HOST_MAKE_ENV) PYTHON=$(HOST_DIR)/bin/python3 \
+ 		$(MAKE) -C $(@D) install \
+-		$(HOST_CONFIGURE_OPTS) \
+-		CXXFLAGS="$(HOST_NODEJS_CXXFLAGS)" \
+-		LDFLAGS.host="$(HOST_LDFLAGS)" \
+-		NO_LOAD=cctest.target.mk \
+-		PATH=$(@D)/bin:$(BR_PATH)
+-
+-	$(foreach f,$(NODEJS_HOST_TOOLS), \
+-		$(INSTALL) -m755 -D $(@D)/out/Release/$(f) $(HOST_DIR)/bin/$(f)
+-	)
++		$(HOST_NODEJS_MAKE_OPTS)
++	$(HOST_NODEJS_ENABLE_COREPACK)
+ endef
+ 
+ ifeq ($(BR2_i386),y)
+@@ -132,6 +135,11 @@ NODEJS_ARM_FPU = neon
+ endif
+ else ifeq ($(BR2_aarch64),y)
+ NODEJS_CPU = arm64
++else ifeq ($(BR2_RISCV_64),y)
++NODEJS_CPU = riscv64
++ifeq ($(BR2_PACKAGE_OPENSSL),y)
++NODEJS_CONF_OPTS += --openssl-no-asm
++endif
+ endif
+ 
+ # MIPS architecture specific options
+@@ -152,17 +160,47 @@ ifeq ($(BR2_TOOLCHAIN_HAS_LIBATOMIC),y)
+ NODEJS_LDFLAGS += -latomic
+ endif
+ 
+-define NODEJS_CONFIGURE_CMDS
+-	mkdir -p $(@D)/bin
+-	ln -sf $(HOST_DIR)/bin/python2 $(@D)/bin/python
++# V8's JIT infrastructure requires binaries such as mksnapshot and
++# mkpeephole to be run in the host during the build. However, these
++# binaries must have the same bit-width as the target (e.g. a x86_64
++# host targeting ARMv6 needs to produce a 32-bit binary). To work around this
++# issue, cross-compile the binaries for the target and run them on the
++# host with QEMU, much like gobject-introspection.
++define NODEJS_INSTALL_V8_QEMU_WRAPPER
++	$(INSTALL) -D -m 755 $(NODEJS_PKGDIR)/v8-qemu-wrapper.in \
++		$(@D)/out/Release/v8-qemu-wrapper
++	$(SED) "s%@QEMU_USER@%$(QEMU_USER)%g" \
++		$(@D)/out/Release/v8-qemu-wrapper
++	$(SED) "s%@TOOLCHAIN_HEADERS_VERSION@%$(BR2_TOOLCHAIN_HEADERS_AT_LEAST)%g" \
++		$(@D)/out/Release/v8-qemu-wrapper
++	$(SED) "s%@QEMU_USERMODE_ARGS@%$(call qstrip,$(BR2_PACKAGE_HOST_QEMU_USER_MODE_ARGS))%g" \
++		$(@D)/out/Release/v8-qemu-wrapper
++endef
++NODEJS_PRE_CONFIGURE_HOOKS += NODEJS_INSTALL_V8_QEMU_WRAPPER
++
++define NODEJS_WRAPPER_FIXUP
++	$(SED) "s%@MAYBE_WRAPPER@%'<(PRODUCT_DIR)/v8-qemu-wrapper',%g" $(@D)/node.gyp
++	$(SED) "s%@MAYBE_WRAPPER@%'<(PRODUCT_DIR)/v8-qemu-wrapper',%g" $(@D)/tools/v8_gypfiles/v8.gyp
++endef
++NODEJS_PRE_CONFIGURE_HOOKS += NODEJS_WRAPPER_FIXUP
++
++# Do not run the qemu-wrapper for the host build.
++define HOST_NODEJS_WRAPPER_FIXUP
++	$(SED) "s%@MAYBE_WRAPPER@%%g" $(@D)/node.gyp
++	$(SED) "s%@MAYBE_WRAPPER@%%g" $(@D)/tools/v8_gypfiles/v8.gyp
++endef
++HOST_NODEJS_PRE_CONFIGURE_HOOKS += HOST_NODEJS_WRAPPER_FIXUP
+ 
++define NODEJS_CONFIGURE_CMDS
+ 	(cd $(@D); \
+ 		$(TARGET_CONFIGURE_OPTS) \
+ 		PATH=$(@D)/bin:$(BR_PATH) \
+ 		LDFLAGS="$(NODEJS_LDFLAGS)" \
++		CC_host=gcc \
++		CXX_host=g++ \
+ 		LD="$(TARGET_CXX)" \
+-		PYTHON=$(HOST_DIR)/bin/python2 \
+-		$(HOST_DIR)/bin/python2 ./configure \
++		PYTHON=$(HOST_DIR)/bin/python3 \
++		$(HOST_DIR)/bin/python3 configure.py \
+ 		--prefix=/usr \
+ 		--dest-cpu=$(NODEJS_CPU) \
+ 		$(if $(NODEJS_ARM_FP),--with-arm-float-abi=$(NODEJS_ARM_FP)) \
+@@ -171,25 +209,12 @@ define NODEJS_CONFIGURE_CMDS
+ 		$(if $(NODEJS_MIPS_FPU_MODE),--with-mips-fpu-mode=$(NODEJS_MIPS_FPU_MODE)) \
+ 		$(NODEJS_CONF_OPTS) \
+ 	)
+-
+-	$(foreach f,$(NODEJS_HOST_TOOLS_V8), \
+-		$(SED) "s#<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)$(f)<(EXECUTABLE_SUFFIX)#$(HOST_DIR)/bin/$(f)#" \
+-			$(@D)/tools/v8_gypfiles/v8.gyp
+-	)
+-	$(foreach f,$(NODEJS_HOST_TOOLS_NODE), \
+-		$(SED) "s#<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)$(f)<(EXECUTABLE_SUFFIX)#$(HOST_DIR)/bin/$(f)#" \
+-			-i $(@D)/node.gyp
+-	)
+ endef
+ 
+ define NODEJS_BUILD_CMDS
+-	$(TARGET_MAKE_ENV) PYTHON=$(HOST_DIR)/bin/python2 \
++	$(TARGET_MAKE_ENV) PYTHON=$(HOST_DIR)/bin/python3 \
+ 		$(MAKE) -C $(@D) \
+-		$(TARGET_CONFIGURE_OPTS) \
+-		NO_LOAD=cctest.target.mk \
+-		PATH=$(@D)/bin:$(BR_PATH) \
+-		LDFLAGS="$(NODEJS_LDFLAGS)" \
+-		LD="$(TARGET_CXX)"
++		$(NODEJS_MAKE_OPTS)
+ endef
+ 
+ #
+@@ -198,8 +223,7 @@ endef
+ NODEJS_MODULES_LIST= $(call qstrip,\
+ 	$(BR2_PACKAGE_NODEJS_MODULES_ADDITIONAL))
+ 
+-# Define NPM for other packages to use
+-NPM = $(TARGET_CONFIGURE_OPTS) \
++NODEJS_BIN_ENV = $(TARGET_CONFIGURE_OPTS) \
+ 	LDFLAGS="$(NODEJS_LDFLAGS)" \
+ 	LD="$(TARGET_CXX)" \
+ 	npm_config_arch=$(NODEJS_CPU) \
+@@ -207,41 +231,44 @@ NPM = $(TARGET_CONFIGURE_OPTS) \
+ 	npm_config_build_from_source=true \
+ 	npm_config_nodedir=$(BUILD_DIR)/nodejs-$(NODEJS_VERSION) \
+ 	npm_config_prefix=$(TARGET_DIR)/usr \
+-	npm_config_cache=$(BUILD_DIR)/.npm-cache \
+-	$(HOST_DIR)/bin/npm
++	npm_config_cache=$(BUILD_DIR)/.npm-cache
++
++# Define various packaging tools for other packages to use
++NPM = $(NODEJS_BIN_ENV) $(HOST_DIR)/bin/npm
++ifeq ($(BR2_PACKAGE_HOST_NODEJS_COREPACK),y)
++COREPACK = $(NODEJS_BIN_ENV) $(HOST_DIR)/bin/corepack
++PNPM = $(NODEJS_BIN_ENV) $(HOST_DIR)/bin/pnpm
++YARN = $(NODEJS_BIN_ENV) $(HOST_DIR)/bin/yarn
++endif
+ 
+ #
+ # We can only call NPM if there's something to install.
+ #
+ ifneq ($(NODEJS_MODULES_LIST),)
++NODEJS_DEPENDENCIES += host-nodejs
+ define NODEJS_INSTALL_MODULES
+ 	# If you're having trouble with module installation, adding -d to the
+ 	# npm install call below and setting npm_config_rollback=false can both
+ 	# help in diagnosing the problem.
+ 	$(NPM) install -g $(NODEJS_MODULES_LIST)
+ endef
++
++# Exclude prebuilt binaries with different architectures and OS from check
++NODEJS_BIN_ARCH_EXCLUDE = /usr/lib/node_modules/
+ endif
+ 
+ define NODEJS_INSTALL_STAGING_CMDS
+-	$(TARGET_MAKE_ENV) PYTHON=$(HOST_DIR)/bin/python2 \
++	$(TARGET_MAKE_ENV) PYTHON=$(HOST_DIR)/bin/python3 \
+ 		$(MAKE) -C $(@D) install \
+ 		DESTDIR=$(STAGING_DIR) \
+-		$(TARGET_CONFIGURE_OPTS) \
+-		NO_LOAD=cctest.target.mk \
+-		PATH=$(@D)/bin:$(BR_PATH) \
+-		LDFLAGS="$(NODEJS_LDFLAGS)" \
+-		LD="$(TARGET_CXX)"
++		$(NODEJS_MAKE_OPTS)
+ endef
+ 
+ define NODEJS_INSTALL_TARGET_CMDS
+-	$(TARGET_MAKE_ENV) PYTHON=$(HOST_DIR)/bin/python2 \
++	$(TARGET_MAKE_ENV) PYTHON=$(HOST_DIR)/bin/python3 \
+ 		$(MAKE) -C $(@D) install \
+ 		DESTDIR=$(TARGET_DIR) \
+-		$(TARGET_CONFIGURE_OPTS) \
+-		NO_LOAD=cctest.target.mk \
+-		PATH=$(@D)/bin:$(BR_PATH) \
+-		LDFLAGS="$(NODEJS_LDFLAGS)" \
+-		LD="$(TARGET_CXX)"
++		$(NODEJS_MAKE_OPTS)
+ 	$(NODEJS_INSTALL_MODULES)
+ endef
+ 
+diff --git a/package/nodejs/v8-qemu-wrapper.in b/package/nodejs/v8-qemu-wrapper.in
+new file mode 100644
+index 0000000000..48222d089b
+--- /dev/null
++++ b/package/nodejs/v8-qemu-wrapper.in
+@@ -0,0 +1,10 @@
++#!/usr/bin/env sh
++
++# Pass -r to qemu-user as to trick glibc into not errorings out if the host kernel
++# is older than the target kernel.
++exec @QEMU_USER@ -r @TOOLCHAIN_HEADERS_VERSION@ \
++    @QEMU_USERMODE_ARGS@ \
++   -L "${STAGING_DIR}/" \
++   -E LD_LIBRARY_PATH="${STAGING_DIR}/lib:${STAGING_DIR}/usr/lib/" \
++    "$@"
++
+-- 
+2.25.1
+
