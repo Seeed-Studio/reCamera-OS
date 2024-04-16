@@ -23,6 +23,14 @@ echo "rsync ./SensorSupportList"; rsync -a --exclude='.git' ./SensorSupportList/
 echo "rsync $EXTERNAL/build"; rsync -av $EXTERNAL/build $PROJECT_OUT/
 echo "rsync $EXTERNAL/fsbl"; rsync -av $EXTERNAL/fsbl $PROJECT_OUT/
 
+patches=`find $EXTERNAL/patches/ -name "*.patch" | sort`
+for patch in ${patches}; do
+    if ! patch -p1 -s -N --dry-run -d "${PROJECT_OUT}/buildroot-2021.05/" < ${patch}; then
+        echo "patch -p1 -d \"${PROJECT_OUT}/buildroot-2021.05/\" < ${patch}" ; \
+            patch -p1 -d "${PROJECT_OUT}/buildroot-2021.05/" < ${patch}
+    fi
+done
+
 ln -sf $TOPDIR/host-tools $PROJECT_OUT/
 
 ###################################
