@@ -1,0 +1,64 @@
+[submodule "host-tools"]
+	path = host-tools
+	url = https://github.com/sophgo/host-tools.git
+	branch = master
+[submodule "build"]
+	path = build
+	url = https://github.com/sophgo/build.git
+	branch = sg200x-dev
+[submodule "freertos"]
+	path = freertos
+	url = https://github.com/sophgo/freertos.git
+	branch = sg200x-dev
+[submodule "FreeRTOS-Kernel"]
+	path = FreeRTOS-Kernel
+	url = https://github.com/sophgo/FreeRTOS-Kernel.git
+	branch = sg200x-dev
+[submodule "Lab-Project-FreeRTOS-POSIX"]
+	path = Lab-Project-FreeRTOS-POSIX
+	url = https://github.com/sophgo/Lab-Project-FreeRTOS-POSIX.git
+	branch = sg200x-dev
+[submodule "fsbl"]
+	path = fsbl
+	url = https://github.com/sophgo/fsbl.git
+	branch = sg200x-dev
+[submodule "opensbi"]
+	path = opensbi
+	url = https://github.com/sophgo/opensbi.git
+	branch = sg200x-dev
+[submodule "u-boot-2021.10"]
+	path = u-boot-2021.10
+	url = https://github.com/sophgo/u-boot-2021.10.git
+	branch = sg200x-dev
+[submodule "linux_5.10"]
+	path = linux_5.10
+	url = https://github.com/sophgo/linux_5.10.git
+	branch = sg200x-dev
+[submodule "ramdisk"]
+	path = ramdisk
+	url = https://github.com/sophgo/ramdisk.git
+	branch = sg200x-dev
+[submodule "osdrv"]
+	path = osdrv
+	url = https://github.com/sophgo/osdrv.git
+	branch = sg200x-dev
+[submodule "middleware"]
+	path = middleware
+	url = https://github.com/sophgo/middleware.git
+	branch = sg200x-dev
+[submodule "isp_tuning"]
+	path = isp_tuning
+	url = https://github.com/sophgo/isp_tuning.git
+	branch = sg200x-dev
+[submodule "oss"]
+	path = oss
+	url = https://github.com/sophgo/oss.git
+	branch = master
+[submodule "SensorSupportList"]
+	path = SensorSupportList
+	url = https://github.com/sophgo/SensorSupportList.git
+	branch = cv18xx-v4.1.x
+[submodule "buildroot-2021.05"]
+	path = buildroot-2021.05
+	url = https://github.com/sophgo/buildroot-2021.05.git
+	branch = master
