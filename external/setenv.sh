@@ -34,6 +34,8 @@ rsync_dir $EXTERNAL/buildroot/ buildroot*/
 rsync_dir $EXTERNAL/isp_tuning .
 rsync_dir $EXTERNAL/rootfs_overlay/ buildroot-2021.05/board/cvitek/CV181X/overlay/
 
+rsync -av --delete $EXTERNAL/buildroot/package/nodejs/ $PROJECT_OUT/buildroot*/package/nodejs/
+
 # patches=`find $EXTERNAL/patches/ -name "*.patch" | sort`
 # for patch in ${patches}; do
 #     echo "patch -p1 -s -f -N -d \"${PROJECT_OUT}/buildroot-2021.05/\" < ${patch}" ; \
