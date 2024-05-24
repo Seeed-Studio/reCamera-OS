@@ -13,7 +13,7 @@ insmod /mnt/system/ko/cv181x_vi.ko
 insmod /mnt/system/ko/cv181x_vpss.ko
 insmod /mnt/system/ko/cv181x_dwa.ko
 insmod /mnt/system/ko/cv181x_vo.ko
-# insmod /mnt/system/ko/cv181x_mipi_tx.ko
+insmod /mnt/system/ko/cv181x_mipi_tx.ko
 insmod /mnt/system/ko/cv181x_rgn.ko
 
 #insmod /mnt/system/ko/cv181x_wdt.ko
@@ -25,6 +25,10 @@ insmod /mnt/system/ko/cv181x_jpeg.ko
 insmod /mnt/system/ko/cvi_vc_driver.ko MaxVencChnNum=9 MaxVdecChnNum=9
 #insmod /mnt/system/ko/cv181x_rtc.ko
 insmod /mnt/system/ko/cv181x_ive.ko
+
+insmod /mnt/system/ko/cfg80211.ko
+insmod /mnt/system/ko/brcmutil.ko
+insmod /mnt/system/ko/brcmfmac.ko
 
 echo 3 > /proc/sys/vm/drop_caches
 dmesg -n 4

@@ -1,0 +1,118 @@
+/dts-v1/;
+#include "cv181x_base_riscv.dtsi"
+/*#include "cv181x_asic_qfn.dtsi"*/
+/*#include "cv181x_asic_sd.dtsi"*/
+#include "cv181x_default_memmap.dtsi"
+
+&sd {
+	no-1-8-v;
+};
+
+&mipi_rx{
+	/delete-property/ snsr-reset;
+};
+
+&mipi_tx {
+	/delete-property/ reset-gpio;
+	/delete-property/ pwm-gpio;
+	/delete-property/ power-ct-gpio;
+};
+
+&dac{
+	/delete-property/ mute-gpio-r;
+};
+
+&spi0 {
+	status = "disabled";
+};
+
+&spi1 {
+	status = "disabled";
+};
+
+&spi2 {
+	status = "disabled";
+};
+
+&spi3 {
+	status = "disabled";
+};
+
+&i2c0 {
+	status = "disabled";
+};
+
+&i2c1 {
+	status = "disabled";
+};
+
+&i2c2 {
+	status = "okay";
+};
+
+&i2c3 {
+	status = "disabled";
+};
+
+&i2c4 {
+	status = "disabled";
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&uart3 {
+	status = "okay";
+};
+
+&uart4 {
+	status = "okay";
+};
+
+&wifisd {
+	status = "okay";
+};
+
+/ {
+	model = "Seeed reCamera";
+
+	/delete-node/ cvi-spif@10000000;
+	/delete-node/ cv-spinf@4060000;
+
+	leds {
+		compatible = "gpio-leds";
+
+		led0 {
+			label = "red";
+			gpios = <&porta 15 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+			default-state = "on";
+		};
+
+		led1 {
+			label = "blue";
+			gpios = <&porte 24 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "mmc0";
+			default-state = "on";
+		};
+
+		led2 {
+			label = "white";
+			gpios = <&porte 0 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+	};
+
+	/delete-node/ bt_pin;
+	/delete-node/ wifi_pin;
+	wifi_pin {
+		compatible = "cvitek,wifi-pin";
+		poweron-gpio = <&porta 30 GPIO_ACTIVE_HIGH>;
+		/*wakeup-gpio = <&porte 8 GPIO_ACTIVE_HIGH>;*/
+	};
+};
