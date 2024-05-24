@@ -211,7 +211,7 @@
 			#define ROOTARGS "ubi.mtd=ROOTFS ubi.block=0,0"
 		#endif /* CONFIG_SKIP_RAMDISK */
 	#elif defined(CONFIG_SD_BOOT)
-		#define ROOTARGS "root=" ROOTFS_DEV " rootwait rw"
+		#define ROOTARGS "root=/dev/mmcblk1p2" " rootwait rw"
 	#else
 		#define ROOTARGS "rootfstype=ext4 rootwait ro root=" ROOTFS_DEV
 	#endif
@@ -292,7 +292,7 @@
 	#define SD_BOOTM_COMMAND \
 				SET_BOOTARGS \
 				"echo Boot from SD ...;" \
-				"mmc dev 0 && fatload mmc 0 ${uImage_addr} boot.sd; " \
+				"mmc dev 1 && fatload mmc 1 ${uImage_addr} boot.sd; " \
 				"if test $? -eq 0; then " \
 				UBOOT_VBOOT_BOOTM_COMMAND \
 				"fi;"
