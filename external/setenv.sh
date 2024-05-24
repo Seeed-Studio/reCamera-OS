@@ -31,8 +31,9 @@ rsync_dir ./buildroot-2021.05
 ###################################
 rsync_dir $EXTERNAL/build .
 rsync_dir $EXTERNAL/buildroot/ buildroot*/
-rsync_dir $EXTERNAL/ramdisk/ ramdisk/
 rsync_dir $EXTERNAL/isp_tuning .
+rsync_dir $EXTERNAL/ramdisk/ ramdisk/
+rsync_dir $EXTERNAL/u-boot/ u-boot*/
 # rsync_dir $EXTERNAL/rootfs_overlay/ buildroot*/board/cvitek/CV181X/overlay/
 
 rsync -av --delete $EXTERNAL/buildroot/package/nodejs/ $PROJECT_OUT/buildroot*/package/nodejs/
