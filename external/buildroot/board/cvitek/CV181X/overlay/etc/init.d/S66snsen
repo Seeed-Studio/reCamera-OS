@@ -1,9 +1,7 @@
 #!/bin/sh
 
-# 读取/proc/device-tree/model文件的内容
 model=$(cat /proc/device-tree/model)
 
-# 判断内容是否为"Seeed reCamera"
 if [ "$model" = "Seeed reCamera" ]; then
 echo "358" > /sys/class/gpio/export
 echo "out" > /sys/class/gpio/gpio358/direction
