@@ -9,6 +9,16 @@ source $EXTERNAL/setenv.sh
 defconfig $1
 build_all
 
+# Pack rawimages.zip
+pushd $OUTPUT_DIR/rawimages
+cp -fv ../fip.bin .
+md5sum fip.bin boot.emmc rootfs_ext4.emmc > md5sum.txt
+zip -j rawimages.zip fip.bin boot.emmc rootfs_ext4.emmc md5sum.txt
+rm -rf fip.bin
+mv -fv rawimages.zip ../
+sync
+popd
+
 if [ $STORAGE_TYPE = "emmc" ]; then
 echo "INFO: \$STORAGE_TYPE is "emmc", skip gen image."
 elif [ -n "$SUDO_PWD" ]; then
