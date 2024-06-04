@@ -4,6 +4,8 @@
 PROJECT_OUT=$OUTDIR/$1
 export PROJECT_OUT
 
+PROJECT_DIR=$(dirname $(realpath $DEFCONFIGS/${1}_defconfig))
+export PROJECT_DIR
 
 source $EXTERNAL/setenv.sh
 defconfig $1
@@ -11,9 +13,9 @@ build_all
 
 # Pack rawimages.zip
 pushd $OUTPUT_DIR/rawimages
-cp -fv ../fip.bin .
-md5sum fip.bin boot.emmc rootfs_ext4.emmc > md5sum.txt
-zip -j rawimages.zip fip.bin boot.emmc rootfs_ext4.emmc md5sum.txt
+cp -fv ../fip.bin . || exit 1
+md5sum fip.bin boot.emmc rootfs_ext4.emmc > md5sum.txt || exit 1
+zip -j rawimages.zip fip.bin boot.emmc rootfs_ext4.emmc md5sum.txt || exit 1
 rm -rf fip.bin
 mv -fv rawimages.zip ../
 sync
