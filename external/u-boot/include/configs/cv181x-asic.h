@@ -213,7 +213,7 @@
 	#elif defined(CONFIG_SD_BOOT)
 		#define ROOTARGS "root=/dev/mmcblk1p2" " rootwait rw"
 	#else
-		#define ROOTARGS "rootfstype=ext4 rootwait ro root=" ROOTFS_DEV
+		#define ROOTARGS "rootfstype=ext4 rootwait root=" ROOTFS_DEV
 	#endif
 
 	/* BOOTARGS */
@@ -243,6 +243,26 @@
 		#define MTDIDS_DEFAULT ""
 	#endif
 
+	#define UPGRADE_SUPPORT "UG_FLAG_OFFSET=0x3fff\0" \
+		"erase_ug_flag=mmc dev 0; mmc erase ${UG_FLAG_OFFSET} 1;\0" \
+		"change_root_partition="\
+		"if mmc dev 0; then " \
+			"mmc read ${uImage_addr} ${UG_FLAG_OFFSET} 1;" \
+			"md.b ${uImage_addr} 4;" \
+			"mw.l ${update_addr} 0x31736672 1;" \
+			"if cmp.b ${uImage_addr} ${update_addr} 4; then " \
+				"setenv root 'rootfstype=ext4 rootwait root=/dev/mmcblk0p3';" \
+				"saveenv; run erase_ug_flag;" \
+				"echo 'Change rootfs to mmcblk0p3';" \
+			"fi;" \
+			"mw.l ${update_addr} 0x32736672 1;" \
+			"if cmp.b ${uImage_addr} ${update_addr} 4; then " \
+				"setenv root 'rootfstype=ext4 rootwait root=/dev/mmcblk0p4';" \
+				"saveenv; run erase_ug_flag;" \
+				"echo 'Change rootfs to mmcblk0p4';" \
+			"fi;" \
+		"fi;"
+
 	#define CONFIG_EXTRA_ENV_SETTINGS	\
 		"netdev=eth0\0"		\
 		"consoledev=" CONSOLEDEV  \
@@ -254,6 +274,7 @@
 		"root=" ROOTARGS "\0" \
 		"sdboot=" SD_BOOTM_COMMAND "\0" \
 		"othbootargs=" OTHERBOOTARGS "\0" \
+		UPGRADE_SUPPORT "\0" \
 		PARTS_OFFSET
 
 /********************************************************************************/
@@ -301,7 +322,7 @@
 		#ifdef CONFIG_ENABLE_ALIOS_UPDATE
 			#define CONFIG_BOOTCOMMAND	"cvi_update_rtos"
 		#else
-			#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "cvi_update || run norboot || run nandboot ||run emmcboot"
+			#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "cvi_update || run norboot || run nandboot || run change_root_partition; run emmcboot"
 		#endif
 	#else
 		#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "run sdboot"
