@@ -12,6 +12,7 @@ override OUTDIR := $(TOPDIR)/$(OUTDIR)
 endif
 
 export TOPDIR EXTERNAL DEFCONFIGS OUTDIR
+export BR2_EXTERNAL="$(EXTERNAL)/br2-external"
 
 $(TARGETS): %:
 	@echo "build $@"

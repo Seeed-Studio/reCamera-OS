@@ -1,0 +1,1 @@
+source "$BR2_EXTERNAL_BR2EXT_PATH/reCamera/Config.in"

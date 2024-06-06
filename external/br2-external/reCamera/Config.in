@@ -1,0 +1,15 @@
+config BR2_PACKAGE_RECAMERA
+    bool "reCamera"
+    default y
+    help
+      This is the help text for the reCamera package.
+      It will be displayed in the Buildroot configuration menu.
+
+#if BR2_PACKAGE_RECAMERA
+#config BR2_PACKAGE_RECAMERA_CUSTOM_REPO_URL
+#    string "Custom repository URL for reCamera"
+#    default "https://github.com/Seeed-Studio/sscma-example-sg200x.git"
+#    help
+#      Specify the URL of the custom reCamera repository to clone.
+#      The default is the official GitHub repository.
+#endif
