@@ -47,6 +47,17 @@ function gen_rawimages_zip() {
     echo "${FUNCNAME[0]} ok"
 }
 
+function gen_sd_recovery_zip() {
+    echo "Run ${FUNCNAME[0]}"
+
+    echo PROJECT_OUT=$PROJECT_OUT
+    pushd $PROJECT_OUT
+    ./build/tools/common/sd_tools/sd_gen_recovery_image.sh ${OUTPUT_DIR} ${target_name}_sd_recovery
+    popd
+
+    echo "${FUNCNAME[0]} ok"
+}
+
 function gen_sd_zip() {
     echo "Run ${FUNCNAME[0]}"
 
@@ -77,13 +88,25 @@ function gen_md5sum() {
     rm -rf $md5file
     check_zip ${target_name}_emmc.zip $md5file
     check_zip ${target_name}_rawimages.zip $md5file
-    check_zip ${target_name}_sd.zip $md5file
+    check_zip ${target_name}_sd_recovery.zip $md5file
 
     echo "Success"
     popd > /dev/null 2>&1
 }
 
-gen_emmc_zip || exit 1
-gen_rawimages_zip || exit 1
-gen_sd_zip || exit 1
-gen_md5sum || exit 1
+if [ $STORAGE_TYPE = "emmc" ]; then
+    gen_emmc_zip || exit 1
+    gen_rawimages_zip || exit 1
+    gen_sd_recovery_zip || exit 1
+    gen_md5sum || exit 1
+else
+    gen_sd_zip || exit 1
+
+    pushd $OUTPUT_DIR/ > /dev/null 2>&1
+
+    md5file=${target_name}_md5.txt
+    rm -rf $md5file
+    check_zip ${target_name}_sd.zip $md5file
+    
+    popd > /dev/null 2>&1
+fi

@@ -14,12 +14,6 @@ then
 	exit
 fi
 
-boot_cap=8M
-boot_label="BOOT"
-bootenv_cap=128K
-rootfs_cap=256M
-rootfs_label="ROOTFS"
-
 function size2sectors() {
     local f=0
     for v in "${@}"
@@ -45,12 +39,10 @@ function size2sectors() {
     echo $f
 }
 
-boot_start="2048"
-boot_size=$(size2sectors ${boot_cap})
-env_start=$((boot_start+boot_size))
-env_size=$(size2sectors ${bootenv_cap})
-rootfs_start=$((env_start+env_size))
-rootfs_size=$(size2sectors ${rootfs_cap})
+part_label="RECOVERY"
+part_cap=256M
+part_start=2048
+part_size=$(size2sectors ${part_cap})
 
 function create_disk_mbr() {
     echo "Run ${FUNCNAME[0]}"
@@ -60,18 +52,16 @@ function create_disk_mbr() {
     fi
 
     image=$1
-    local img_size=$((boot_size+env_size+rootfs_size))
-    dd if=/dev/zero of=./${image} bs=512 count=${img_size}
+    dd if=/dev/zero of=./${image} bs=512 count=${part_size}
 
     # Create the disk image
     (
         echo "label: dos"
         echo "label-id: 0x48617373"
         echo "unit: sectors"
-        echo "boot  : start= ${boot_start},     size= ${boot_size},     type=c, bootable"   #create the boot partition
-        echo "env   : start= ${env_start},      size= ${env_size},      type=5"             #Make an env partition
-        echo "rootfs: start= ${rootfs_start},   size= ${rootfs_size},   type=83"            #Make a rootfs partition
-    ) | sfdisk --force -uS ${image}
+        echo "boot  : start= ${part_start},     size= ${part_size},     type=c, bootable"   #create the boot partition
+    ) | sfdisk ${image} 
+    #> sfdisk --force -uS ${image}
 
     echo "${FUNCNAME[0]} ok"
 }
@@ -85,28 +75,16 @@ function write_boot_part() {
 
     local part=$(mktemp)
 
-    ls -l ${part}
-    dd if=/dev/zero of=${part} bs=512 count=${boot_size}
-    mkfs.vfat -n ${boot_label} ${part}
+    dd if=/dev/zero of=${part} bs=512 count=${part_size}
+    mkfs.vfat -n ${part_label} ${part}
 
     mcopy -i ${part} fip.bin ::
-    mcopy -i ${part} rawimages/boot.* ::
+    mcopy -i ${part} boot.emmc ::
+    mcopy -i ${part} rootfs_ext4.emmc ::
 
-    dd if=${part} of=${1} seek=${boot_start} bs=512 conv=notrunc,sparse
+    dd if=${part} of=${1} seek=${part_start} bs=512 conv=notrunc,sparse
 
     rm -rf ${part}
-    echo "${FUNCNAME[0]} ok"
-}
-
-function write_rootfs_part() {
-    echo "Run ${FUNCNAME[0]}"
-    if [ -z $1 ]; then
-        echo "image name is empty"
-        exit 1
-    fi
-
-    dd if=rawimages/rootfs_ext4.emmc of=${1} seek=${rootfs_start} bs=512 conv=notrunc,sparse
-
     echo "${FUNCNAME[0]} ok"
 }
 
@@ -119,7 +97,6 @@ echo "Image: ${image_name}"
 rm -rf ${target}*
 create_disk_mbr $image_name || exit 1
 write_boot_part $image_name || exit 1
-write_rootfs_part $image_name || exit 1
 
 zip -j ${target}.zip ${image_name}
 rm -rf ${image_name}
