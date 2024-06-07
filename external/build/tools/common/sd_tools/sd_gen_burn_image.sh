@@ -14,70 +14,113 @@ then
 	exit
 fi
 
-vfat_cap=128M
-vfat_label="boot"
-ext4_cap=256M
-ext4_label="rootfs"
+boot_cap=8M
+boot_label="BOOT"
+bootenv_cap=128K
+rootfs_cap=256M
+rootfs_label="ROOTFS"
 
-output_dir=$1
-echo ${output_dir}
-pushd ${output_dir}
+function size2sectors() {
+    local f=0
+    for v in "${@}"
+    do
+    local p=$(echo "$v" | awk \
+      'BEGIN{IGNORECASE = 1}
+       function printsectors(n,b,p) {printf "%u\n", n*b^p/512}
+       /B$/{     printsectors($1,  1, 0)};
+       /K(iB)?$/{printsectors($1,  2, 10)};
+       /M(iB)?$/{printsectors($1,  2, 20)};
+       /G(iB)?$/{printsectors($1,  2, 30)};
+       /T(iB)?$/{printsectors($1,  2, 40)};
+       /KB$/{    printsectors($1, 10,  3)};
+       /MB$/{    printsectors($1, 10,  6)};
+       /GB$/{    printsectors($1, 10,  9)};
+       /TB$/{    printsectors($1, 10, 12)}')
+    for s in $p
+    do
+        f=$((f+s))
+    done
 
-# gen a empty image
-image=$2-`date +%Y%m%d-%H%M`.img
-echo ${image}
-dd if=/dev/zero of=./${image} bs=1M count=512
+    done
+    echo $f
+}
 
-################################
-# Note: do not change this flow
-################################
-sudo fdisk ./${image} << EOF
-n
-p
-1
+boot_start="1"
+boot_size=$(size2sectors ${boot_cap})
+env_start=$((boot_start+boot_size))
+env_size=$(size2sectors ${bootenv_cap})
+rootfs_start=$((env_start+env_size))
+rootfs_size=$(size2sectors ${rootfs_cap})
 
-+${vfat_cap}
-n
-p
-2
+function create_disk_mbr() {
+    echo "Run ${FUNCNAME[0]}"
+    if [ -z "${1}" ]; then
+        echo "image name is empty"
+        exit 1
+    fi
 
-+${ext4_cap}
-w
-EOF
-# Note end
-################################
+    image=$1
+    local img_size=$((boot_size+env_size+rootfs_size))
+    dd if=/dev/zero of=./${image} bs=512 count=${img_size}
 
-dev_name=`sudo losetup -f`
-echo ${dev_name}
-echo ""
+    # Create the disk image
+    (
+        echo "label: dos"
+        echo "label-id: 0x48617373"
+        echo "unit: sectors"
+        echo "boot  : start= ${boot_start},     size= ${boot_size},     type=c, bootable"   #create the boot partition
+        echo "env   : start= ${env_start},      size= ${env_size},      type=5"             #Make an env partition
+        echo "rootfs: start= ${rootfs_start},   size= ${rootfs_size},   type=83"            #Make a rootfs partition
+    ) | sfdisk --force -uS ${image}
 
-sudo losetup ${dev_name} ./${image}
-sudo partprobe ${dev_name}
+    echo "${FUNCNAME[0]} ok"
+}
 
-sudo mkfs.vfat -F 32 -n ${vfat_label} ${dev_name}p1
-sudo mkfs.ext4 -L ${ext4_label} ${dev_name}p2
+function write_boot_part() {
+    echo "Run ${FUNCNAME[0]}"
+    if [ -z $1 ]; then
+        echo "image name is empty"
+        exit 1
+    fi
 
-# mount partitions
-rm ./tmp1 -rf
-mkdir tmp1
-sudo mount -t vfat ${dev_name}p1 tmp1/
+    local part=$(mktemp)
 
-# copy boot file and rootfs
-sudo cp ${output_dir}/fip.bin ./tmp1/
-sudo cp ${output_dir}/rawimages/boot.sd ./tmp1/
-sudo dd if=${output_dir}/rawimages/rootfs_ext4.sd of=${dev_name}p2
+    ls -l ${part}
+    dd if=/dev/zero of=${part} bs=512 count=${boot_size}
+    mkfs.vfat -n ${boot_label} ${part}
 
-sync
+    mcopy -i ${part} fip.bin ::
+    mcopy -i ${part} rawimages/boot.* ::
 
-# umount
-sudo umount tmp1
-sudo losetup -d ${dev_name}
-rmdir tmp1
+    dd if=${part} of=${1} seek=0 bs=512 count=${boot_size} conv=notrunc,sparse
 
-# tar image
-tar zcvf ${image}.tar.gz ${image}
+    rm -rf ${part}
+    echo "${FUNCNAME[0]} ok"
+}
 
-echo "Gen image successful: ${image}"
-echo ""
+function write_rootfs_part() {
+    echo "Run ${FUNCNAME[0]}"
+    if [ -z $1 ]; then
+        echo "image name is empty"
+        exit 1
+    fi
 
+    dd if=rawimages/rootfs_ext4.emmc of=${1} seek=$((boot_size+env_size)) bs=512 conv=notrunc,sparse
+
+    echo "${FUNCNAME[0]} ok"
+}
+
+# Start gen image
+pushd $1 || exit 1
+# target=$2_`date +%Y%m%d%H%M`
+target=$2
+image_name=${target}.img
+echo "Image: ${image_name}"
+rm -rf ${target}*
+create_disk_mbr $image_name || exit 1
+write_boot_part $image_name || exit 1
+write_rootfs_part $image_name || exit 1
+
+zip -j ${target}.zip ${image_name}
+rm -rf ${image_name}
 popd
