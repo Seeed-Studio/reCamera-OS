@@ -68,8 +68,22 @@ sed -i 's/CVI_TARGET_PACKAGES_INCLUDE=.*/CVI_TARGET_PACKAGES_INCLUDE=$(make --no
     $PROJECT_OUT/build/cvisetup.sh
 echo "INFO: Fixed CVI_TARGET_PACKAGES_LIBDIR & CVI_TARGET_PACKAGES_INCLUDE in cvisetup.sh"\"
 
+# overide build_middleware function
+sed -i 's/function build_middleware()/function _build_middleware_()/g' $PROJECT_OUT/build/cvisetup.sh
+
+# source cvisetup.sh
 source $PROJECT_OUT/build/cvisetup.sh
 
 ###################################
 # overwrite cvisetup.sh functions
 ###################################
+function build_middleware()
+{(
+    print_notice "Run ${FUNCNAME[0]}() overided by $0"
+
+    _build_middleware_
+
+    pushd "$MW_PATH"
+    cp -f sample/audio/sample_audio*  ${SYSTEM_OUT_DIR}/usr/bin
+    popd
+)}
