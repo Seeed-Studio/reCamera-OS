@@ -10,8 +10,6 @@ export PROJECT_DIR
 source $EXTERNAL/setenv.sh
 defconfig $1
 build_all || exit 1
-# build_middleware
-# exit 0
 
 ##################################################
 # gen packages
@@ -63,7 +61,7 @@ function gen_sd_zip() {
 function check_zip() {
     file=$1
     if [ -f ${file} ]; then
-        md5sum ${file} > ${md5file}
+        md5sum ${file} >> ${2}
     else
         echo "Gen ${file} failed!"
         exit 1
@@ -74,11 +72,12 @@ function gen_md5sum() {
     echo "Run ${FUNCNAME[0]}"
 
     pushd $OUTPUT_DIR/ > /dev/null 2>&1
-    md5file=${target_name}.md5
 
-    check_zip ${target_name}_emmc.zip
-    check_zip ${target_name}_rawimages.zip
-    check_zip ${target_name}_sd.zip
+    md5file=${target_name}_md5.txt
+    rm -rf $md5file
+    check_zip ${target_name}_emmc.zip $md5file
+    check_zip ${target_name}_rawimages.zip $md5file
+    check_zip ${target_name}_sd.zip $md5file
 
     echo "Success"
     popd > /dev/null 2>&1
