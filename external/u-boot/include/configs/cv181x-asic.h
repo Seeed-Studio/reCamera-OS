@@ -243,6 +243,9 @@
 		#define MTDIDS_DEFAULT ""
 	#endif
 
+#ifdef CONFIG_SD_BOOT
+	#define UPGRADE_SUPPORT ""
+#else
 	#define UPGRADE_SUPPORT "UG_FLAG_OFFSET=0x3fff\0" \
 		"erase_ug_flag=mmc dev 0; mmc erase ${UG_FLAG_OFFSET} 1;\0" \
 		"change_root_partition="\
@@ -262,6 +265,7 @@
 				"echo 'Change rootfs to mmcblk0p4';" \
 			"fi;" \
 		"fi;"
+#endif
 
 	#define CONFIG_EXTRA_ENV_SETTINGS	\
 		"netdev=eth0\0"		\
@@ -303,7 +307,7 @@
 			#define LOAD_LOGO "mmc dev 0;mmc read " LOGO_READ_ADDR " ${MISC_PART_OFFSET} ${MISC_PART_SIZE};"
 		#endif
 		#define SHOWLOGOCOMMAND LOAD_LOGO CVI_JPEG START_VO START_VL SET_VO_BG
-	#else
+	#else  
 		#define SHOWLOGOCMD
 	#endif
 
@@ -311,7 +315,8 @@
 					"console=$consoledev,$baudrate $othbootargs;"
 
 	#define SD_BOOTM_COMMAND \
-				SET_BOOTARGS \
+				"setenv bootargs ${reserved_mem} root=/dev/mmcblk1p2 rootwait rw " \
+				"console=$consoledev,$baudrate $othbootargs;" \
 				"echo Boot from SD ...;" \
 				"mmc dev 1 && fatload mmc 1 ${uImage_addr} boot.sd; " \
 				"if test $? -eq 0; then " \
@@ -322,7 +327,7 @@
 		#ifdef CONFIG_ENABLE_ALIOS_UPDATE
 			#define CONFIG_BOOTCOMMAND	"cvi_update_rtos"
 		#else
-			#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "cvi_update || run norboot || run nandboot || run change_root_partition; run emmcboot"
+			#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "run sdboot || cvi_update || run change_root_partition; run emmcboot"
 		#endif
 	#else
 		#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "run sdboot"

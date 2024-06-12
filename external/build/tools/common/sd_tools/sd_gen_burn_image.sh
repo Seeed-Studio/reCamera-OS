@@ -14,12 +14,6 @@ then
 	exit
 fi
 
-boot_cap=8M
-boot_label="BOOT"
-bootenv_cap=128K
-rootfs_cap=256M
-rootfs_label="ROOTFS"
-
 function size2sectors() {
     local f=0
     for v in "${@}"
@@ -45,12 +39,16 @@ function size2sectors() {
     echo $f
 }
 
+boot_cap=8M
+boot_label="BOOT"
+rootfs_cap=256M
+rootfs_label="ROOTFS"
+
 boot_start="2048"
 boot_size=$(size2sectors ${boot_cap})
-env_start=$((boot_start+boot_size))
-env_size=$(size2sectors ${bootenv_cap})
-rootfs_start=$((env_start+env_size))
+rootfs_start=$((boot_start+boot_size))
 rootfs_size=$(size2sectors ${rootfs_cap})
+img_size=$((boot_start+boot_size+rootfs_size))
 
 function create_disk_mbr() {
     echo "Run ${FUNCNAME[0]}"
@@ -60,8 +58,7 @@ function create_disk_mbr() {
     fi
 
     image=$1
-    local img_size=$((boot_size+env_size+rootfs_size))
-    dd if=/dev/zero of=./${image} bs=512 count=${img_size}
+    dd if=/dev/zero of=${image} bs=512 count=${img_size}
 
     # Create the disk image
     (
@@ -69,7 +66,6 @@ function create_disk_mbr() {
         echo "label-id: 0x48617373"
         echo "unit: sectors"
         echo "boot  : start= ${boot_start},     size= ${boot_size},     type=c, bootable"   #create the boot partition
-        echo "env   : start= ${env_start},      size= ${env_size},      type=5"             #Make an env partition
         echo "rootfs: start= ${rootfs_start},   size= ${rootfs_size},   type=83"            #Make a rootfs partition
     ) | sfdisk --force -uS ${image}
 
@@ -90,7 +86,7 @@ function write_boot_part() {
     mkfs.vfat -n ${boot_label} ${part}
 
     mcopy -i ${part} fip.bin ::
-    mcopy -i ${part} rawimages/boot.* ::
+    mcopy -i ${part} rawimages/boot.* ::boot.sd
 
     dd if=${part} of=${1} seek=${boot_start} bs=512 conv=notrunc,sparse
 
@@ -105,7 +101,8 @@ function write_rootfs_part() {
         exit 1
     fi
 
-    dd if=rawimages/rootfs_ext4.emmc of=${1} seek=${rootfs_start} bs=512 conv=notrunc,sparse
+    rfs=$(ls -l rawimages/rootfs_ext4.* | awk '{print $NF}')
+    dd if=${rfs} of=${1} seek=${rootfs_start} bs=512 conv=notrunc,sparse
 
     echo "${FUNCNAME[0]} ok"
 }
