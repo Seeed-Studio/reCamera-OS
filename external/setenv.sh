@@ -2,6 +2,10 @@
 
 function rsync_dir()
 {
+    if [ ! -d $1 ]; then
+        echo "$1 not exist"
+        return
+    fi
     mkdir -p $PROJECT_OUT/$2
     echo "rsync $1 -> $PROJECT_OUT/$2"; rsync -a --exclude='.git' $1 $PROJECT_OUT/$2 || exit 1
 }
