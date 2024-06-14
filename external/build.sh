@@ -89,6 +89,7 @@ function gen_md5sum() {
 
     pushd $OUTPUT_DIR/ > /dev/null 2>&1
 
+    rm -rf $md5file
     check_zip ${target_name}_emmc.zip $md5file
     check_zip ${target_name}_ota.zip $md5file
     check_zip ${target_name}_recovery.zip $md5file
@@ -104,7 +105,6 @@ if [ $STORAGE_TYPE = "emmc" ]; then
     gen_sd_recovery_zip ${target_name}_recovery || exit 1
     gen_sd_zip ${target_name}_sd || exit 1
 
-    rm -rf $md5file
     gen_md5sum || exit 1
 else
     gen_sd_zip ${target_name}_sd || exit 1
