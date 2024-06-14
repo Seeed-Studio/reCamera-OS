@@ -13,15 +13,14 @@ build_all || exit 1
 
 ##################################################
 # gen packages
+md5file=md5sum.txt
 issue=$(cat $PROJECT_DIR/rootfs/etc/issue)
 if [ -z "$issue" ]; then
 target_name="${1%"_${STORAGE_TYPE}"}"
-md5file=${target_name}_md5.txt
 else
 version_name=$(echo $issue | awk '{print $1}')
 version_num=$(echo $issue | awk '{print $2}')
 target_name=${CHIP}_${version_name}_${version_num}
-md5file=${CHIP}_${version_name}_md5.txt
 fi
 echo "Target name: ${target_name}"
 
@@ -90,7 +89,6 @@ function gen_md5sum() {
 
     pushd $OUTPUT_DIR/ > /dev/null 2>&1
 
-    rm -rf $md5file
     check_zip ${target_name}_emmc.zip $md5file
     check_zip ${target_name}_ota.zip $md5file
     check_zip ${target_name}_recovery.zip $md5file
@@ -105,6 +103,8 @@ if [ $STORAGE_TYPE = "emmc" ]; then
     gen_rawimages_zip ${target_name}_ota || exit 1
     gen_sd_recovery_zip ${target_name}_recovery || exit 1
     gen_sd_zip ${target_name}_sd || exit 1
+
+    rm -rf $md5file
     gen_md5sum || exit 1
 else
     gen_sd_zip ${target_name}_sd || exit 1
