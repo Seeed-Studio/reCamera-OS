@@ -13,14 +13,14 @@ build_all || exit 1
 
 ##################################################
 # gen packages
-md5file=md5sum.txt
+md5file=${1}_md5sum.txt
 issue=$(cat $PROJECT_DIR/rootfs/etc/issue)
 if [ -z "$issue" ]; then
-target_name="${1%"_${STORAGE_TYPE}"}"
+target_name="${1}"
 else
 version_name=$(echo $issue | awk '{print $1}')
 version_num=$(echo $issue | awk '{print $2}')
-target_name=${CHIP}_${version_name}_${version_num}
+target_name=${CHIP}_${version_name}_${version_num}_${STORAGE_TYPE}
 fi
 echo "Target name: ${target_name}"
 
@@ -88,33 +88,27 @@ function gen_md5sum() {
     echo "Run ${FUNCNAME[0]}"
 
     pushd $OUTPUT_DIR/ > /dev/null 2>&1
-
     rm -rf $md5file
-    check_zip ${target_name}_emmc.zip $md5file
-    check_zip ${target_name}_ota.zip $md5file
-    check_zip ${target_name}_recovery.zip $md5file
-    check_zip ${target_name}_sd.zip $md5file
+
+    LIST=$(find . -maxdepth 1 -name "${target_name}*.zip")
+    while IFS= read -r file; do
+        file=$(basename $file)
+        check_zip $file $md5file
+    done <<< "$LIST"
 
     echo "Success"
     popd > /dev/null 2>&1
 }
 
 if [ $STORAGE_TYPE = "emmc" ]; then
-    gen_emmc_zip ${target_name}_emmc || exit 1
+    gen_emmc_zip ${target_name} || exit 1
     gen_rawimages_zip ${target_name}_ota || exit 1
     gen_sd_recovery_zip ${target_name}_recovery || exit 1
-    gen_sd_zip ${target_name}_sd || exit 1
+    gen_sd_zip ${target_name}_sd_compat || exit 1
 
     gen_md5sum || exit 1
 else
-    gen_sd_zip ${target_name}_sd || exit 1
+    gen_sd_zip ${target_name} || exit 1
 
-    pushd $OUTPUT_DIR/ > /dev/null 2>&1
-    echo target_name: ${target_name}
-
-    rm -rf $md5file
-    check_zip ${target_name}_sd.zip $md5file
-    
-    echo "Success"
-    popd > /dev/null 2>&1
+    gen_md5sum || exit 1
 fi
