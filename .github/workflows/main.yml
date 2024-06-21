@@ -1,0 +1,283 @@
+name: Build and Create Release on Tag
+
+on:
+  create:
+    tags: 
+      - '**' # match all tags
+
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name for the release'
+        required: true
+        type: string
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        target:
+          - sg2002_recamera_emmc
+          - sg2002_recamera_sd
+
+    steps:
+      - name: Determine tag name
+        id: tag-name
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "Tag name provided through workflow_dispatch: ${{ github.event.inputs.tag_name }}"
+            echo "tag_name=${{ github.event.inputs.tag_name }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" == "create" ]; then
+            echo "Tag name provided through create event: ${GITHUB_REF#refs/tags/}"
+            echo "tag_name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unknown event type"
+            exit 1
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@v4.1.7
+        with:
+          fetch-depth: 1
+
+      - name: Get CHANGELOG.md entry
+        id: changelog
+        env:
+          CURRENT_TARGET: ${{ matrix.target }}
+        run: |
+          TAG=${{ steps.tag-name.outputs.tag_name }}
+          echo TAG=$TAG
+
+          # Get the title and content of CHANGELOG.md entry
+          TITLE=$(grep "^## ${TAG}" CHANGELOG.md | awk '{print $2" "$3}' | tr -d '\n')
+          echo $TITLE
+          echo "changelog_title=$TITLE" >> $GITHUB_OUTPUT
+          CONTENT=$(mktemp)
+          awk 'BEGIN {flag=0} /^## '${TAG}'/ {flag=1} flag {if (NF && !/^## /) {print}} /^## / && !/^## '${TAG}'/ {flag=0}' CHANGELOG.md > "$CONTENT"
+          echo "changelog_content="$CONTENT"" >> $GITHUB_OUTPUT
+          cat $CONTENT
+
+          # Check if title and content are not empty
+          if [ -z "$TITLE" ]; then echo "Title is empty. Exiting with status 1."; exit 1; fi
+          if [ ! -s "$CONTENT" ]; then echo "Content is empty. Exiting with status 1."; exit 1; fi
+
+          # Check if target is in the $CONTENT
+          if grep -q "### ${CURRENT_TARGET}" "$CONTENT"; then
+            echo "Found target in CONTENT: ${CURRENT_TARGET}"
+            echo "skip_workflow=false" >> $GITHUB_OUTPUT
+          else
+            echo "Target not found in CONTENT: ${CURRENT_TARGET}"
+            echo "skip_workflow=true" >> $GITHUB_OUTPUT
+          fi
+
+          # Watch log
+          echo GITHUB_OUTPUT=$GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        if: steps.changelog.outputs.skip_workflow == 'false'
+        run: |
+          sudo apt-get remove aria2 ansible shellcheck rpm xorriso zsync \
+          clang-6.0 lldb-6.0 lld-6.0 clang-format-6.0 clang-8 lldb-8 lld-8 clang-format-8 \
+          clang-9 lldb-9 lld-9 clangd-9 clang-format-9 \
+          esl-erlang gfortran-8 gfortran-9 \
+          cabal-install-2.0 cabal-install-2.2 \
+          cabal-install-2.4 cabal-install-3.0 cabal-install-3.2 heroku imagemagick \
+          libmagickcore-dev libmagickwand-dev libmagic-dev ant ant-optional kubectl \
+          mercurial apt-transport-https mono-complete mysql-client libmysqlclient-dev \
+          mysql-server mssql-tools unixodbc-dev yarn bazel chrpath libssl-dev libxft-dev \
+          libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev \
+          php-zmq snmp pollinate libpq-dev postgresql-client ruby-full \
+          azure-cli google-cloud-sdk hhvm google-chrome-stable firefox powershell \
+          sphinxsearch subversion mongodb-org -yq >/dev/null 2>&1 \
+          || echo "failed main apt-get remove"
+          echo "Removing large packages"
+          sudo apt-get remove -y '^dotnet-.*'
+          sudo apt-get remove -y '^llvm-.*'
+          sudo apt-get remove -y 'php.*'
+          sudo apt-get autoremove -y >/dev/null 2>&1
+          sudo apt-get clean
+          sudo apt-get autoremove -y >/dev/null 2>&1
+          sudo apt-get autoclean -y >/dev/null 2>&1
+          #echo "https://github.com/actions/virtual-environments/issues/709"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          echo "remove big /usr/local"
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf /usr/local/lib/android >/dev/null 2>&1
+          sudo rm -rf /usr/share/dotnet/sdk > /dev/null 2>&1
+          sudo rm -rf /usr/share/dotnet/shared > /dev/null 2>&1
+          sudo rm -rf /usr/share/swift > /dev/null 2>&1
+          sudo -E apt-get -qq update
+          sudo -E apt-get -y install git
+          sudo -E apt-get -qq autoremove --purge
+          sudo -E apt-get -qq clean
+          sudo apt-get update
+          sudo apt-get install -y build-essential ninja-build automake autoconf libtool wget curl git gcc libssl-dev bc slib squashfs-tools android-sdk-libsparse-utils \
+          android-sdk-ext4-utils jq cmake python3-distutils tclsh scons parallel ssh-client tree python3-dev python3-pip device-tree-compiler libssl-dev ssh cpio \
+          squashfs-tools fakeroot libncurses5 flex bison
+          sudo apt-get clean
+          df -h
+
+      - name: Build ${{ matrix.target }}
+        id: build
+        if: steps.changelog.outputs.skip_workflow == 'false'
+        run: |
+          echo `pwd`
+          git submodule update --init --recursive --depth 1
+          make ${{ matrix.target }}
+          DIR=output/${{ matrix.target }}/install/soc_${{ matrix.target }}
+          echo "output_dir=./$DIR" >> $GITHUB_OUTPUT
+          du -h -d1
+
+          # mkdir -p $DIR
+          # FILE=$DIR/${{ matrix.target }}
+          # echo FILE=$FILE
+          # echo *md5sum.txt > $DIR/${{ matrix.target }}_md5sum.txt
+          # if [ ${{ matrix.target }} == "sg2002_recamera_emmc" ]; then
+          #   echo *emmc.zip > ${FILE}.zip
+          #   echo *ota.zip > ${FILE}_ota.zip
+          #   echo *recovery.zip > ${FILE}_recovery.zip
+          #   echo *sd_compat.zip > ${FILE}_sd_compat.zip
+          # else
+          #   echo *sd.zip > ${FILE}.zip
+          # fi
+          # ls -l $DIR
+      
+      - name: Check if release exists
+        id: check_release
+        if: steps.changelog.outputs.skip_workflow == 'false'
+        run: |
+          # Todo: avoid confilict
+          sleep $((RANDOM % 30))
+
+          TAG=${{ github.event.inputs.tag_name }}
+          RELEASE_URL="https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG"
+          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" $RELEASE_URL)
+          RELEASE_EXISTS=$(echo $RESPONSE | jq -r '.message // empty')
+          if [[ -n "$RELEASE_EXISTS" && "$RELEASE_EXISTS" == "Not Found" ]]; then
+            echo "Release for tag $TAG does not exist."
+            echo "tag_exist=false" >> $GITHUB_OUTPUT
+          else
+            echo "Release for tag $TAG already exists."
+            echo "tag_exist=true" >> $GITHUB_OUTPUT
+
+            UPLOAD_URL=$(echo "$RESPONSE" | jq -r '.upload_url // empty')
+            echo "upload_url=$UPLOAD_URL" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create release ${{ steps.changelog.outputs.changelog_title }}
+        id: create_release
+        if: steps.changelog.outputs.skip_workflow == 'false' && steps.check_release.outputs.tag_exist == 'false'
+        uses: actions/create-release@v1.1.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.inputs.tag_name }}
+          release_name: ${{ steps.changelog.outputs.changelog_title }}
+          body_path: ${{ steps.changelog.outputs.changelog_content }}
+          draft: false
+          prerelease: true
+
+      - name: Preparing upload
+        id: uploader
+        if: steps.changelog.outputs.skip_workflow == 'false'
+        run: |
+          URL=${{ steps.create_release.outputs.upload_url }}
+          if [ -z "$URL" ]; then
+            echo "upload_url=${{ steps.check_release.outputs.upload_url }}" >> $GITHUB_OUTPUT
+          else
+            echo "upload_url=${URL}" >> $GITHUB_OUTPUT
+          fi
+
+          # Preparing files to upload
+          OUTPUT=${{ steps.build.outputs.output_dir }}
+
+          MD5SUM_PATH=$(ls $OUTPUT/*md5sum.txt)
+          echo $MD5SUM_PATH
+          echo "md5sum_path=${MD5SUM_PATH}" >> $GITHUB_OUTPUT
+          echo "md5sum_name=$(basename ${MD5SUM_PATH})" >> $GITHUB_OUTPUT
+
+          file_suffixes=("emmc.zip" "ota.zip" "recovery.zip" "sd.zip" "emmc_sd_compat.zip")
+          for suffix in "${file_suffixes[@]}"; do
+            file_path=$(find $OUTPUT/ -name "*${suffix}")
+            if [ -n "$file_path" ]; then
+                file_name=$(basename "$file_path")
+                variable_name="${suffix%.*}_path"
+                echo "${variable_name}=${file_path}" >> "$GITHUB_OUTPUT"
+                variable_name="${suffix%.*}_name"
+                echo "${variable_name}=${file_name}" >> "$GITHUB_OUTPUT"
+            else
+                echo "No ${suffix} file found in $OUTPUT"
+            fi
+          done
+
+          # watch log
+          echo GITHUB_OUTPUT=$GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
+
+      - name: Upload md5sum file
+        uses: actions/upload-release-asset@v1.0.2
+        if: steps.changelog.outputs.skip_workflow == 'false' && steps.uploader.outputs.md5sum_path != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.uploader.outputs.upload_url }}
+          asset_path: ${{ steps.uploader.outputs.md5sum_path }}
+          asset_name: ${{ steps.uploader.outputs.md5sum_name }}
+          asset_content_type: text/plain
+
+      - name: Upload emmc package
+        uses: actions/upload-release-asset@v1.0.2
+        if: steps.changelog.outputs.skip_workflow == 'false' && steps.uploader.outputs.emmc_path != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.uploader.outputs.upload_url }}
+          asset_path: ${{ steps.uploader.outputs.emmc_path }}
+          asset_name: ${{ steps.uploader.outputs.emmc_name }}
+          asset_content_type: application/zip
+
+      - name: Upload ota package
+        uses: actions/upload-release-asset@v1.0.2
+        if: steps.changelog.outputs.skip_workflow == 'false' && steps.uploader.outputs.ota_path != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.uploader.outputs.upload_url }}
+          asset_path: ${{ steps.uploader.outputs.ota_path }}
+          asset_name: ${{ steps.uploader.outputs.ota_name }}
+          asset_content_type: application/zip
+
+      - name: Upload recovery package
+        uses: actions/upload-release-asset@v1.0.2
+        if: steps.changelog.outputs.skip_workflow == 'false' && steps.uploader.outputs.recovery_path != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.uploader.outputs.upload_url }}
+          asset_path: ${{ steps.uploader.outputs.recovery_path }}
+          asset_name: ${{ steps.uploader.outputs.recovery_name }}
+          asset_content_type: application/zip
+
+      - name: Upload sd package
+        uses: actions/upload-release-asset@v1.0.2
+        if: steps.changelog.outputs.skip_workflow == 'false' && steps.uploader.outputs.sd_path != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.uploader.outputs.upload_url }}
+          asset_path: ${{ steps.uploader.outputs.sd_path }}
+          asset_name: ${{ steps.uploader.outputs.sd_name }}
+          asset_content_type: application/zip
+
+      - name: Upload emmc_sd_compat package
+        uses: actions/upload-release-asset@v1.0.2
+        if: steps.changelog.outputs.skip_workflow == 'false' && steps.uploader.outputs.emmc_sd_compat_path != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.uploader.outputs.upload_url }}
+          asset_path: ${{ steps.uploader.outputs.emmc_sd_compat_path }}
+          asset_name: ${{ steps.uploader.outputs.emmc_sd_compat_name }}
+          asset_content_type: application/zip
