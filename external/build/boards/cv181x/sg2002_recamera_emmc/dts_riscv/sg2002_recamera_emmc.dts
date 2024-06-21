@@ -6,6 +6,11 @@
 
 &sd {
 	no-1-8-v;
+	max-frequency = <50000000>;
+};
+
+&emmc {
+    max-frequency = <50000000>;
 };
 
 &mipi_rx{
