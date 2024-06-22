@@ -151,7 +151,7 @@ jobs:
           # Todo: avoid confilict
           sleep $((RANDOM % 30))
 
-          TAG=${{ github.event.inputs.tag_name }}
+          TAG=${{ steps.tag-name.outputs.tag_name }}
           RELEASE_URL="https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG"
           RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" $RELEASE_URL)
           RELEASE_EXISTS=$(echo $RESPONSE | jq -r '.message // empty')
@@ -173,7 +173,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.event.inputs.tag_name }}
+          tag_name: ${{ steps.tag-name.outputs.tag_name }}
           release_name: ${{ steps.changelog.outputs.changelog_title }}
           body_path: ${{ steps.changelog.outputs.changelog_content }}
           draft: false
