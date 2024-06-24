@@ -12,11 +12,11 @@
     <project name="opensbi"/>
     <project name="u-boot-2021.10"/>
     <project name="linux_5.10"/>
-    <project name="ramdisk"/>
     <project name="osdrv"/>
+    <project name="ramdisk"/>
+    <project name="oss" revision="master"/>
     <project name="middleware"/>
     <project name="isp_tuning"/>
-    <project name="oss" revision="master"/>
-    <project name="SensorSupportList" revision="cv18xx-v4.1.x"/>
-    <project name="buildroot-2021.05" revision="master"/>
+    <project name="SensorSupportList"/>
+    <project name="buildroot-2021.05"/>
 </manifest>
