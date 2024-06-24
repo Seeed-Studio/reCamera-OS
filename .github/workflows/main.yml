@@ -129,20 +129,6 @@ jobs:
           DIR=output/${{ matrix.target }}/install/soc_${{ matrix.target }}
           echo "output_dir=./$DIR" >> $GITHUB_OUTPUT
           du -h -d1
-
-          # mkdir -p $DIR
-          # FILE=$DIR/${{ matrix.target }}
-          # echo FILE=$FILE
-          # echo *md5sum.txt > $DIR/${{ matrix.target }}_md5sum.txt
-          # if [ ${{ matrix.target }} == "sg2002_recamera_emmc" ]; then
-          #   echo *emmc.zip > ${FILE}.zip
-          #   echo *ota.zip > ${FILE}_ota.zip
-          #   echo *recovery.zip > ${FILE}_recovery.zip
-          #   echo *sd_compat.zip > ${FILE}_sd_compat.zip
-          # else
-          #   echo *sd.zip > ${FILE}.zip
-          # fi
-          # ls -l $DIR
       
       - name: Check if release exists
         id: check_release
@@ -193,12 +179,7 @@ jobs:
           # Preparing files to upload
           OUTPUT=${{ steps.build.outputs.output_dir }}
 
-          MD5SUM_PATH=$(ls $OUTPUT/*md5sum.txt)
-          echo $MD5SUM_PATH
-          echo "md5sum_path=${MD5SUM_PATH}" >> $GITHUB_OUTPUT
-          echo "md5sum_name=$(basename ${MD5SUM_PATH})" >> $GITHUB_OUTPUT
-
-          file_suffixes=("emmc.zip" "ota.zip" "recovery.zip" "sd.zip" "emmc_sd_compat.zip")
+          file_suffixes=("md5sum.txt" "emmc.zip" "ota.zip" "recovery.zip" "sd.zip" "emmc_sd_compat.zip")
           for suffix in "${file_suffixes[@]}"; do
             file_path=$(find $OUTPUT/ -name "*${suffix}")
             if [ -n "$file_path" ]; then
