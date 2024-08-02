@@ -436,6 +436,7 @@ BR2_PACKAGE_TTYD=y
 # System tools
 #
 BR2_PACKAGE_COREUTILS=y
+BR2_PACKAGE_SYSLOG_NG=y
 
 #
 # emlog needs a Linux kernel to be built
