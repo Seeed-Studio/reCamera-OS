@@ -34,34 +34,34 @@
 	path = linux_5.10
 	url = https://github.com/sophgo/linux_5.10.git
 	branch = sg200x-dev
-[submodule "ramdisk"]
-	path = ramdisk
-	url = https://github.com/sophgo/ramdisk.git
-	branch = sg200x-dev
 [submodule "osdrv"]
 	path = osdrv
 	url = https://github.com/sophgo/osdrv.git
 	branch = sg200x-dev
-[submodule "middleware"]
-	path = middleware
-	url = https://github.com/sophgo/middleware.git
-	branch = sg200x-dev
-[submodule "isp_tuning"]
-	path = isp_tuning
-	url = https://github.com/sophgo/isp_tuning.git
+[submodule "ramdisk"]
+	path = ramdisk
+	url = https://github.com/sophgo/ramdisk.git
 	branch = sg200x-dev
 [submodule "oss"]
 	path = oss
 	url = https://github.com/sophgo/oss.git
 	branch = master
+[submodule "cvi_rtsp"]
+	path = cvi_rtsp
+	url = https://github.com/sophgo/cvi_rtsp.git
+	branch = master
+[submodule "cvi_mpi"]
+	path = cvi_mpi
+	url = https://github.com/sophgo/cvi_mpi.git
+	branch = sg200x-dev
+[submodule "isp_tuning"]
+	path = isp_tuning
+	url = https://github.com/sophgo/isp_tuning.git
+	branch = sg200x-dev
 [submodule "SensorSupportList"]
 	path = SensorSupportList
 	url = https://github.com/sophgo/SensorSupportList.git
-	branch = cv18xx-v4.1.x
-[submodule "buildroot-2021.05"]
-	path = buildroot-2021.05
-	url = https://github.com/sophgo/buildroot-2021.05.git
-	branch = master
+	branch = sg200x-dev
 [submodule "cvibuilder"]
 	path = cvibuilder
 	url = https://github.com/sophgo/cvibuilder.git
@@ -86,3 +86,15 @@
 	path = cnpy
 	url = https://github.com/sophgo/cnpy.git
 	branch = tpu
+[submodule "buildroot-2021.05"]
+	path = buildroot-2021.05
+	url = https://github.com/sophgo/buildroot-2021.05.git
+	branch = sg200x-dev
+[submodule "tdl_sdk"]
+	path = tdl_sdk
+	url = https://github.com/sophgo/tdl_sdk.git
+	branch = master
+[submodule "ive"]
+	path = ive
+	url = https://github.com/sophgo/ive.git
+	branch = master
