@@ -24,10 +24,9 @@ rsync_dir ./u-boot-2021.10
 rsync_dir ./linux_5.10
 rsync_dir ./ramdisk
 rsync_dir ./osdrv
-rsync_dir ./middleware
-# rsync_dir ./isp_tuning
+rsync_dir ./cvi_mpi
 rsync_dir ./oss
-rsync_dir ./SensorSupportList/ middleware/v2/component/isp/
+rsync_dir ./SensorSupportList/ cvi_mpi/component/isp
 rsync_dir ./buildroot-2021.05
 
 ###################################
