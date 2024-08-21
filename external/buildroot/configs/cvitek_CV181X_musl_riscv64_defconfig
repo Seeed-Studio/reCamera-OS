@@ -340,6 +340,7 @@ BR2_PACKAGE_JSON_C=y
 #
 BR2_PACKAGE_LIBCAMERA_ARCH_SUPPORTS=y
 # BR2_PACKAGE_LIBCAMERA is not set
+BR2_PACKAGE_LIVE555=y
 
 #
 # Interpreter languages and scripting
