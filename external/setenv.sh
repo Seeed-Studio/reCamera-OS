@@ -28,6 +28,12 @@ rsync_dir ./cvi_mpi
 rsync_dir ./oss
 rsync_dir ./SensorSupportList/ cvi_mpi/component/isp
 rsync_dir ./buildroot-2021.05
+rsync_dir ./cnpy
+rsync_dir ./cvibuilder
+rsync_dir ./cvikernel
+rsync_dir ./cvimath
+rsync_dir ./cviruntime
+rsync_dir ./flatbuffers
 
 ###################################
 # patch externals
@@ -74,7 +80,11 @@ echo "INFO: Fixed CVI_TARGET_PACKAGES_LIBDIR & CVI_TARGET_PACKAGES_INCLUDE in cv
 # overide build_middleware function
 sed -i 's/function build_middleware()/function _build_middleware_()/g' $PROJECT_OUT/build/cvisetup.sh
 
+# build flatbuffers
+sed -i 's/cmake -G Ninja -DFLATBUFFERS_PATH=$FLATBUFFERS_HOST_PATH/cmake -G Ninja -DFLATBUFFERS_BUILD_TESTS=OFF -DFLATBUFFERS_PATH=$FLATBUFFERS_HOST_PATH/g' $PROJECT_OUT/cviruntime/build_tpu_sdk.sh
+
 # source cvisetup.sh
+TPU_REL=1 
 source $PROJECT_OUT/build/cvisetup.sh
 
 ###################################
