@@ -9,6 +9,8 @@ export PROJECT_DIR
 
 source $EXTERNAL/setenv.sh
 defconfig $1
+
+export LIVE555_DIR=${TPU_SDK_INSTALL_PATH}
 build_all || exit 1
 
 ##################################################

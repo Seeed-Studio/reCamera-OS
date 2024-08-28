@@ -34,6 +34,8 @@ rsync_dir ./cvikernel
 rsync_dir ./cvimath
 rsync_dir ./cviruntime
 rsync_dir ./flatbuffers
+rsync_dir ./tdl_sdk
+rsync_dir ./cvi_rtsp
 
 ###################################
 # patch externals
@@ -44,18 +46,18 @@ rsync_dir $EXTERNAL/isp_tuning .
 rsync_dir $EXTERNAL/ramdisk/ ramdisk/
 rsync_dir $EXTERNAL/u-boot/ u-boot*/
 
+cp -v $TOPDIR/isp_tuning/copyBin.sh $PROJECT_OUT/isp_tuning/
+
 rsync -av --delete $EXTERNAL/buildroot/package/nodejs/ $PROJECT_OUT/buildroot*/package/nodejs/
 
 # copy project-specific files
 rsync_dir $PROJECT_DIR/rootfs/ buildroot*/board/cvitek/CV181X/overlay/
 
-# patches=`find $EXTERNAL/patches/ -name "*.patch" | sort`
-# for patch in ${patches}; do
-#     echo "patch -p1 -s -f -N -d \"${PROJECT_OUT}/buildroot-2021.05/\" < ${patch}" ; \
-#         patch -p1 -s -f -N -d "${PROJECT_OUT}/buildroot-2021.05/" < ${patch}
-# done
-
 ln -sf $TOPDIR/host-tools $PROJECT_OUT/
+
+if [ ! -e "$PROJECT_OUT/cvi_rtsp/.git" ]; then
+ln -s ../../../.git/modules/cvi_rtsp/ $PROJECT_OUT/cvi_rtsp/.git
+fi
 
 ###################################
 # modify build/Makefile
@@ -79,12 +81,16 @@ echo "INFO: Fixed CVI_TARGET_PACKAGES_LIBDIR & CVI_TARGET_PACKAGES_INCLUDE in cv
 
 # overide build_middleware function
 sed -i 's/function build_middleware()/function _build_middleware_()/g' $PROJECT_OUT/build/cvisetup.sh
+sed -i 's/function pack_cfg/function _pack_cfg_/g' $PROJECT_OUT/build/common_functions.sh
 
 # build flatbuffers
 sed -i 's/cmake -G Ninja -DFLATBUFFERS_PATH=$FLATBUFFERS_HOST_PATH/cmake -G Ninja -DFLATBUFFERS_BUILD_TESTS=OFF -DFLATBUFFERS_PATH=$FLATBUFFERS_HOST_PATH/g' $PROJECT_OUT/cviruntime/build_tpu_sdk.sh
 
+# move libcvi_rtsp.so to /mnt/system/lib
+echo 'install(FILES ${CVI_RTSP_LIBPATH} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)' >> $PROJECT_OUT/tdl_sdk/cmake/cvi_rtsp.cmake
+
 # source cvisetup.sh
-TPU_REL=1 
+TPU_REL=1
 source $PROJECT_OUT/build/cvisetup.sh
 
 ###################################
@@ -99,4 +105,19 @@ function build_middleware()
     pushd "$MW_PATH"
     cp -f sample/audio/sample_audio*  ${SYSTEM_OUT_DIR}/usr/bin
     popd
+)}
+
+function pack_cfg
+{(
+    print_notice "Run ${FUNCNAME[0]}() overided by $0"
+
+    _dir="$OUTPUT_DIR/rootfs/mnt/cfg/param"
+    mkdir -p $_dir
+
+    pushd "$ISP_TUNING_PATH"
+    ./copyBin.sh $_dir "$SENSOR_TUNING_PARAM"
+    popd
+
+    mkdir -p $BR_OVERLAY_DIR/mnt
+    cp -arf $OUTPUT_DIR/rootfs/mnt/cfg $BR_OVERLAY_DIR/mnt/
 )}
