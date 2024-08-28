@@ -18,8 +18,8 @@ case "$1" in
                 . $SYSTEMPATH/seeed-init.sh &
         fi
 
-        if [ -f $SYSTEMPATH/usb-rndis.sh ]; then
-                . $SYSTEMPATH/usb-rndis.sh &
+        if [ -f $SYSTEMPATH/usb-net.sh ]; then
+                . $SYSTEMPATH/usb-net.sh &
         fi
 
         if [ -f $USERDATAPATH/auto.sh ]; then
