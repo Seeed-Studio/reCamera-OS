@@ -245,26 +245,37 @@
 
 #ifdef CONFIG_SD_BOOT
 	#define UPGRADE_SUPPORT ""
+	#define CUSTOM_BOOTARGS ""
 #else
-	#define UPGRADE_SUPPORT "UG_FLAG_OFFSET=0x3fff\0" \
-		"erase_ug_flag=mmc dev 0; mmc erase ${UG_FLAG_OFFSET} 1;\0" \
-		"change_root_partition="\
-		"if mmc dev 0; then " \
-			"mmc read ${uImage_addr} ${UG_FLAG_OFFSET} 1;" \
-			"md.b ${uImage_addr} 4;" \
-			"mw.l ${update_addr} 0x31736672 1;" \
-			"if cmp.b ${uImage_addr} ${update_addr} 4; then " \
-				"setenv root 'rootfstype=ext4 rootwait root=/dev/mmcblk0p3';" \
-				"saveenv; run erase_ug_flag;" \
-				"echo 'Change rootfs to mmcblk0p3';" \
+#define CUSTOM_AB_ENV \
+    "use_part_b=0\0" \
+    "is_use_part_b=" \
+    "if itest ${use_part_b} -eq 1; then " \
+    	"setenv root 'rootfstype=ext4 rootwait root=/dev/mmcblk0p4'; " \
+    	"echo 'run part_b';" \
+    "fi;"
+
+#define CUSTOM_BOOT_RECORD \
+	"boot_record=" \
+	"if test x\"$boot_failed_limits\" != \"x\"; then " \
+		"if test x\"$boot_cnt\" = \"x\"; then " \
+			"setenv boot_cnt 0; " \
+		"fi; " \
+		"if itest $boot_cnt -ge $boot_failed_limits; then " \
+			"echo \"The boot failure limit has been reached $boot_failed_limits.\";" \
+			"if itest $use_part_b -eq 1; then " \
+				"setenv use_part_b 0; echo 'Partition switched to A';" \
+			"else " \
+				"setenv use_part_b 1; echo 'Partition switched to B';" \
 			"fi;" \
-			"mw.l ${update_addr} 0x32736672 1;" \
-			"if cmp.b ${uImage_addr} ${update_addr} 4; then " \
-				"setenv root 'rootfstype=ext4 rootwait root=/dev/mmcblk0p4';" \
-				"saveenv; run erase_ug_flag;" \
-				"echo 'Change rootfs to mmcblk0p4';" \
-			"fi;" \
-		"fi;"
+			"setenv boot_rollback 1; setenv boot_cnt 0; saveenv;" \
+		"else " \
+			"setexpr boot_cnt ${boot_cnt} + 1;" \
+			"echo boot_cnt=$boot_cnt; saveenv;" \
+		"fi;" \
+	"fi;"
+
+#define CUSTOM_BOOTARGS " panic=3 "
 #endif
 
 	#define CONFIG_EXTRA_ENV_SETTINGS	\
@@ -277,8 +288,9 @@
 		"mtdids=" MTDIDS_DEFAULT "\0" \
 		"root=" ROOTARGS "\0" \
 		"sdboot=" SD_BOOTM_COMMAND "\0" \
-		"othbootargs=" OTHERBOOTARGS "\0" \
-		UPGRADE_SUPPORT "\0" \
+		"othbootargs=" OTHERBOOTARGS CUSTOM_BOOTARGS "\0" \
+		CUSTOM_AB_ENV "\0" \
+		CUSTOM_BOOT_RECORD "\0" \
 		PARTS_OFFSET
 
 /********************************************************************************/
@@ -327,7 +339,7 @@
 		#ifdef CONFIG_ENABLE_ALIOS_UPDATE
 			#define CONFIG_BOOTCOMMAND	"cvi_update_rtos"
 		#else
-			#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "run sdboot || cvi_update || run change_root_partition; run emmcboot"
+			#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "run sdboot || cvi_update || run boot_record; run is_use_part_b; run emmcboot"
 		#endif
 	#else
 		#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "run sdboot"

@@ -6,6 +6,10 @@ export PATH="/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:/mnt/s
 
 DEFAULT_APP=/mnt/system/default_app
 
+if [ $(fw_printenv boot_cnt) != "boot_cnt=0" ]; then
+    fw_setenv boot_cnt 0;
+fi
+
 if [ ! -f "/tmp/evb_init" ];then
    echo 1 > /tmp/evb_init
    if [ -x $DEFAULT_APP ]; then
