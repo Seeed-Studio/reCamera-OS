@@ -76,6 +76,26 @@ function gen_sd_zip() {
     echo "${FUNCNAME[0]} ok"
 }
 
+function gen_swu() {
+    echo "Run ${FUNCNAME[0]}"
+    
+    echo OUTPUT_DIR=$OUTPUT_DIR
+    pushd $OUTPUT_DIR
+    rm -rfv *.swu
+    cd rawimages/
+    cp ${PROJECT_OUT}/build/tools/common/sw-description .
+    FILES="sw-description rootfs_ext4.emmc"
+    for i in $FILES; do
+        echo $i;
+    done | cpio -ov -H crc > ${1}.swu
+    mv -fv *.swu ../
+    cd ..
+    zip -j ${1}_swu.zip *.swu || exit 1
+    popd
+
+    echo "${FUNCNAME[0]} ok"
+}
+
 function check_zip() {
     file=$1
     if [ -f ${file} ]; then
@@ -107,6 +127,7 @@ if [ $STORAGE_TYPE = "emmc" ]; then
     gen_rawimages_zip ${target_name}_ota || exit 1
     gen_sd_recovery_zip ${target_name}_recovery || exit 1
     gen_sd_zip ${target_name}_sd_compat || exit 1
+    gen_swu ${target_name} || exit 1
 
     gen_md5sum || exit 1
 else
