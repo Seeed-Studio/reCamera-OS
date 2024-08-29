@@ -1,0 +1,62 @@
+software =
+{
+    version = "0.0.0";
+
+    description = "Firmware update for reCamera";
+
+    /* differentiate running image modes/sets */
+    stable:
+    {
+        a_write_b:
+        {
+            images: (
+                {
+                    filename = "rootfs_ext4.emmc";
+                    device = "/dev/mmcblk0p4";
+                    installed-directly = true;
+                }
+            );
+
+            bootenv: (
+                {
+                    name = "use_part_b";
+                    value = "1";
+                },
+                {
+                    name = "boot_failed_limits";
+                    value = "5";
+                },
+                {
+                    name = "boot_rollback";
+                    value = "";
+                }
+            );
+        };
+
+        b_write_a:
+        {
+            images: (
+                {
+                    filename = "rootfs_ext4.emmc";
+                    device = "/dev/mmcblk0p3";
+                    installed-directly = true;
+                }
+            );
+
+            bootenv: (
+                {
+                    name = "use_part_b";
+                    value = "0";
+                },
+                {
+                    name = "boot_failed_limits";
+                    value = "5";
+                },
+                {
+                    name = "boot_rollback";
+                    value = "";
+                }
+            );
+        };
+    };
+}

@@ -49,6 +49,7 @@ rsync_dir $EXTERNAL/u-boot/ u-boot*/
 cp -v $TOPDIR/isp_tuning/copyBin.sh $PROJECT_OUT/isp_tuning/
 
 rsync -av --delete $EXTERNAL/buildroot/package/nodejs/ $PROJECT_OUT/buildroot*/package/nodejs/
+rsync -av --delete $EXTERNAL/buildroot/package/swupdate/ $PROJECT_OUT/buildroot*/package/swupdate/
 
 # copy project-specific files
 rsync_dir $PROJECT_DIR/rootfs/ buildroot*/board/cvitek/CV181X/overlay/
