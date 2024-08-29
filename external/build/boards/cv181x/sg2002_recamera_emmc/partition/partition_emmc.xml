@@ -2,8 +2,8 @@
 	<partition label="BOOT" size_in_kb="8192" file="boot.emmc" />
 	<!-- Beware that in emmc u-boot environment should be 0x40000 alignment -->
 	<partition label="ENV" size_in_kb="128" file="" />
-	<partition label="ROOTFS" size_in_kb="262144" file="rootfs_ext4.emmc" type="ext4"/>
-	<partition label="ROOTFS2" size_in_kb="262144" file="" type="ext4"/>
-	<partition label="RECV" size_in_kb="262144" file="" type="ext4"/>
-	<partition label="USER" size_in_kb="6867968" file="" type="ext4"/>
+	<partition label="ROOTFS" size_in_kb="524288" file="rootfs_ext4.emmc" type="ext4"/>
+	<partition label="ROOTFS2" size_in_kb="524288" file="" type="ext4"/>
+	<partition label="RESERVED" size_in_kb="262144" file="" type="ext4"/>
+	<partition label="USERDATA" size_in_kb="6291456" file="" type="ext4"/>
 </physical_partition>
