@@ -1,3 +1,15 @@
+## 0.0.3 (2024-08-30)
+
+### sg2002_recamera_emmc
+- update sdk upstream (6cd7a5b)
+- support more buildroot packages (mosquitto/avahi/opkg/live555)
+- remove reCamera app
+- change ota (not compatible with last version) and supports swupdate
+- use ncm replace of rndis
+- expand rootfs size to 512M, rootfs default readonly (rootfs_rw (on|off))
+- auto mount /dev/mmcblk0p6 to /userdata
+- update nodejs to 17.9.1
+
 ## 0.0.2 (2024-06-24)
 
 ### sg2002_recamera_emmc
