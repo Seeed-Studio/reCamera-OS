@@ -41,7 +41,7 @@ function size2sectors() {
 
 boot_cap=8M
 boot_label="BOOT"
-rootfs_cap=256M
+rootfs_cap=512M
 rootfs_label="ROOTFS"
 
 boot_start="2048"

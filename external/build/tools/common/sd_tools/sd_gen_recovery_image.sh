@@ -39,10 +39,12 @@ function size2sectors() {
     echo $f
 }
 
-part_label="RECOVERY"
-part_cap=256M
+part_label="RESERVED"
+part_cap=600M
 part_start=2048
 part_size=$(size2sectors ${part_cap})
+img_size=$((part_start+part_size))
+echo "Image size: ${img_size} sectors $part_size"
 
 function create_disk_mbr() {
     echo "Run ${FUNCNAME[0]}"
@@ -52,14 +54,14 @@ function create_disk_mbr() {
     fi
 
     image=$1
-    dd if=/dev/zero of=./${image} bs=512 count=${part_size}
+    dd if=/dev/zero of=./${image} bs=512 count=${img_size}
 
     # Create the disk image
     (
         echo "label: dos"
         echo "label-id: 0x48617373"
         echo "unit: sectors"
-        echo "boot  : start= ${part_start},     size= ${part_size},     type=c, bootable"   #create the boot partition
+        echo "boot  : start= ${part_start},     size= ${img_size},     type=c, bootable"   #create the boot partition
     ) | sfdisk ${image} 
     #> sfdisk --force -uS ${image}
 
