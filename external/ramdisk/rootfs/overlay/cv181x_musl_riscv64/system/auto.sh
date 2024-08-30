@@ -29,6 +29,9 @@ if [ "$fs_type" != "" ]; then
    fi
 fi
 
+# rootfs read only
+rootfs_rw off
+
 # default app
 DEFAULT_APP=/mnt/system/default_app
 if [ ! -f "/tmp/evb_init" ];then

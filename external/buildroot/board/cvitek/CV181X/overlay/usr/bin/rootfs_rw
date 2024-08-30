@@ -1,0 +1,30 @@
+#!/bin/sh
+
+function usage() {
+    if [ $# -ne 1 ]; then
+        echo "Usage: $0 <on|off>"
+        exit 1
+    fi
+}
+
+case $1 in
+    on)
+        if mount -o remount,rw /; then
+            echo "Root filesystem remounted as read-write successfully."
+        else
+            echo "Failed to remount root filesystem as read-write."
+            exit 1
+        fi
+        ;;
+    off)
+        if mount -o remount,ro /; then
+            echo "Root filesystem remounted as read-only successfully."
+        else
+            echo "Failed to remount root filesystem as read-only."
+            exit 1
+        fi
+        ;;
+    *)
+        usage
+        ;;
+esac
