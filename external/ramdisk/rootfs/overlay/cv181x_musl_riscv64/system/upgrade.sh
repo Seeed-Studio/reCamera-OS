@@ -8,7 +8,6 @@ RECV_PARTITION=/dev/mmcblk0p5
 ROOTFS=/dev/mmcblk0p3
 ROOTFS_B=/dev/mmcblk0p4
 ROOTFS_FILE=rootfs_ext4.emmc
-ROOTFS_SIZE_MB=512
 
 PERCENTAGE=0
 PERCENTAGE_FILE=/tmp/upgrade.percentage
@@ -246,7 +245,7 @@ start)
         zip_txt=$MOUNTPATH/$ZIP_FILE
         if [ ! -f $zip_txt ]; then
             echo "Step$step: $ZIP_FILE file not exist."
-            PERCENTAGE="20,Zip.txt not exist."
+            PERCENTAGE="30,Zip.txt not exist."
             exit_upgrade 1
         fi
         md5=$(cat $zip_txt | awk '{print $1}')
@@ -255,7 +254,7 @@ start)
         echo "md5=$md5"
         if [ -z "$md5" ] || [ -z "$zip" ]; then
             echo "Step$step: failed."
-            PERCENTAGE="20,Zip.txt file is empty."
+            PERCENTAGE="30,Zip.txt file is empty."
             exit_upgrade 1
         fi
         write_percent
@@ -309,14 +308,21 @@ start)
         target=$ROOTFS_B
     fi
     let step+=1
-    echo "Step$step: Writing rootfs $target"
+    file_size=$(unzip -l "$full_path" | grep "$ROOTFS_FILE" | awk '{print $1}')
+    let file_size/=1024*1024
+    echo "Step$step: Writing rootfs $target size=${file_size}MB"
+    if [ $file_size -eq 0 ]; then
+        echo "Step$step: failed."
+        PERCENTAGE=70,"Read file size is 0."
+        exit_upgrade 1
+    fi
     unzip -p $full_path $ROOTFS_FILE | dd of=$target bs=1M
     PERCENTAGE=70
     write_percent
 
     let step+=1
     echo "Step$step: Calc $target md5"
-    partition_md5=$(dd if=$target bs=1M count=$ROOTFS_SIZE_MB 2>/dev/null | md5sum | awk '{print $1}')
+    partition_md5=$(dd if=$target bs=1M count=$file_size 2>/dev/null | md5sum | awk '{print $1}')
     echo "$target md5: $partition_md5"
     PERCENTAGE=80
     write_percent
