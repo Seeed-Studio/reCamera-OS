@@ -180,7 +180,7 @@ jobs:
           # Preparing files to upload
           OUTPUT=${{ steps.build.outputs.output_dir }}
 
-          file_suffixes=("md5sum.txt" "emmc.zip" "ota.zip" "recovery.zip" "sd.zip" "emmc_sd_compat.zip")
+          file_suffixes=("md5sum.txt" "emmc.zip" "ota.zip" "recovery.zip" "sd.zip" "emmc_sd_compat.zip" "swu.zip")
           for suffix in "${file_suffixes[@]}"; do
             file_path=$(find $OUTPUT/ -maxdepth 1 -name "*${suffix}")
             if [ -n "$file_path" ]; then
@@ -262,4 +262,15 @@ jobs:
           upload_url: ${{ steps.uploader.outputs.upload_url }}
           asset_path: ${{ steps.uploader.outputs.emmc_sd_compat_path }}
           asset_name: ${{ steps.uploader.outputs.emmc_sd_compat_name }}
+          asset_content_type: application/zip
+
+      - name: Upload swu package
+        uses: actions/upload-release-asset@v1.0.2
+        if: steps.changelog.outputs.skip_workflow == 'false' && steps.uploader.outputs.swu_path != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.uploader.outputs.upload_url }}
+          asset_path: ${{ steps.uploader.outputs.swu_path }}
+          asset_name: ${{ steps.uploader.outputs.swu_name }}
           asset_content_type: application/zip
