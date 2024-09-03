@@ -58,6 +58,12 @@ ln -sf $TOPDIR/host-tools $PROJECT_OUT/
 
 if [ ! -e "$PROJECT_OUT/cvi_rtsp/.git" ]; then
 ln -s ../../../.git/modules/cvi_rtsp/ $PROJECT_OUT/cvi_rtsp/.git
+ls -l $PROJECT_OUT/cvi_rtsp/.git
+fi
+
+if [ ! -e "$PROJECT_OUT/cvi_mpi/.git" ]; then
+ln -s ../../../.git/modules/cvi_mpi/ $PROJECT_OUT/cvi_mpi/.git
+ls -l $PROJECT_OUT/cvi_mpi/.git
 fi
 
 ###################################
@@ -67,6 +73,9 @@ sed -i 's/${Q}$(MAKE) -C $(BR_DIR).*/${Q}$(MAKE) -C $(BR_DIR) $(BR_DEFCONFIG) BR
     $PROJECT_OUT/build/Makefile
 sed -i 's/${Q}$(MAKE) -j${NPROC} -C $(BR_DIR).*/${Q}$(MAKE) -j${NPROC} -C $(BR_DIR) O=$(TARGET_OUTPUT_DIR)/' \
     $PROJECT_OUT/build/Makefile
+
+sed -i '/EXTRA_LDFLAGS = $(LIBS).*/aEXTRA_LDFLAGS += -latomic' \
+    $PROJECT_OUT/cvi_mpi/sample/venc/Makefile
 
 ###################################
 # modify cvisetup.sh
@@ -101,7 +110,7 @@ function build_middleware()
 {(
     print_notice "Run ${FUNCNAME[0]}() overided by $0"
 
-    _build_middleware_
+    _build_middleware_ || return $?
 
     pushd "$MW_PATH"
     cp -f sample/audio/sample_audio*  ${SYSTEM_OUT_DIR}/usr/bin
