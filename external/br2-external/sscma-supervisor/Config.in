@@ -1,0 +1,6 @@
+config BR2_PACKAGE_SSCMA_SUPERVISOR
+    bool "supervisor"
+    default y
+    help
+      This is the help text for the supervisor package.
+      It will be displayed in the Buildroot configuration menu.
