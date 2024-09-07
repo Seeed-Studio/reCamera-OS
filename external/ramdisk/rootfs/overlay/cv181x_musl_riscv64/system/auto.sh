@@ -9,37 +9,15 @@ if [ $(fw_printenv boot_cnt) != "boot_cnt=0" ]; then
     fw_setenv boot_cnt 0;
 fi
 
-# mount userdata partition
-USERDATA_PARTITION="/dev/mmcblk0p6"
-USERDATA_MOUNTPOINT="/userdata"
-fs_type=$(blkid -o value -s TYPE $USERDATA_PARTITION)
-echo "userdata partition type: $fs_type"
-if [ "$fs_type" == "" ]; then
-   mkfs.ext4 $USERDATA_PARTITION
-fi
-fs_type=$(blkid -o value -s TYPE $USERDATA_PARTITION)
-if [ "$fs_type" != "" ]; then
-   if [ ! -d $USERDATA_MOUNTPOINT ]; then
-      mkdir -p $USERDATA_MOUNTPOINT
-   fi
-   mount $USERDATA_PARTITION $USERDATA_MOUNTPOINT
-   result=$(mount | grep $USERDATA_MOUNTPOINT)
-   if [ "$result" == "" ]; then
-      echo "mount $USERDATA_PARTITION to $USERDATA_MOUNTPOINT failed"
-   fi
-fi
-
 # rootfs read only
 rootfs_rw off
 
 # default app
-DEFAULT_APP=/mnt/system/default_app
-if [ ! -f "/tmp/evb_init" ];then
+if [ ! -f "/tmp/evb_init" ]; then
    echo 1 > /tmp/evb_init
+   DEFAULT_APP=/mnt/system/default_app
    if [ -x $DEFAULT_APP ]; then
       $DEFAULT_APP > /dev/null 2>&1 &
       echo "$(realpath $DEFAULT_APP) started"
    fi
-else
-   exit 1
 fi
