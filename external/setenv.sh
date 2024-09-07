@@ -46,13 +46,13 @@ rsync_dir $EXTERNAL/isp_tuning .
 rsync_dir $EXTERNAL/ramdisk/ ramdisk/
 rsync_dir $EXTERNAL/u-boot/ u-boot*/
 
+# notic: sg200x is soft link to cv182x
+rsync -av $EXTERNAL/SensorSupportList/sensor/sg200x/ $PROJECT_OUT/cvi_mpi/component/isp/sensor/cv182x/
+
 cp -v $TOPDIR/isp_tuning/copyBin.sh $PROJECT_OUT/isp_tuning/
 
 rsync -av --delete $EXTERNAL/buildroot/package/nodejs/ $PROJECT_OUT/buildroot*/package/nodejs/
 rsync -av --delete $EXTERNAL/buildroot/package/swupdate/ $PROJECT_OUT/buildroot*/package/swupdate/
-
-# copy project-specific files
-rsync_dir $PROJECT_DIR/rootfs/ buildroot*/board/cvitek/CV181X/overlay/
 
 ln -sf $TOPDIR/host-tools $PROJECT_OUT/
 
