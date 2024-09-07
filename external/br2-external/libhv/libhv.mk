@@ -11,7 +11,7 @@ LIBHV_SITE = https://github.com/ithewei/libhv/archive/refs/tags
 LIBHV_INSTALL_STAGING = YES
 
 define LIBHV_CONFIGURE_CMDS
-    (cd $(@D); $(TARGET_CONFIGURE_OPTS) ./configure)
+    (cd $(@D); $(TARGET_CONFIGURE_OPTS) ./configure --with-mqtt)
 endef
 
 define LIBHV_BUILD_CMDS
