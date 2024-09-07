@@ -653,6 +653,7 @@ static CVI_VOID sensor_global_init(VI_PIPE ViPipe)
 	pstSnsState->u32FLStd  = g_astOv5647_mode[pstSnsState->u8ImgMode].u32VtsDef;
 	pstSnsState->au32FL[0] = g_astOv5647_mode[pstSnsState->u8ImgMode].u32VtsDef;
 	pstSnsState->au32FL[1] = g_astOv5647_mode[pstSnsState->u8ImgMode].u32VtsDef;
+	g_aeOv5647_MirrorFip[ViPipe] = 0;
 
 	memset(&pstSnsState->astSyncInfo[0], 0, sizeof(ISP_SNS_SYNC_INFO_S));
 	memset(&pstSnsState->astSyncInfo[1], 0, sizeof(ISP_SNS_SYNC_INFO_S));
