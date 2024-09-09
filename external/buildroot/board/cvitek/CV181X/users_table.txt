@@ -1,0 +1,1 @@
+recamera    -1  recamera    -1  =recamera   /home/recamera  /bin/sh -
