@@ -26,8 +26,6 @@ function rootfs_overlay() {
    fi
 
    # mount overlay directories
-   mkdir -p /home
-
    mount_dir /bin
    mount_dir /etc
    mount_dir /lib
@@ -41,11 +39,14 @@ function rootfs_overlay() {
 
 # mount userdata partition
 USERDATA_PARTITION="/dev/mmcblk0p6"
+if [ -e $USERDATA_PARTITION ]; then
 USERDATA_MOUNTPOINT="/userdata"
+MKFS_FLAG="N"
 fs_type=$(/sbin/blkid -o value -s TYPE $USERDATA_PARTITION)
 echo "userdata partition type: ${fs_type}"
 if [ "$fs_type" == "" ]; then
    mkfs.ext4 $USERDATA_PARTITION
+   MKFS_FLAG="Y"
    fs_type=$(blkid -o value -s TYPE $USERDATA_PARTITION)
 fi
 if [ "$fs_type" != "" ]; then
@@ -57,12 +58,15 @@ if [ "$fs_type" != "" ]; then
    echo "mp=$mp"
    if [ $mp != $USERDATA_PARTITION ]; then
       mount $USERDATA_PARTITION $USERDATA_MOUNTPOINT
-   else
-      echo "$USERDATA_MOUNTPOINT is already mounted"
    fi
    mp=$(mountpoint -n $USERDATA_MOUNTPOINT | awk '{print $1}')
    if [ $mp == $USERDATA_PARTITION ]; then
       echo "userdata partition mounted successfully"
+      if [ $MKFS_FLAG == "Y" ]; then
+         chown -R recamera:recamera $USERDATA_MOUNTPOINT
+         rm -rf $USERDATA_MOUNTPOINT/*
+      fi
       rootfs_overlay $USERDATA_MOUNTPOINT
    fi
+fi
 fi
