@@ -66,6 +66,9 @@ ln -s ../../../.git/modules/cvi_mpi/ $PROJECT_OUT/cvi_mpi/.git
 ls -l $PROJECT_OUT/cvi_mpi/.git
 fi
 
+cp -fv $PROJECT_DIR/rootfs/etc/issue $PROJECT_OUT/buildroot*/board/cvitek/CV181X/overlay/etc/
+cp -fv $TOPDIR/CHANGELOG.md $PROJECT_OUT/buildroot*/board/cvitek/CV181X/overlay/etc/
+
 ###################################
 # modify build/Makefile
 ###################################

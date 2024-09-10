@@ -10,7 +10,7 @@ if [ $(fw_printenv boot_cnt) != "boot_cnt=0" ]; then
 fi
 
 # rootfs read only
-rootfs_rw off
+rootfs_rw off > /dev/null 2>&1
 
 # default app
 if [ ! -f "/tmp/evb_init" ]; then
