@@ -3,35 +3,22 @@ ${CVI_SHOPTS}
 #
 # Start firmware
 #
-export USERDATAPATH=/mnt/data/
-export SYSTEMPATH=/mnt/system/
+export USERDATAPATH=/userdata
+export SYSTEMPATH=/mnt/system
 
 case "$1" in
   start)
-        echo "init mpp system..."
-        if [ -d $SYSTEMPATH/ko ]; then
-                sh $SYSTEMPATH/ko/loadsystemko.sh
-        fi
-
-        echo "Starting app..."
-        if [ -f $SYSTEMPATH/seeed-init.sh ]; then
-                . $SYSTEMPATH/seeed-init.sh &
-        fi
-
-        if [ -f $SYSTEMPATH/usb-net.sh ]; then
-                . $SYSTEMPATH/usb-net.sh &
-        fi
-
         if [ -f $USERDATAPATH/auto.sh ]; then
                 usleep 30000
                 . $USERDATAPATH/auto.sh &
-		exit 1
+                exit 1
         fi
 	if [ -f $SYSTEMPATH/auto.sh ]; then
                 usleep 30000
                 . $SYSTEMPATH/auto.sh &
         fi
         ;;
+
   stop)
         ;;
   restart|reload)
@@ -42,4 +29,3 @@ case "$1" in
 esac
 
 exit $?
-

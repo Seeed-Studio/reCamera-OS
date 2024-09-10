@@ -1,0 +1,28 @@
+#!/bin/sh
+${CVI_SHOPTS}
+#
+# Start firmware
+#
+
+case "$1" in
+  start)
+        echo "init mpp system..."
+        if [ -d $SYSTEMPATH/ko ]; then
+                sh $SYSTEMPATH/ko/loadsystemko.sh
+        fi
+
+        if [ -f $SYSTEMPATH/usb-net.sh ]; then
+                . $SYSTEMPATH/usb-net.sh &
+        fi
+        ;;
+
+  stop)
+        ;;
+  restart|reload)
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $?
