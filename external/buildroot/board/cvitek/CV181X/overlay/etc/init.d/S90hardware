@@ -4,6 +4,8 @@ ${CVI_SHOPTS}
 # Start firmware
 #
 
+export SYSTEMPATH=/mnt/system
+
 case "$1" in
   start)
         echo "init mpp system..."
