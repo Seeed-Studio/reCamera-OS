@@ -1,3 +1,20 @@
+## 0.0.4 (2024-09-12)
+
+### sg2002_recamera_emmc
+
+- New features:
+    - buildin supervisor
+    - buildin npm@8.11.0 and node-red@v3.1.11
+    - update ov5647 isp params
+    - supports rootfs overlay (/bin /etc /lib /home /root /usr /var)
+    - add recamera as default user
+    - supports sudo
+    - upgrade icu to 73-2
+
+- Fix bugs:
+    - upgrade.sh checksum failed
+    - fixed ov5647 mirror
+
 ## 0.0.3 (2024-08-30)
 
 ### sg2002_recamera_emmc
