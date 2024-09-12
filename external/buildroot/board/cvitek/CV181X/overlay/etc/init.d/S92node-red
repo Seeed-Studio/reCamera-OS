@@ -1,0 +1,100 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:          node-red
+# Required-Start:    $all
+# Required-Stop:     $all
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start Node-RED at boot time
+# Description:       Start Node-RED service.
+### END INIT INFO
+
+DAEMON="/usr/bin/node-red"
+DAEMON_OPTS="--max-old-space-size=64"
+NAME=node-red
+DESC="Node-RED service"
+VARDIR=/userdata/.var
+PIDFILE=$VARDIR/$NAME.pid
+LOGFILE=$VARDIR/$NAME.log
+USER=recamera  # Target user to switch to when running as root
+
+start() {
+    echo "Starting $DESC: $NAME"
+
+    # Check if the current user is root
+    if [ $(id -u) -eq 0 ]; then
+        # If root and the specified user exists, switch to that user
+        if id "$USER" &>/dev/null; then
+            DAEMON_USER=$USER
+            echo "Switching to user: $DAEMON_USER"
+            # Add --userDir option for the specified user
+            DAEMON_OPTS="$DAEMON_OPTS --userDir /home/$DAEMON_USER/.node-red"
+        else
+            DAEMON_USER=root
+            echo "User $USER does not exist. Running as root."
+        fi
+    else
+        # If not root, use the current user to run the service
+        DAEMON_USER=$(whoami)
+        echo "Already running as user: $DAEMON_USER"
+    fi
+
+    if [ -f $PIDFILE ]; then
+        echo "$NAME is already running."
+    else
+        if [ "$(id -u)" -eq 0 ]; then
+            su $DAEMON_USER -c "mkdir -p $VARDIR"
+            su $DAEMON_USER -c "start-stop-daemon -S -q -m -b -p $PIDFILE --exec $DAEMON -- $DAEMON_OPTS"
+        else
+            mkdir -p $VARDIR
+            start-stop-daemon -S -q -m -b -p $PIDFILE --exec $DAEMON -- $DAEMON_OPTS
+        fi
+        [ $? = 0 ] && echo "OK" || echo "FAIL"
+    fi
+}
+
+stop() {
+    echo "Stopping $DESC: $NAME"
+    if [ -f $PIDFILE ]; then
+        start-stop-daemon -K -q -p $PIDFILE
+        rm -f $PIDFILE
+        [ $? = 0 ] && echo "OK" || echo "FAIL"
+    else
+        echo "$NAME is not running."
+    fi
+}
+
+restart() {
+    stop
+    start
+}
+
+status() {
+    if [ -f $PIDFILE ]; then
+        echo "$NAME is running."
+    else
+        echo "$NAME is not running."
+    fi
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0
