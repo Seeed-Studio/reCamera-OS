@@ -1,4 +1,4 @@
-export PATH=$PATH:"/bin:/sbin"
+export PATH="/bin:/sbin"
 export PATH=$PATH:"/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin"
 export PATH=$PATH:"/mnt/data/bin:/mnt/data/sbin:/mnt/system/usr/bin:/mnt/system/usr/sbin"
 export LD_LIBRARY_PATH="/lib:/usr/lib:/usr/lib64"

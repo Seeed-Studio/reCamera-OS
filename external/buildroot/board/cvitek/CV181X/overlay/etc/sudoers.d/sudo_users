@@ -1,1 +1,2 @@
+Defaults env_keep += "PATH LD_LIBRARY_PATH"
 recamera ALL=(ALL:ALL) ALL
