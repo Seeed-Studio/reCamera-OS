@@ -46,13 +46,27 @@ rsync_dir $EXTERNAL/isp_tuning .
 rsync_dir $EXTERNAL/ramdisk/ ramdisk/
 rsync_dir $EXTERNAL/u-boot/ u-boot*/
 
-# notic: sg200x is soft link to cv182x
+# copy project rootfs to buildroot overlay
+rsync_dir $PROJECT_DIR/rootfs/ buildroot*/board/cvitek/CV181X/overlay/
+cp -fv $TOPDIR/CHANGELOG.md $PROJECT_OUT/buildroot*/board/cvitek/CV181X/overlay/etc/
+
+# driver: sg200x is soft link to cv182x
 rsync -av $EXTERNAL/SensorSupportList/sensor/sg200x/ $PROJECT_OUT/cvi_mpi/component/isp/sensor/cv182x/
 
+# isp parameter
 cp -v $TOPDIR/isp_tuning/copyBin.sh $PROJECT_OUT/isp_tuning/
 
-rsync -av --delete $EXTERNAL/buildroot/package/nodejs/ $PROJECT_OUT/buildroot*/package/nodejs/
-rsync -av --delete $EXTERNAL/buildroot/package/swupdate/ $PROJECT_OUT/buildroot*/package/swupdate/
+# patch buildroot packages
+for subdir in $EXTERNAL/buildroot/package/*; do
+    if [ -d $subdir ]; then
+        pkg_name=$(basename $subdir)
+        if [ -f $subdir/Config.in ]; then
+            rsync -av --delete $subdir/ $PROJECT_OUT/buildroot*/package/$pkg_name/
+        else
+            rsync -av $subdir/ $PROJECT_OUT/buildroot*/package/$pkg_name/
+        fi
+    fi
+done
 
 ln -sf $TOPDIR/host-tools $PROJECT_OUT/
 
@@ -65,9 +79,6 @@ if [ ! -e "$PROJECT_OUT/cvi_mpi/.git" ]; then
 ln -s ../../../.git/modules/cvi_mpi/ $PROJECT_OUT/cvi_mpi/.git
 ls -l $PROJECT_OUT/cvi_mpi/.git
 fi
-
-cp -fv $PROJECT_DIR/rootfs/etc/issue $PROJECT_OUT/buildroot*/board/cvitek/CV181X/overlay/etc/
-cp -fv $TOPDIR/CHANGELOG.md $PROJECT_OUT/buildroot*/board/cvitek/CV181X/overlay/etc/
 
 ###################################
 # modify build/Makefile
@@ -97,7 +108,7 @@ sed -i 's/function build_middleware()/function _build_middleware_()/g' $PROJECT_
 sed -i 's/function pack_cfg/function _pack_cfg_/g' $PROJECT_OUT/build/common_functions.sh
 
 # build flatbuffers
-sed -i 's/cmake -G Ninja -DFLATBUFFERS_PATH=$FLATBUFFERS_HOST_PATH/cmake -G Ninja -DFLATBUFFERS_BUILD_TESTS=OFF -DFLATBUFFERS_PATH=$FLATBUFFERS_HOST_PATH/g' $PROJECT_OUT/cviruntime/build_tpu_sdk.sh
+sed -i 's/cmake -G Ninja -DCMAKE_INSTALL_PREFIX=$FLATBUFFERS_HOST_PATH/cmake -G Ninja -DFLATBUFFERS_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=$FLATBUFFERS_HOST_PATH/g' $PROJECT_OUT/cviruntime/build_tpu_sdk.sh
 
 # move libcvi_rtsp.so to /mnt/system/lib
 echo 'install(FILES ${CVI_RTSP_LIBPATH} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)' >> $PROJECT_OUT/tdl_sdk/cmake/cvi_rtsp.cmake
