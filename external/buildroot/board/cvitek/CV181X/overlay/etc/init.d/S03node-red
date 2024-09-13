@@ -16,20 +16,28 @@ NAME=node-red
 DESC="Node-RED service"
 VARDIR=/userdata/.var
 PIDFILE=$VARDIR/$NAME.pid
-LOGFILE=$VARDIR/$NAME.log
 USER=recamera  # Target user to switch to when running as root
 
 start() {
+    if [ -f $PIDFILE ]; then
+        pid=$(cat $PIDFILE)
+        if [ -d /proc/$pid ]; then
+            echo "$DESC: $NAME($pid) is already running."
+            exit 0
+        fi
+        rm -f $PIDFILE
+    fi
+
     echo "Starting $DESC: $NAME"
+    USER=$(awk -F: 'BEGIN {f=0} $1!="root" && $2!="*" && !f {print $1; f=1; exit}' /etc/shadow)
 
     # Check if the current user is root
     if [ $(id -u) -eq 0 ]; then
         # If root and the specified user exists, switch to that user
         if id "$USER" &>/dev/null; then
             DAEMON_USER=$USER
-            echo "Switching to user: $DAEMON_USER"
-            # Add --userDir option for the specified user
             DAEMON_OPTS="$DAEMON_OPTS --userDir /home/$DAEMON_USER/.node-red"
+            echo "Switching to user: $DAEMON_USER"
         else
             DAEMON_USER=root
             echo "User $USER does not exist. Running as root."
@@ -37,21 +45,14 @@ start() {
     else
         # If not root, use the current user to run the service
         DAEMON_USER=$(whoami)
-        echo "Already running as user: $DAEMON_USER"
+        DAEMON_OPTS="$DAEMON_OPTS --userDir /home/$DAEMON_USER/.node-red"
+        echo "Running as user: $DAEMON_USER"
     fi
+   
+    su $DAEMON_USER -c "mkdir -p $VARDIR"
+    su $DAEMON_USER -c "start-stop-daemon -S -q -m -b -p $PIDFILE --exec $DAEMON -- $DAEMON_OPTS"
 
-    if [ -f $PIDFILE ]; then
-        echo "$NAME is already running."
-    else
-        if [ "$(id -u)" -eq 0 ]; then
-            su $DAEMON_USER -c "mkdir -p $VARDIR"
-            su $DAEMON_USER -c "start-stop-daemon -S -q -m -b -p $PIDFILE --exec $DAEMON -- $DAEMON_OPTS"
-        else
-            mkdir -p $VARDIR
-            start-stop-daemon -S -q -m -b -p $PIDFILE --exec $DAEMON -- $DAEMON_OPTS
-        fi
-        [ $? = 0 ] && echo "OK" || echo "FAIL"
-    fi
+    [ $? = 0 ] && echo "OK" || echo "FAIL"
 }
 
 stop() {
@@ -59,10 +60,8 @@ stop() {
     if [ -f $PIDFILE ]; then
         start-stop-daemon -K -q -p $PIDFILE
         rm -f $PIDFILE
-        [ $? = 0 ] && echo "OK" || echo "FAIL"
-    else
-        echo "$NAME is not running."
     fi
+    [ $? = 0 ] && echo "OK" || echo "FAIL"
 }
 
 restart() {
