@@ -1,29 +1,47 @@
 #!/bin/bash
 
+export PROJECT_OUT=$OUTDIR/$1
+export PROJECT_DIR=$(dirname $(realpath $DEFCONFIGS/${1}_defconfig))
 
-PROJECT_OUT=$OUTDIR/$1
-export PROJECT_OUT
+export BR2_EXTERNAL="$EXTERNAL/br2-external"
+export BUILDROOT_DIR=$(basename $(realpath $TOPDIR/buildroot*))
+export UBOOT_DIR=$(basename $(realpath $TOPDIR/u-boot*))
+export LINUX_DIR=$(basename $(realpath $TOPDIR/linux*))
 
-PROJECT_DIR=$(dirname $(realpath $DEFCONFIGS/${1}_defconfig))
-export PROJECT_DIR
+CHANGELOG=$TOPDIR/CHANGELOG.md
 
 source $EXTERNAL/setenv.sh
 defconfig $1
+
+md5file=${1}_md5sum.txt
+ISSUE_FILE=$PROJECT_DIR/rootfs/etc/issue
+if [ -f $ISSUE_FILE ]; then
+    issue=$(cat $ISSUE_FILE)
+fi
+if [ -z "$issue" ]; then
+    target_name="${1}"
+else
+    target_name=${CHIP}
+
+    version_name=$issue
+    target_name=${target_name}_${version_name}
+
+    # TODO: get version from CHANGELOG.md base on project name
+    if [ -f $CHANGELOG ]; then
+        verison_num=$(awk -F' ' 'BEGIN {f=0} /^## .*/ && !f {print $2; f=1; exit}' $CHANGELOG)
+        echo "$version_name $verison_num" > $BR_OVERLAY_DIR/etc/issue
+        cp -fv $CHANGELOG $BR_OVERLAY_DIR/etc/
+        target_name=${target_name}_${verison_num}
+    fi
+
+    target_name=${target_name}_${STORAGE_TYPE}
+fi
 
 export LIVE555_DIR=${TPU_SDK_INSTALL_PATH}
 build_all || exit 1
 
 ##################################################
 # gen packages
-md5file=${1}_md5sum.txt
-issue=$(cat $PROJECT_DIR/rootfs/etc/issue)
-if [ -z "$issue" ]; then
-target_name="${1}"
-else
-version_name=$(echo $issue | awk '{print $1}')
-version_num=$(echo $issue | awk '{print $2}')
-target_name=${CHIP}_${version_name}_${version_num}_${STORAGE_TYPE}
-fi
 echo "Target name: ${target_name}"
 
 function gen_emmc_zip() {

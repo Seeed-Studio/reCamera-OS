@@ -20,14 +20,14 @@ rsync_dir ./FreeRTOS-Kernel/ freertos/Source/
 rsync_dir ./Lab-Project-FreeRTOS-POSIX/ freertos/Source/FreeRTOS-Plus-POSIX/
 rsync_dir ./fsbl
 rsync_dir ./opensbi
-rsync_dir ./u-boot-2021.10
-rsync_dir ./linux_5.10
+rsync_dir ./$UBOOT_DIR
+rsync_dir ./$LINUX_DIR
 rsync_dir ./ramdisk
 rsync_dir ./osdrv
 rsync_dir ./cvi_mpi
 rsync_dir ./oss
 rsync_dir ./SensorSupportList/ cvi_mpi/component/isp
-rsync_dir ./buildroot-2021.05
+rsync_dir ./$BUILDROOT_DIR
 rsync_dir ./cnpy
 rsync_dir ./cvibuilder
 rsync_dir ./cvikernel
@@ -41,29 +41,22 @@ rsync_dir ./cvi_rtsp
 # patch externals
 ###################################
 rsync_dir $EXTERNAL/build .
-rsync_dir $EXTERNAL/buildroot/ buildroot*/
+rsync_dir $EXTERNAL/buildroot/ $BUILDROOT_DIR/
 rsync_dir $EXTERNAL/isp_tuning .
 rsync_dir $EXTERNAL/ramdisk/ ramdisk/
-rsync_dir $EXTERNAL/u-boot/ u-boot*/
-
-# copy project rootfs to buildroot overlay
-rsync_dir $PROJECT_DIR/rootfs/ buildroot*/board/cvitek/CV181X/overlay/
-cp -fv $TOPDIR/CHANGELOG.md $PROJECT_OUT/buildroot*/board/cvitek/CV181X/overlay/etc/
+rsync_dir $EXTERNAL/u-boot/ $UBOOT_DIR/
 
 # driver: sg200x is soft link to cv182x
 rsync -av $EXTERNAL/SensorSupportList/sensor/sg200x/ $PROJECT_OUT/cvi_mpi/component/isp/sensor/cv182x/
-
-# isp parameter
-cp -v $TOPDIR/isp_tuning/copyBin.sh $PROJECT_OUT/isp_tuning/
 
 # patch buildroot packages
 for subdir in $EXTERNAL/buildroot/package/*; do
     if [ -d $subdir ]; then
         pkg_name=$(basename $subdir)
         if [ -f $subdir/Config.in ]; then
-            rsync -av --delete $subdir/ $PROJECT_OUT/buildroot*/package/$pkg_name/
+            rsync -av --delete $subdir/ $PROJECT_OUT/$BUILDROOT_DIR/package/$pkg_name/
         else
-            rsync -av $subdir/ $PROJECT_OUT/buildroot*/package/$pkg_name/
+            rsync -av $subdir/ $PROJECT_OUT/$BUILDROOT_DIR/package/$pkg_name/
         fi
     fi
 done
@@ -135,11 +128,17 @@ function pack_cfg
 {(
     print_notice "Run ${FUNCNAME[0]}() overided by $0"
 
+    # copy project rootfs to buildroot overlay
+    rsync_dir $PROJECT_DIR/rootfs/ $BR_OVERLAY_DIR
+
+    # isp parameter
+    cp -v $TOPDIR/isp_tuning/copyBin.sh $ISP_TUNING_PATH
+
     _dir="$OUTPUT_DIR/rootfs/mnt/cfg/param"
     mkdir -p $_dir
 
-    pushd "$ISP_TUNING_PATH"
-    ./copyBin.sh $_dir "$SENSOR_TUNING_PARAM"
+    pushd $ISP_TUNING_PATH
+    ./copyBin.sh $_dir $SENSOR_TUNING_PARAM
     popd
 
     mkdir -p $BR_OVERLAY_DIR/mnt
