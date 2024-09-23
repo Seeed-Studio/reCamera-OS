@@ -128,9 +128,6 @@ function pack_cfg
 {(
     print_notice "Run ${FUNCNAME[0]}() overided by $0"
 
-    # copy project rootfs to buildroot overlay
-    rsync_dir $PROJECT_DIR/rootfs/ $BR_OVERLAY_DIR
-
     # isp parameter
     cp -v $TOPDIR/isp_tuning/copyBin.sh $ISP_TUNING_PATH
 

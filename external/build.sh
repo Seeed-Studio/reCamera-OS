@@ -13,6 +13,9 @@ CHANGELOG=$TOPDIR/CHANGELOG.md
 source $EXTERNAL/setenv.sh
 defconfig $1
 
+# copy project rootfs to buildroot overlay
+rsync -av $PROJECT_DIR/rootfs/ $BR_OVERLAY_DIR
+
 md5file=${1}_md5sum.txt
 ISSUE_FILE=$PROJECT_DIR/rootfs/etc/issue
 if [ -f $ISSUE_FILE ]; then
