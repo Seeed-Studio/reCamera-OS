@@ -1,3 +1,21 @@
+## 0.0.5 (2024-09-25)
+
+### sg2002_recamera_emmc
+
+- New features:
+    - update node-red interface style
+    - supervisor
+        - add APIs for uploading models and getting model information
+        - allow CORS
+
+- Fix bugs:
+    - fix the problem that some configuration files did not exist
+    - node-red start failed when reset system
+    - solve some supervisor bugs
+
+- Docs:
+    - add compilation notes
+
 ## 0.0.4 (2024-09-12)
 
 ### sg2002_recamera_emmc
