@@ -19,12 +19,12 @@
 - Install dependencies
 
     ```bash
-    sudo apt-get update
-    sudo apt-get install libbz2-dev
-    sudo apt-get install -y build-essential ninja-build automake autoconf libtool wget curl git gcc \
+    sudo apt update
+    sudo apt install -y libbz2-dev build-essential ninja-build automake autoconf libtool wget curl git gcc \
         libssl-dev bc slib squashfs-tools android-sdk-libsparse-utils android-sdk-ext4-utils jq \
-        cmake python3-distutils tclsh scons parallel ssh-client tree python3-dev python3-pip \
-        device-tree-compiler libssl-dev ssh cpio squashfs-tools fakeroot libncurses5 flex bison mtools
+        python3-distutils tclsh scons parallel ssh-client tree python3-dev python3-pip \
+        device-tree-compiler libssl-dev ssh cpio squashfs-tools fakeroot libncurses5 flex bison mtools python-is-python3
+    pip install cmake jinja2
     ```
 
     Note: The minimum required cmake version is 3.16.5
@@ -36,7 +36,8 @@
     ```bash
     git clone https://github.com/Seeed-Studio/reCamera.git -b sg200x-reCamera
     cd reCamera
-    git submodule update --init --recursive
+    git submodule init
+    git submodule update --depth 1
     ```
 
 - Update Submodules (optional)
