@@ -15,10 +15,12 @@
 
 - Recommended OS: Ubuntu 20.04.6 LTS
 - Recommended C/C++: GCC/G++ 9.4.0
+- Recommended minimum free space: 30 GB
 - Install dependencies
 
     ```bash
     sudo apt-get update
+    sudo apt-get install libbz2-dev
     sudo apt-get install -y build-essential ninja-build automake autoconf libtool wget curl git gcc \
         libssl-dev bc slib squashfs-tools android-sdk-libsparse-utils android-sdk-ext4-utils jq \
         cmake python3-distutils tclsh scons parallel ssh-client tree python3-dev python3-pip \
