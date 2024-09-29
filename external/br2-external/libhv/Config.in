@@ -1,6 +1,6 @@
 config BR2_PACKAGE_LIBHV
-    bool "libhv"
-    default y
-    help
-      This is the help text for the libhv package.
-      It will be displayed in the Buildroot configuration menu.
+	bool "libhv"
+	default y
+	help
+	  This is the help text for the libhv package.
+	  It will be displayed in the Buildroot configuration menu.
