@@ -47,7 +47,7 @@ rsync_dir $EXTERNAL/ramdisk/ ramdisk/
 rsync_dir $EXTERNAL/u-boot/ $UBOOT_DIR/
 
 # driver: sg200x is soft link to cv182x
-rsync -av $EXTERNAL/SensorSupportList/sensor/sg200x/ $PROJECT_OUT/cvi_mpi/component/isp/sensor/cv182x/
+rsync -av $EXTERNAL/SensorSupportList/ $PROJECT_OUT/cvi_mpi/component/isp/
 
 # patch buildroot packages
 for subdir in $EXTERNAL/buildroot/package/*; do
