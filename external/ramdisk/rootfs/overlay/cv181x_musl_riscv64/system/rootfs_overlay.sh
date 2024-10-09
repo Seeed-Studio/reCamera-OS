@@ -3,6 +3,11 @@
 OVERLAY_PATH=""
 OVERLAY_WORK_PATH=""
 
+# file permissions
+if [ -f /usr/bin/fw_setenv ]; then
+   chmod 500 /usr/bin/fw_setenv
+fi
+
 # rootfs_overlay
 function mount_dir() {
    local lower=$1
@@ -37,8 +42,37 @@ function rootfs_overlay() {
    mount -a
 }
 
-# mount userdata partition
 USERDATA_PARTITION="/dev/mmcblk0p6"
+
+# reset factory
+if [ ! -d /sys/class/gpio/gpio510 ]; then
+   echo "510" > /sys/class/gpio/export
+fi
+if [ -d /sys/class/gpio/gpio510 ]; then
+   echo "in" > /sys/class/gpio/gpio510/direction
+   if [ $(cat /sys/class/gpio/gpio510/value) == "0" ]; then
+      sleep 1
+      if [ $(cat /sys/class/gpio/gpio510/value) == "0" ]; then
+         /mnt/system/upgrade.sh recovery
+      fi
+   fi
+fi
+
+if [ $(fw_printenv factory_reset) == "factory_reset=1" ]; then
+   echo "factory reset"
+   echo none > /sys/devices/platform/leds/leds/red/trigger
+   echo 255 > /sys/devices/platform/leds/leds/red/brightness
+
+   # step1: recovery rootfs
+   /mnt/system/upgrade.sh start .
+   # step2: erase userdata partition
+   dd if=/dev/zero of=$USERDATA_PARTITION bs=1M count=5
+   # step3: clear flag
+   fw_setenv factory_reset
+   reboot
+fi
+
+# mount userdata partition
 if [ -e $USERDATA_PARTITION ]; then
 USERDATA_MOUNTPOINT="/userdata"
 MKFS_FLAG="N"
@@ -55,7 +89,7 @@ if [ "$fs_type" != "" ]; then
    fi
 
    mp=$(mountpoint -n $USERDATA_MOUNTPOINT | awk '{print $1}')
-   echo "mp=$mp"
+   echo "mountpoint=$mp"
    if [ $mp != $USERDATA_PARTITION ]; then
       mount $USERDATA_PARTITION $USERDATA_MOUNTPOINT
    fi

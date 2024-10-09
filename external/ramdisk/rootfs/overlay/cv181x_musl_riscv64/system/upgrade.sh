@@ -376,8 +376,8 @@ query)
     ;;
 
 recovery)
-    echo "Start recovery"
-    /mnt/system/upgrade.sh start .
+    echo "Set recovery flag ok."
+    fw_setenv factory_reset 1
     ;;
 
 *)
