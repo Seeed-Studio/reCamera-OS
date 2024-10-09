@@ -102,7 +102,7 @@ int sc530ai_2l_read_register(VI_PIPE ViPipe, int addr)
 		data = buf[0];
 	}
 
-	syslog(LOG_DEBUG, "i2c r 0x%x = 0x%x\n", addr, data);
+	// syslog(LOG_DEBUG, "i2c r 0x%x = 0x%x\n", addr, data);
 	return data;
 }
 
@@ -132,7 +132,7 @@ int sc530ai_2l_write_register(VI_PIPE ViPipe, int addr, int data)
 		CVI_TRACE_SNS(CVI_DBG_ERR, "I2C_WRITE error!\n");
 		return CVI_FAILURE;
 	}
-	syslog(LOG_DEBUG, "i2c w 0x%x 0x%x\n", addr, data);
+	// syslog(LOG_DEBUG, "i2c w 0x%x 0x%x\n", addr, data);
 	return CVI_SUCCESS;
 }
 
