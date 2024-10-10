@@ -1,3 +1,12 @@
+## 0.0.6 (2024-10-10)
+
+### sg2002_recamera_emmc
+
+- New features:
+    - sensor auto detection (ov5647/sc530ai)
+    - supports restore to factory
+    - get mac & sn from efuse
+
 ## 0.0.5 (2024-09-25)
 
 ### sg2002_recamera_emmc
