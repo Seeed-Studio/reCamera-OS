@@ -20,3 +20,59 @@ int cvi_board_init(void)
 
 	return 0;
 }
+
+
+#include <common.h>
+#include <command.h>
+
+static int do_cvi_otp(struct cmd_tbl* cmdtp, int flag, int argc,
+    char* const argv[])
+{
+    extern int64_t cvi_efuse_read_from_shadow(uint32_t addr);
+
+    int i = 0;
+    uint32_t buf[5];
+    unsigned char* pu8 = NULL;
+    char str[32] = "";
+    char* str_get;
+    unsigned char save_flag = 0;
+
+    for (i = 0; i < ARRAY_SIZE(buf); i++) {
+        buf[i] = cvi_efuse_read_from_shadow(0x40 + i * sizeof(uint32_t));
+    }
+
+    str_get = env_get("ethaddr");
+    if ((buf[0] != 0x0) && (buf[0] != 0xffffffff)) {
+        pu8 = (char*)buf;
+        sprintf(str, "%02x:%02x:%02x:%02x:%02x:%02x", pu8[0], pu8[1], pu8[2], pu8[3], pu8[4], pu8[5]);
+        printf("mac: %s\n", str);
+        if ((NULL == str_get) || strcmp(str, str_get)) {
+            save_flag = 1;
+        	env_set("ethaddr", str);
+        }
+    } else {
+        printf("random mac: %s\n", (NULL == str_get) ? "null" : str_get);
+    }
+
+    str_get = env_get("sn");
+    pu8 = (char*)&buf[2];
+    sprintf(str, "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+        pu8[0], pu8[1], pu8[2], pu8[3], pu8[4], pu8[5], pu8[6], pu8[7], pu8[8]);
+    printf("sn: %s\n", str);
+    if ((NULL == str_get) || strcmp(str, str_get)) {
+        save_flag = 1;
+    	env_set("sn", str);
+    }
+
+    if (save_flag) {
+        env_save();
+    }
+
+    return 0;
+}
+
+U_BOOT_CMD_COMPLETE(
+    cvi_otp, CONFIG_SYS_MAXARGS, 1, do_cvi_otp,
+    "load efuse info to env",
+    "    - load efuse info to env",
+    var_complete);

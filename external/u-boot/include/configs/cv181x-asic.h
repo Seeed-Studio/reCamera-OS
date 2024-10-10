@@ -339,7 +339,7 @@
 		#ifdef CONFIG_ENABLE_ALIOS_UPDATE
 			#define CONFIG_BOOTCOMMAND	"cvi_update_rtos"
 		#else
-			#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "run sdboot || cvi_update || run boot_record; run is_use_part_b; run emmcboot"
+			#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "run sdboot || cvi_update || cvi_otp; run boot_record; run is_use_part_b; run emmcboot"
 		#endif
 	#else
 		#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "run sdboot"
