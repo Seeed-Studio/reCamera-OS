@@ -14,7 +14,11 @@ define SSCMA_SUPERVISOR_EXTRACT_CMDS
 endef
 
 define SSCMA_SUPERVISOR_BUILD_CMDS
-	(cd $(@D)/source; $(TARGET_CONFIGURE_OPTS) ./build.sh)
+	(cd $(@D)/source; \
+		$(TARGET_CONFIGURE_OPTS) \
+		SG200X_SDK_PATH=$(BASE_DIR)/../../../ \
+		./build.sh \
+	)
 endef
 
 define SSCMA_SUPERVISOR_INSTALL_TARGET_CMDS
