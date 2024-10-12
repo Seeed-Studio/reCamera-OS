@@ -1,4 +1,4 @@
-## 0.0.6 (2024-10-10)
+## 0.0.6 (2024-10-12)
 
 ### sg2002_recamera_emmc
 
@@ -6,6 +6,16 @@
     - sensor auto detection (ov5647/sc530ai)
     - supports restore to factory
     - get mac & sn from efuse
+    - add sscma-node program
+    - supervisor
+        - support https service
+        - add service status detection
+        - add a feature for file management
+        - add wifi password verification operation
+
+- Fix bugs:
+    - solve some compilation issues
+    - solve some supervisor bugs
 
 ## 0.0.5 (2024-09-25)
 
