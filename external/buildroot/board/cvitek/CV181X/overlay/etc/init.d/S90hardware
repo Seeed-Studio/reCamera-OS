@@ -6,25 +6,48 @@ ${CVI_SHOPTS}
 
 export SYSTEMPATH=/mnt/system
 
+# sensor power
+model=$(cat /proc/device-tree/model)
+if [ "$model" = "Seeed reCamera" ]; then
+  GPIO_SENSOR_PWR=358
+else
+  GPIO_SENSOR_PWR=495
+fi
+if [ ! -d /sys/class/gpio/gpio$GPIO_SENSOR_PWR ]; then
+  echo $GPIO_SENSOR_PWR > /sys/class/gpio/export
+  echo "out" > /sys/class/gpio/gpio$GPIO_SENSOR_PWR/direction
+fi
+function sensor_power()
+{
+  if [ -f /sys/class/gpio/gpio$GPIO_SENSOR_PWR/value ]; then
+    echo $1 > /sys/class/gpio/gpio$GPIO_SENSOR_PWR/value
+  fi
+}
+
+
 case "$1" in
   start)
-        echo "init mpp system..."
-        if [ -d $SYSTEMPATH/ko ]; then
-                sh $SYSTEMPATH/ko/loadsystemko.sh
-        fi
+    echo "init mpp system..."
+    sensor_power 1
+    if [ -d $SYSTEMPATH/ko ]; then
+      sh $SYSTEMPATH/ko/loadsystemko.sh
+    fi
 
-        if [ -f $SYSTEMPATH/usb-net.sh ]; then
-                . $SYSTEMPATH/usb-net.sh &
-        fi
-        ;;
+    if [ -f $SYSTEMPATH/usb-net.sh ]; then
+      . $SYSTEMPATH/usb-net.sh &
+    fi
+  ;;
 
   stop)
-        ;;
+    sensor_power 0
+  ;;
+
   restart|reload)
-        ;;
+  ;;
+
   *)
-        echo "Usage: $0 {start|stop|restart}"
-        exit 1
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
 esac
 
 exit $?
