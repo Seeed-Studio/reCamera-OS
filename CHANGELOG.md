@@ -1,3 +1,16 @@
+## 0.0.7 (2024-10-16)
+
+### sg2002_recamera_emmc
+
+- New features:
+    - reduce ION_SIZE to 50M
+    - kernel support swap
+    - kernel support advise syscalls
+    - update c-ares to 1.32.2
+    - update libuv to 1.48.0
+    - update nodejs to 22.8.0
+    - update node-red to 4.0.0
+
 ## 0.0.6 (2024-10-12)
 
 ### sg2002_recamera_emmc
