@@ -4,28 +4,64 @@
 #
 ################################################################################
 
-NODEJS_VERSION = 17.9.1
+NODEJS_VERSION = 22.8.0
 NODEJS_SOURCE = node-v$(NODEJS_VERSION).tar.xz
 NODEJS_SITE = http://nodejs.org/dist/v$(NODEJS_VERSION)
-NODEJS_DEPENDENCIES = \
-	host-pkgconf \
-	host-python3 \
-	host-qemu \
-	$(call qstrip,$(BR2_PACKAGE_NODEJS_MODULES_ADDITIONAL_DEPS))
-HOST_NODEJS_DEPENDENCIES = \
-	host-icu \
-	host-libopenssl \
-	host-pkgconf \
-	host-python3 \
-	host-zlib
-NODEJS_INSTALL_STAGING = YES
+# NODEJS_DL_SUBDIR = nodejs
+
 NODEJS_LICENSE = MIT (core code); MIT, Apache and BSD family licenses (Bundled components)
 NODEJS_LICENSE_FILES = LICENSE
 NODEJS_CPE_ID_VENDOR = nodejs
 NODEJS_CPE_ID_PRODUCT = node.js
+
+# HOST_NODEJS_PROVIDES = host-nodejs
+
+NODEJS_BIN_ENV = $(TARGET_CONFIGURE_OPTS) \
+	LDFLAGS="$(NODEJS_LDFLAGS)" \
+	LD="$(TARGET_CXX)" \
+	npm_config_arch=$(NODEJS_CPU) \
+	npm_config_target_arch=$(NODEJS_CPU) \
+	npm_config_build_from_source=true \
+	npm_config_nodedir=$(BUILD_DIR)/nodejs-$(NODEJS_VERSION) \
+	npm_config_prefix=$(TARGET_DIR)/usr \
+	npm_config_cache=$(BUILD_DIR)/.npm-cache
+
+# Define various packaging tools for other packages to use
+NPM = $(NODEJS_BIN_ENV) $(HOST_DIR)/bin/npm
+ifeq ($(BR2_PACKAGE_HOST_NODEJS_COREPACK),y)
+COREPACK = $(NODEJS_BIN_ENV) $(HOST_DIR)/bin/corepack
+PNPM = $(NODEJS_BIN_ENV) $(HOST_DIR)/bin/pnpm
+YARN = $(NODEJS_BIN_ENV) $(HOST_DIR)/bin/yarn
+endif
+
+NODEJS_DEPENDENCIES = \
+	host-ninja \
+	host-pkgconf \
+	host-python3 \
+	host-qemu \
+	c-ares \
+	libuv \
+	nghttp2 \
+	zlib \
+	$(call qstrip,$(BR2_PACKAGE_NODEJS_MODULES_ADDITIONAL_DEPS))
+
+HOST_NODEJS_DEPENDENCIES = \
+	host-icu \
+	host-libopenssl \
+	host-ninja \
+	host-pkgconf \
+	host-python3 \
+	host-zlib
+NODEJS_INSTALL_STAGING = YES
+
 NODEJS_CONF_OPTS = \
+	--shared-zlib \
+	--shared-cares \
+	--shared-libuv \
+	--shared-nghttp2 \
 	--cross-compiling \
-	--dest-os=linux
+	--dest-os=linux \
+	--ninja
 
 HOST_NODEJS_MAKE_OPTS = \
 	$(HOST_CONFIGURE_OPTS) \
@@ -55,6 +91,7 @@ NODEJS_PRE_CONFIGURE_HOOKS += NODEJS_PYTHON3_SYMLINK
 
 ifeq ($(BR2_PACKAGE_OPENSSL),y)
 NODEJS_DEPENDENCIES += openssl
+NODEJS_CONF_OPTS += --shared-openssl
 else
 NODEJS_CONF_OPTS += --without-ssl
 endif
@@ -77,14 +114,13 @@ define HOST_NODEJS_CONFIGURE_CMDS
 		PYTHON=$(HOST_DIR)/bin/python3 \
 		$(HOST_DIR)/bin/python3 configure.py \
 		--prefix=$(HOST_DIR) \
-		--without-dtrace \
-		--without-etw \
 		--shared-openssl \
 		--shared-openssl-includes=$(HOST_DIR)/include \
 		--shared-openssl-libpath=$(HOST_DIR)/lib \
 		--shared-zlib \
 		--no-cross-compiling \
-		--with-intl=system-icu
+		--with-intl=system-icu \
+		--ninja
 endef
 
 HOST_NODEJS_CXXFLAGS = $(HOST_CXXFLAGS)
@@ -137,9 +173,9 @@ else ifeq ($(BR2_aarch64),y)
 NODEJS_CPU = arm64
 else ifeq ($(BR2_RISCV_64),y)
 NODEJS_CPU = riscv64
-ifeq ($(BR2_PACKAGE_OPENSSL),y)
-NODEJS_CONF_OPTS += --openssl-no-asm
-endif
+# ifeq ($(BR2_PACKAGE_OPENSSL),y)
+# NODEJS_CONF_OPTS += --openssl-no-asm
+# endif
 endif
 
 # MIPS architecture specific options
@@ -159,6 +195,8 @@ NODEJS_LDFLAGS = $(TARGET_LDFLAGS)
 ifeq ($(BR2_TOOLCHAIN_HAS_LIBATOMIC),y)
 NODEJS_LDFLAGS += -latomic
 endif
+
+NODEJS_LDFLAGS += -luv
 
 # V8's JIT infrastructure requires binaries such as mksnapshot and
 # mkpeephole to be run in the host during the build. However, these
@@ -196,8 +234,6 @@ define NODEJS_CONFIGURE_CMDS
 		$(TARGET_CONFIGURE_OPTS) \
 		PATH=$(@D)/bin:$(BR_PATH) \
 		LDFLAGS="$(NODEJS_LDFLAGS)" \
-		CC_host=gcc \
-		CXX_host=g++ \
 		LD="$(TARGET_CXX)" \
 		PYTHON=$(HOST_DIR)/bin/python3 \
 		$(HOST_DIR)/bin/python3 configure.py \
@@ -222,24 +258,6 @@ endef
 #
 NODEJS_MODULES_LIST= $(call qstrip,\
 	$(BR2_PACKAGE_NODEJS_MODULES_ADDITIONAL))
-
-NODEJS_BIN_ENV = $(TARGET_CONFIGURE_OPTS) \
-	LDFLAGS="$(NODEJS_LDFLAGS)" \
-	LD="$(TARGET_CXX)" \
-	npm_config_arch=$(NODEJS_CPU) \
-	npm_config_target_arch=$(NODEJS_CPU) \
-	npm_config_build_from_source=true \
-	npm_config_nodedir=$(BUILD_DIR)/nodejs-$(NODEJS_VERSION) \
-	npm_config_prefix=$(TARGET_DIR)/usr \
-	npm_config_cache=$(BUILD_DIR)/.npm-cache
-
-# Define various packaging tools for other packages to use
-NPM = $(NODEJS_BIN_ENV) $(HOST_DIR)/bin/npm
-ifeq ($(BR2_PACKAGE_HOST_NODEJS_COREPACK),y)
-COREPACK = $(NODEJS_BIN_ENV) $(HOST_DIR)/bin/corepack
-PNPM = $(NODEJS_BIN_ENV) $(HOST_DIR)/bin/pnpm
-YARN = $(NODEJS_BIN_ENV) $(HOST_DIR)/bin/yarn
-endif
 
 #
 # We can only call NPM if there's something to install.

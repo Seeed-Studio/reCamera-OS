@@ -1,0 +1,26 @@
+From 5df4fdb0a9977610b5fd891c7ab25200490168fb Mon Sep 17 00:00:00 2001
+From: mingzq <north_sea@qq.com>
+Date: Fri, 13 Sep 2024 01:38:40 +0000
+Subject: [PATCH 3/3] lib-internal-modules-cjs-loader.js-adjust-default-pa
+
+---
+ lib/internal/modules/cjs/loader.js | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/lib/internal/modules/cjs/loader.js b/lib/internal/modules/cjs/loader.js
+index 451b7c2195..c84b6302e8 100644
+--- a/lib/internal/modules/cjs/loader.js
++++ b/lib/internal/modules/cjs/loader.js
+@@ -1781,7 +1781,8 @@ Module._initPaths = function() {
+     path.resolve(process.execPath, '..') :
+     path.resolve(process.execPath, '..', '..');
+ 
+-  const paths = [path.resolve(prefixDir, 'lib', 'node')];
++  const paths = [path.resolve(prefixDir, 'lib', 'node'),
++                 path.resolve(prefixDir, 'lib', 'node_modules')];
+ 
+   if (homeDir) {
+     ArrayPrototypeUnshift(paths, path.resolve(homeDir, '.node_libraries'));
+-- 
+2.25.1
+

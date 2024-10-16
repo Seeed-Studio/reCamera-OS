@@ -1,0 +1,124 @@
+From 27651ecb2d80bfe7c799e4dd3cf35c08303750da Mon Sep 17 00:00:00 2001
+From: mingzq <north_sea@qq.com>
+Date: Fri, 13 Sep 2024 01:34:44 +0000
+Subject: [PATCH 1/3] add-qemu_wrapper-support
+
+---
+ node.gyp                 |  6 ++++--
+ tools/v8_gypfiles/v8.gyp | 27 ++++++++++++++++++++++-----
+ 2 files changed, 26 insertions(+), 7 deletions(-)
+
+diff --git a/node.gyp b/node.gyp
+index a2ba04a0c7..c11ac7d125 100644
+--- a/node.gyp
++++ b/node.gyp
+@@ -715,7 +715,7 @@
+                   'action_name': 'node_mksnapshot',
+                   'process_outputs_as_sources': 1,
+                   'inputs': [
+-                    '<(node_mksnapshot_exec)',
++                    @MAYBE_WRAPPER@ '<(node_mksnapshot_exec)',
+                     '<(node_snapshot_main)',
+                   ],
+                   'outputs': [
+@@ -735,7 +735,7 @@
+                   'action_name': 'node_mksnapshot',
+                   'process_outputs_as_sources': 1,
+                   'inputs': [
+-                    '<(node_mksnapshot_exec)',
++                    @MAYBE_WRAPPER@ '<(node_mksnapshot_exec)',
+                   ],
+                   'outputs': [
+                     '<(SHARED_INTERMEDIATE_DIR)/node_snapshot.cc',
+@@ -1024,6 +1024,7 @@
+           'action_name': 'node_js2c',
+           'process_outputs_as_sources': 1,
+           'inputs': [
++            @MAYBE_WRAPPER@
+             '<(node_js2c_exec)',
+             '<@(library_files)',
+             '<@(deps_files)',
+@@ -1033,6 +1034,7 @@
+             '<(SHARED_INTERMEDIATE_DIR)/node_javascript.cc',
+           ],
+           'action': [
++            @MAYBE_WRAPPER@
+             '<(node_js2c_exec)',
+             '<@(_outputs)',
+             'lib',
+diff --git a/tools/v8_gypfiles/v8.gyp b/tools/v8_gypfiles/v8.gyp
+index 9d385515a2..65bbb9a476 100644
+--- a/tools/v8_gypfiles/v8.gyp
++++ b/tools/v8_gypfiles/v8.gyp
+@@ -81,7 +81,7 @@
+         {
+           'action_name': 'run_torque_action',
+           'inputs': [  # Order matters.
+-            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)torque<(EXECUTABLE_SUFFIX)',
++            @MAYBE_WRAPPER@ '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)torque<(EXECUTABLE_SUFFIX)',
+             '<@(torque_files)',
+           ],
+           'outputs': [
+@@ -112,7 +112,7 @@
+             '<@(torque_outputs_inc)',
+           ],
+           'action': [
+-            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)torque<(EXECUTABLE_SUFFIX)',
++            @MAYBE_WRAPPER@ '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)torque<(EXECUTABLE_SUFFIX)',
+             '-o', '<(SHARED_INTERMEDIATE_DIR)/torque-generated',
+             '-v8-root', '<(V8_ROOT)',
+             '<@(torque_files_without_v8_root)',
+@@ -224,7 +224,7 @@
+         {
+           'action_name': 'generate_bytecode_builtins_list_action',
+           'inputs': [
+-            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)bytecode_builtins_list_generator<(EXECUTABLE_SUFFIX)',
++            @MAYBE_WRAPPER@ '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)bytecode_builtins_list_generator<(EXECUTABLE_SUFFIX)',
+           ],
+           'outputs': [
+             '<(generate_bytecode_builtins_list_output)',
+@@ -411,7 +411,7 @@
+             ],
+           },
+           'inputs': [
+-            '<(mksnapshot_exec)',
++            @MAYBE_WRAPPER@ '<(mksnapshot_exec)',
+           ],
+           'outputs': [
+             '<(INTERMEDIATE_DIR)/snapshot.cc',
+@@ -1168,6 +1168,23 @@
+           'sources': [
+             '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_enable_wasm_gdb_remote_debugging.*?v8_current_cpu == \\"riscv64\\".*?sources \\+= ")',
+           ],
++          'conditions': [
++            ['v8_enable_webassembly==1', {
++              'conditions': [
++                ['(_toolset=="host" and host_arch=="arm64" or _toolset=="target" and target_arch=="arm64") or (_toolset=="host" and host_arch=="riscv64" or _toolset=="target" and target_arch=="riscv64") or (_toolset=="host" and host_arch=="x64" or _toolset=="target" and target_arch=="x64")', {
++                  'sources': [
++                    '<(V8_ROOT)/src/trap-handler/handler-inside-posix.cc',
++                    '<(V8_ROOT)/src/trap-handler/handler-outside-posix.cc',
++                  ],
++                }],
++                ['(_toolset=="host" and host_arch=="x64" or _toolset=="target" and target_arch=="x64") and (OS=="linux" or OS=="mac" or OS=="win")', {
++                  'sources': [
++                    '<(V8_ROOT)/src/trap-handler/handler-outside-simulator.cc',
++                  ],
++                }],
++              ],
++            }],
++          ],
+         }],
+         ['v8_target_arch=="loong64"', {
+           'sources': [
+@@ -1834,7 +1851,7 @@
+         {
+           'action_name': 'run_gen-regexp-special-case_action',
+           'inputs': [
+-            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)gen-regexp-special-case<(EXECUTABLE_SUFFIX)',
++            @MAYBE_WRAPPER@ '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)gen-regexp-special-case<(EXECUTABLE_SUFFIX)',
+           ],
+           'outputs': [
+             '<(SHARED_INTERMEDIATE_DIR)/src/regexp/special-case.cc',
+-- 
+2.25.1
+
