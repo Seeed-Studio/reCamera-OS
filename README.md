@@ -13,17 +13,17 @@
 
 ### 2.1. Preparation
 
-- Recommended OS: Ubuntu 20.04.6 LTS
-- Recommended C/C++: GCC/G++ 9.4.0
+- Recommended OS: Ubuntu 24.04 LTS
+- Recommended C/C++: GCC/G++ >= 11.4.0
 - Recommended minimum free space: 30 GB
 - Install dependencies
 
     ```bash
     sudo apt update
-    sudo apt install -y libbz2-dev build-essential ninja-build automake autoconf libtool wget curl git gcc \
-        libssl-dev bc slib squashfs-tools android-sdk-libsparse-utils android-sdk-ext4-utils jq \
-        python3-distutils tclsh scons parallel ssh-client tree python3-dev python3-pip \
-        device-tree-compiler libssl-dev ssh cpio squashfs-tools fakeroot libncurses5 flex bison mtools python-is-python3
+    sudo apt-get install -y build-essential ninja-build automake autoconf libtool wget curl git libssl-dev bc squashfs-tools android-sdk-libsparse-utils \
+        jq cmake tclsh scons parallel ssh-client tree python3-dev python3-pip device-tree-compiler libssl-dev ssh cpio \
+        squashfs-tools fakeroot flex bison mtools gcc g++ libbz2-dev
+        # android-sdk-ext4-utils python3-distutils slib libncurses5
     pip install cmake jinja2
     ```
 
