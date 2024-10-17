@@ -10,6 +10,8 @@
     - update libuv to 1.48.0
     - update nodejs to 22.8.0
     - update node-red to 4.0.0
+    - sd supports hotplug
+    - close swupdate auto start (`sudo /usr/lib/swupdate/swupdate.sh`)
 
 ## 0.0.6 (2024-10-12)
 
