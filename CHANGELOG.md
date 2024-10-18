@@ -13,6 +13,10 @@
     - sd supports hotplug
     - close swupdate auto start (`sudo /usr/lib/swupdate/swupdate.sh`)
 
+- Fix bugs:
+    - solve some supervisor bug
+    - solve some sscma-node bug
+
 ## 0.0.6 (2024-10-12)
 
 ### sg2002_recamera_emmc
