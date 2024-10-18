@@ -22,7 +22,7 @@ endef
 define SSCMA_APP_INSTALL_TARGET_CMDS
 	@cp -rf $(@D)/install/* $(TARGET_DIR)/
 	mkdir -p $(TARGET_DIR)/home/recamera/.node-red/node_modules
-	$(NPM) install --no-audit --no-update-notifier --no-fund --save --save-prefix=~ --production --engine-strict --prefix $(TARGET_DIR)/home/recamera/.node-red node-red-contrib-sscma@0.0.6
+	$(NPM) install --no-audit --no-update-notifier --no-fund --save --save-prefix=~ --production --engine-strict --prefix $(TARGET_DIR)/home/recamera/.node-red node-red-contrib-sscma@0.0.7
 endef
 
 $(eval $(generic-package))
