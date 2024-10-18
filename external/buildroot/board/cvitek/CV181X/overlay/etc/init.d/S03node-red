@@ -21,7 +21,17 @@ USER=recamera  # Target user to switch to when running as root
 start() {
     if [ -f $PIDFILE ]; then
         pid=$(cat $PIDFILE)
+
         if [ -d /proc/$pid ]; then
+            if [[ "$(cat /proc/$pid/comm)" = "node-red" || "$(cat /proc/$pid/comm)" = "node" ]]; then
+                echo "$DESC: $NAME($pid) is already running."
+                exit 0
+            fi
+        fi
+
+        pid="`pidof node-red`"
+        if [[ "$pid" ]]; then
+            echo "$pid" > $PIDFILE
             echo "$DESC: $NAME($pid) is already running."
             exit 0
         fi
