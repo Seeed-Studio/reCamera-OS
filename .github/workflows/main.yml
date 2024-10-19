@@ -116,7 +116,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential ninja-build automake autoconf libtool wget curl git libssl-dev bc squashfs-tools android-sdk-libsparse-utils \
           jq cmake tclsh scons parallel ssh-client tree python3-dev python3-pip device-tree-compiler libssl-dev ssh cpio \
-          squashfs-tools fakeroot flex bison mtools gcc g++ libbz2-dev
+          squashfs-tools fakeroot flex bison mtools gcc g++ libbz2-dev lib32c-dev lib32stdc++6 libpcre3-dev
           # android-sdk-ext4-utils python3-distutils slib libncurses5
           sudo apt-get clean
           df -h
