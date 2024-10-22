@@ -8,6 +8,17 @@ if [ -f /usr/bin/fw_setenv ]; then
    chmod 500 /usr/bin/fw_setenv
 fi
 
+# swap
+function setup_swap() {
+   local swapfile="/userdata/.swapfile"
+   if [ ! -f $swapfile ]; then
+      fallocate -l 256M $swapfile
+      chmod 600 $swapfile
+      mkswap $swapfile
+   fi
+   swapon $swapfile
+}
+
 # rootfs_overlay
 function mount_dir() {
    local lower=$1
@@ -100,6 +111,7 @@ if [ "$fs_type" != "" ]; then
          chown -R recamera:recamera $USERDATA_MOUNTPOINT
          rm -rf $USERDATA_MOUNTPOINT/*
       fi
+      setup_swap
       rootfs_overlay $USERDATA_MOUNTPOINT
    fi
 fi
