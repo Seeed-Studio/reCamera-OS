@@ -1,0 +1,7 @@
+config BR2_PACKAGE_NODE_RED
+    bool "node-red"
+    default y
+    depends on BR2_PACKAGE_NODEJS
+    help
+      Flow-based programming for the Internet of Things.
+    
