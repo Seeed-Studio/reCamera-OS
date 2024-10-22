@@ -1,3 +1,10 @@
+## 0.0.8 (2024-10-22)
+
+### sg2002_recamera_emmc
+
+- New features:
+    - auto swapon /userdata/.swapfile
+
 ## 0.0.7 (2024-10-16)
 
 ### sg2002_recamera_emmc
