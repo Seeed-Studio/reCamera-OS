@@ -4,6 +4,14 @@
 
 - New features:
     - auto swapon /userdata/.swapfile
+    - supervior
+        - add the operation that AP will automatically turn on or off according to the status of WiFi
+        - split the wifi scan into two operations: scan wifi and get scan results
+        - add a judgement that an upgrade is in progress
+
+- Fix bugs:
+    - solve some supervisor bug
+    - solve some sscma-node bug
 
 ## 0.0.7 (2024-10-16)
 
