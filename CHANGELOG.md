@@ -4,6 +4,8 @@
 
 - New features:
     - auto swapon /userdata/.swapfile
+    - Reduce node-red startup time (skip npm -v)
+    - Enable nodejs --v8-lite-mode
     - supervior
         - add the operation that AP will automatically turn on or off according to the status of WiFi
         - split the wifi scan into two operations: scan wifi and get scan results
