@@ -1,3 +1,15 @@
+## 0.0.9 (2024-10-26)
+
+### sg2002_recamera_emmc
+
+- New features:
+    - Enable nodejs --v8-lite-mode
+    - Optimize system upgrade operations
+
+- Fix bugs:
+    - remove node-red-dashboard from node-red
+    - solve some sscma-node bug
+
 ## 0.0.8 (2024-10-22)
 
 ### sg2002_recamera_emmc
@@ -5,7 +17,6 @@
 - New features:
     - auto swapon /userdata/.swapfile
     - Reduce node-red startup time (skip npm -v)
-    - Enable nodejs --v8-lite-mode
     - supervior
         - add the operation that AP will automatically turn on or off according to the status of WiFi
         - split the wifi scan into two operations: scan wifi and get scan results
