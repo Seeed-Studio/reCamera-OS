@@ -3,7 +3,6 @@
 MD5_FILE=sg2002_recamera_emmc_md5sum.txt
 URL_FILE=url.txt
 ZIP_FILE=zip.txt
-VERSION_FILE=version.txt
 
 RECV_PARTITION=/dev/mmcblk0p5
 ROOTFS=/dev/mmcblk0p3
@@ -24,12 +23,14 @@ function cleanup() {
     sync
     if [ ! -z $MOUNTPATH ] && [ -d $MOUNTPATH ]; then
         umount $MOUNTPATH
+        # Defense against false deletion
         mount_check=$(mount | grep -w $MOUNTPATH)
         if [ -z $mount_check ]; then
             rm -rf $MOUNTPATH
         fi
     fi
 
+    # Remove case ctrl files
     rm -rf $CTRL_FILE.$RUN_CASE*
 }
 trap cleanup SIGINT SIGTERM
@@ -40,6 +41,7 @@ function exit_upgrade() {
     fi
 
     cleanup
+
     exit $1
 }
 
@@ -93,23 +95,34 @@ function wget_file() {
 
 function get_pack_info() {
     local file="$MOUNTPATH/$MD5_FILE"
+    local file_latest="$file.latest"
+
+    if [ "$2" != "current" ]; then
+        if [ -f "$file_latest" ]; then
+            file=$file_latest
+        fi
+    fi
+    if [ ! -f "$file" ]; then
+        exit_upgrade 1
+    fi
+
     local info=$(grep ".*ota.*\.zip" $file)
 
     case $1 in
-    "name")
+    name)
         local name=$(echo $info | awk '{print $2}')
         echo $name
         ;;
-    "md5")
+    md5)
         local md5=$(echo $info | awk '{print $1}')
         echo $md5
         ;;
-    "os")
+    os)
         local name=$(echo $info | awk '{print $2}')
         local os=$(echo $name | cut -d'_' -f2)
         echo $os
         ;;
-    "version")
+    version)
         local name=$(echo $info | awk '{print $2}')
         local version=$(echo $name | cut -d'_' -f3)
         echo $version
@@ -180,51 +193,65 @@ function ps_ctrl() {
             cat $CTRL_FILE.$RUN_CASE
         fi
     else
-        echo $1 > $CTRL_FILE.$RUN_CASE
-        echo $1 > $RESULT_FILE.$RUN_CASE
+        echo "$1" > $CTRL_FILE.$RUN_CASE
+        echo "$1" > $RESULT_FILE.$RUN_CASE
     fi
 }
 
 function is_stopped() {
-    if [ "$(ps_ctrl)" = "stop" ] || [ "$(ps_ctrl)" = "error" ]; then
-        echo "stop" > "$RESULT_FILE.$RUN_CASE"
-        exit_upgrade 2
+    if [ "$(ps_ctrl)" != "run" ]; then
+        exit_upgrade 0
+    fi
+}
+
+function kill_ps() {
+    local search_string=$1
+    local pid=$(ps | grep "$search_string" | grep -v grep | awk '{print $1}')
+    if [ ! -z "$pid" ]; then
+        kill $pid || kill -9 $pid
     fi
 }
 
 case $1 in
 clean)
     rm -rf $CTRL_FILE*
-    echo "Clean ok."
+    echo "Success"
     ;;
 
 latest)
     RUN_CASE=$1
+    file_download="$RESULT_FILE.download"
     file_result="$RESULT_FILE.$RUN_CASE"
 
+    # Query
     if [ ! -z "$2" ] && [ "$2" = "q" ]; then
+        issue="null null"
+        if [ -f "/etc/issue" ]; then
+            issue=$(cat /etc/issue)
+        fi
+
         if [ -f $file_result ]; then
-            cat $file_result
+            echo "$(cat $file_result) $issue"
             exit_upgrade 0
         fi
-        echo "null"
+        echo "null $issue"
         exit_upgrade 0
     fi
 
-    if [ -z "$2" ]; then echo "Usage: $0 latest <url>"; exit_upgrade 1; fi
+    if [ -z "$2" ]; then echo "Usage: $0 $RUN_CASE <url>|[q]"; exit_upgrade 1; fi
     ps_mutex
 
     # Clean
     rm -rf $file_result.*
     ps_ctrl run
+    step=0
 
     # Get upgrade url
-    step=0
     let step+=1
     echo "Step$step: Parse upgrade url"
     md5_url=$(get_upgrade_url $2)
     if [ -z $md5_url ]; then
-        echo "Failed: Unkown url."
+        echo "Failed: unkown url."
         exit_upgrade 1
     fi
 
@@ -242,34 +269,37 @@ latest)
     let step+=1
     echo "Step$step: Run wget $md5_url"
     md5_txt=$MOUNTPATH/$MD5_FILE
-    wget_file $md5_url $md5_txt
+    md5_txt_latest=$md5_txt.latest
+    rm -f $md5_txt_latest
+    wget_file $md5_url $md5_txt_latest
     if [ $? -ne 0 ]; then
-        echo "Failed: Unable to download $MD5_FILE."
+        echo "Failed: unable to download $MD5_FILE."
         exit_upgrade 1
     fi
-    if [ ! -f "$md5_txt" ]; then
+    if [ ! -f "$md5_txt_latest" ]; then
         echo "Failed: $MD5_FILE does not exist."
         exit_upgrade 1
     fi
 
     # Get latest version
     let step+=1
-    os_name=$(get_pack_info "os")
-    os_version=$(get_pack_info "version")
+    os_name=$(get_pack_info os)
+    os_version=$(get_pack_info version)
     echo "Step$step: Get latest version: $os_name $os_version"
     if [ -z "$os_name" ] || [ -z "$os_version" ]; then
-        echo "Failed: Get version info."
+        echo "Failed: get version info."
         exit_upgrade 1
     fi
 
     # Check version
     let step+=1
-    zip=$(get_pack_info "name")
+    zip=$(get_pack_info name)
     echo ${md5_url%/*}/$zip > $MOUNTPATH/$URL_FILE
-    echo "$os_name $os_version" > $MOUNTPATH/$VERSION_FILE.latest
     result=$(check_version $os_name $os_version)
-    echo "Step$step: $result"
-    echo $? > $file_result
+    ps_ctrl $(echo "$?,$os_name,$os_version")
+    echo "$result"
+
+    rm -rf $file_download*
     exit_upgrade 0
     ;;
 
@@ -277,6 +307,7 @@ download)
     RUN_CASE=$1
     file_result="$RESULT_FILE.$RUN_CASE"
 
+    # Query
     if [ ! -z "$2" ] && [ "$2" = "q" ]; then
         if [ -f $file_result ]; then
             cat $file_result
@@ -287,15 +318,17 @@ download)
         exit_upgrade 0
     fi
 
+    if [ ! -z "$2" ]; then echo "Usage: $0 $RUN_CASE [q]"; exit 1; fi
+
     ps_mutex
 
     # Clean
     rm -rf $file_result.*
     ps_ctrl run
+    step=0
 
     # Mount recovery partition
     let step+=1
-    MOUNTPATH=$(mktemp -d)
     echo "Step$step: Mount partition"
     MOUNTPATH=$(mktemp -d)
     result=$(mount_recovery)
@@ -306,13 +339,17 @@ download)
 
     # Download zip file
     let step+=1
-    zip=$(get_pack_info "name")
+    zip=$(get_pack_info name)
+    if [ -z "$zip" ]; then
+        echo "Failed: can't get zip filename."
+        exit_upgrade 1
+    fi
     full_path=$MOUNTPATH/$zip
     full_path_latest=$full_path.latest
     if [ -f $full_path ]; then
         echo "Step$step: File already exist ($full_path)"
     else
-        zip_url=$(cat $MOUNTPATH/$URL_FILE)
+        zip_url=$(cat "$MOUNTPATH/$URL_FILE")
         full_path=$full_path_latest
         echo "Step$step: Download $zip_url"
         wget_file $zip_url $full_path
@@ -326,15 +363,15 @@ download)
     # Check md5
     let step+=1
     echo "Step$step: Check md5sum"
-    read_md5=$(get_pack_info "md5")
+    read_md5=$(get_pack_info md5)
     calc_md5=$(md5sum $full_path | awk '{print $1}')
     if [ -z "$read_md5" ] || [ -z "$calc_md5" ]; then
-        echo "Failed: calc md5."
+        echo "Failed: calc md5sum."
         rm -rfv $full_path
         exit_upgrade 1
     fi
     if [ "$read_md5" != "$calc_md5" ]; then
-        echo "Failed: md5 is mismatch($read_md5 != $calc_md5)."
+        echo "Failed: md5sum is mismatch($read_md5 != $calc_md5)."
         rm -rfv $full_path
         exit_upgrade 1
     else
@@ -342,11 +379,10 @@ download)
             rm -rfv $MOUNTPATH/*.zip
             mv -fv $full_path $MOUNTPATH/$zip
         fi
-        echo $(cat $MOUNTPATH/$VERSION_FILE.latest) > $MOUNTPATH/$VERSION_FILE
-        echo "ready" > $file_result
+        cp -f $MOUNTPATH/$MD5_FILE.latest $MOUNTPATH/$MD5_FILE 2>/dev/null
+        ps_ctrl ready
         echo "Success"
     fi
-
     exit_upgrade 0
     ;;
 
@@ -358,34 +394,27 @@ start)
     file_dd="$file_result.dd"
     file_percent="$file_result.percent"
 
+    # Kill
     if [ ! -z "$2" ] && [ "$2" = "x" ]; then
         ps_running
         ps_ctrl stop
 
-        pid=$(ps | grep unzip | grep $ROOTFS_FILE | grep -v grep | awk '{print $1}')
-        if [ ! -z "$pid" ]; then
-            kill -9 $pid
-        fi
-        pid=$(ps | grep dd | grep -v grep | awk '{print $1}')
-        if [ ! -z "$pid" ]; then
-            kill -9 $pid
-        fi
-        pid=$(ps | grep md5sum | grep -v grep | awk '{print $1}')
-        if [ ! -z "$pid" ]; then
-            kill -9 $pid
-        fi
+        kill_ps "dd of=$ROOTFS bs=1M status=progress"
+        kill_ps "dd of=$ROOTFS_B bs=1M status=progress"
+        kill_ps "dd if=$ROOTFS bs=1M count="
+        kill_ps "dd if=$ROOTFS_B bs=1M count="
 
         echo "Stoped"
         exit 0
     fi
 
+    # Query
     if [ ! -z "$2" ] && [ "$2" = "q" ]; then
-        if [ ! -f $file_size ] || [ ! -f $file_stage ] || [ ! -f $file_dd ]; then
-            echo "0 error"
+        if [ ! -f $file_size ] || [ ! -f $file_dd ]; then
+            echo "0,null"
             exit 0
         fi
         total_size=$(cat $file_size)
-        let total_size+=total_size
 
         result=$(cat $file_result)
         if [ "$result" = "run" ]; then
@@ -407,19 +436,24 @@ start)
         fi
 
         let total+=$percent
-        echo "$total $result"
+        if [ $total -gt 100 ]; then
+            total=100
+        fi            
+        echo "$total,$result"
 
         exit 0
     fi
+
+    if [ ! -z "$2" ]; then echo "Usage: $0 $RUN_CASE [q|x]"; exit 1; fi
 
     ps_mutex
 
     # Clean
     rm -rf $file_result.*
     ps_ctrl run
+    step=0
 
     # Mount recovery partition
-    step=0
     let step+=1
     echo "Step$step: Mount partition"
     MOUNTPATH=$(mktemp -d)
@@ -428,17 +462,16 @@ start)
         echo "$result"
         exit_upgrade 1
     fi
-    echo "$result"
 
-    zip=$(get_pack_info "name")
+    zip=$(get_pack_info name current)
     if [ -z "$zip" ]; then
-        echo "Failed: can't get filename $zip."
+        echo "Failed: can't get zip filename."
         exit_upgrade 1
     fi
 
     full_path=$MOUNTPATH/$zip
     if [ ! -f $full_path ]; then
-        echo "Failed: File not exist $full_path"
+        echo "Failed: file not exist $full_path"
         exit_upgrade 1
     fi
 
@@ -447,7 +480,7 @@ start)
     read_md5=$(unzip -p $full_path md5sum.txt | grep "$ROOTFS_FILE" | awk '{print $1}')
     echo "Step$step: Read md5sum($read_md5)"
     if [ -z "$read_md5" ]; then
-        echo "Failed: can't get md5sum."
+        echo "Failed: can't read md5sum."
         exit_upgrade 1
     fi
     is_stopped
@@ -456,12 +489,15 @@ start)
     let step+=1
     is_use_partition_b
     if [ $? -eq 1 ]; then target=$ROOTFS; else target=$ROOTFS_B; fi
+
     size_bytes=$(unzip -l "$full_path" | grep "$ROOTFS_FILE" | awk '{print $1}')
-    echo $size_bytes > $file_size
     size_mb=$(($size_bytes/(1024*1024)))
+    # size_bytes=write_size+calc_size
+    let size_bytes+=size_bytes
+    echo $size_bytes > $file_size
     echo "Step$step: Writing rootfs $target size=${size_mb}MB"
     if [ $size_mb -eq 0 ]; then
-        echo "Failed: File size is 0."
+        echo "Failed: file size is 0."
         exit_upgrade 1
     fi
 
@@ -507,10 +543,10 @@ rollback)
     is_use_partition_b
     if [ $? -eq 1 ]; then
         write_upgrade_flag 0
-        echo "Finished: rollback to rootfs A."
+        echo "Finished: rollback to rootfs_a."
     else
         write_upgrade_flag 1
-        echo "Finished: rollback to rootfs B."
+        echo "Finished: rollback to rootfs_b."
     fi
     echo "Restart to valid."
 
