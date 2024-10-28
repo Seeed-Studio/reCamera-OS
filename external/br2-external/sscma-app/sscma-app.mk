@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-SSCMA_APP_VERSION = 0.0.3a
+SSCMA_APP_VERSION = 0.0.5
 SSCMA_APP_SITE = https://github.com/Seeed-Studio/sscma-example-sg200x.git
 SSCMA_APP_SITE_METHOD = git
 SSCMA_APP_GIT_SUBMODULES = YES
