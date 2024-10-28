@@ -75,11 +75,12 @@ if [ $(fw_printenv factory_reset) == "factory_reset=1" ]; then
    echo 255 > /sys/devices/platform/leds/leds/red/brightness
 
    # step1: recovery rootfs
-   /mnt/system/upgrade.sh start .
+   /mnt/system/upgrade.sh start
    # step2: erase userdata partition
    dd if=/dev/zero of=$USERDATA_PARTITION bs=1M count=5
    # step3: clear flag
    fw_setenv factory_reset
+   sync
    reboot
 fi
 
