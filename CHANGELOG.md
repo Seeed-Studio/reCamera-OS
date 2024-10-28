@@ -1,11 +1,18 @@
+## 0.1.0 (2024-10-28)
+
+### sg2002_recamera_emmc
+
+- New features:
+    - update ov5647 isp params (denoise)
+    - optimize ota
+
 ## 0.0.9 (2024-10-26)
 
 ### sg2002_recamera_emmc
 
 - New features:
     - enable nodejs --v8-lite-mode (disable WebAssembly)
-    - optimize ota
-    - update ov5647 isp params (denoise)
+    - optimize system upgrade operations
 
 - Fix bugs:
     - remove node-red-dashboard from node-red
