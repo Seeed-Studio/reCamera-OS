@@ -6,7 +6,8 @@
     - limit node-red to version 3.1.14
 
 - Fix bugs:
-    - solve some supervisor bug
+    - solve some supervisor bugs
+    - fix sd_gen_recovery_image.sh script bugs
 
 ## 0.1.0 (2024-10-28)
 
