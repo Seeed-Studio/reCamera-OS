@@ -1,3 +1,13 @@
+## 0.1.1 (2024-10-30)
+
+### sg2002_recamera_emmc
+
+- New features:
+    - limit node-red to version 3.1.14
+
+- Fix bugs:
+    - solve some supervisor bug
+
 ## 0.1.0 (2024-10-28)
 
 ### sg2002_recamera_emmc
