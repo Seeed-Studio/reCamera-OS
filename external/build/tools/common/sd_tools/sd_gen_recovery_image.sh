@@ -40,10 +40,9 @@ function size2sectors() {
 }
 
 part_label="RESERVED"
-part_cap=600M
-part_start=2048
-part_size=$(size2sectors ${part_cap})
-img_size=$((part_start+part_size))
+part_start="2048"
+part_size=$(size2sectors "600M")
+img_size=$((part_start+part_size)) # sectors
 echo "Image size: ${img_size} sectors $part_size"
 
 function create_disk_mbr() {
@@ -61,8 +60,8 @@ function create_disk_mbr() {
         echo "label: dos"
         echo "label-id: 0x48617373"
         echo "unit: sectors"
-        echo "boot  : start= ${part_start},     size= ${img_size},     type=c, bootable"   #create the boot partition
-    ) | sfdisk ${image} 
+        echo "boot: start=${part_start}, size=${part_size}, type=c,bootable" # create the boot partition
+    ) | sfdisk ${image}
     #> sfdisk --force -uS ${image}
 
     echo "${FUNCNAME[0]} ok"
@@ -76,7 +75,6 @@ function write_boot_part() {
     fi
 
     local part=$(mktemp)
-
     dd if=/dev/zero of=${part} bs=512 count=${part_size}
     mkfs.vfat -n ${part_label} ${part}
 
