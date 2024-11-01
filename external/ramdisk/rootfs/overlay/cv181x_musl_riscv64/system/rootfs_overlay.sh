@@ -61,6 +61,18 @@ function preset_resources() {
    fi
 }
 
+function force_remove() {
+   local file="/userdata/.overlay_fs/etc/issue"
+   if [ -f $file ]; then
+      rm -f $file
+   fi
+
+   file="/userdata/.overlay_fs/etc/CHANGELOG.md"
+   if [ -f $file ]; then
+      rm -f $file
+   fi
+}
+
 USERDATA_PARTITION="/dev/mmcblk0p6"
 
 # reset factory
@@ -122,6 +134,7 @@ if [ "$fs_type" != "" ]; then
          preset_resources
       fi
       setup_swap
+      force_remove
       rootfs_overlay $USERDATA_MOUNTPOINT
    fi
 fi
