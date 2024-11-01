@@ -1,3 +1,15 @@
+## 0.1.2 (2024-11-01)
+
+### sg2002_recamera_emmc
+
+- New features:
+    - support global.gc operation
+    - built-in model files
+
+- Fix bugs:
+    - solve some supervisor bugs
+    - solve some sscma-node bugs
+
 ## 0.1.1 (2024-10-30)
 
 ### sg2002_recamera_emmc
