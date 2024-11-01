@@ -53,6 +53,14 @@ function rootfs_overlay() {
    mount -a
 }
 
+function preset_resources() {
+   local res="/mnt/system/resources/MODEL.zip"
+
+   if [ -f $res ]; then
+      unzip -oq $res -d /userdata/
+   fi
+}
+
 USERDATA_PARTITION="/dev/mmcblk0p6"
 
 # reset factory
@@ -111,6 +119,7 @@ if [ "$fs_type" != "" ]; then
       if [ $MKFS_FLAG == "Y" ]; then
          chown -R recamera:recamera $USERDATA_MOUNTPOINT
          rm -rf $USERDATA_MOUNTPOINT/*
+         preset_resources
       fi
       setup_swap
       rootfs_overlay $USERDATA_MOUNTPOINT
