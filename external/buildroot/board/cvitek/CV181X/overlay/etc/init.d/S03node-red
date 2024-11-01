@@ -10,8 +10,8 @@
 # Description:       Start Node-RED service.
 ### END INIT INFO
 
-DAEMON="/usr/bin/node-red"
-DAEMON_OPTS="--max-old-space-size=64"
+DAEMON="/usr/bin/node-red-pi"
+DAEMON_OPTS="--max-old-space-size=64 --expose-gc"
 NAME=node-red
 DESC="Node-RED service"
 VARDIR=/userdata/.var
