@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-SSCMA_APP_VERSION = 0.0.6
+SSCMA_APP_VERSION = 0.0.7
 SSCMA_APP_SITE = https://github.com/Seeed-Studio/sscma-example-sg200x.git
 SSCMA_APP_SITE_METHOD = git
 SSCMA_APP_GIT_SUBMODULES = YES
@@ -22,7 +22,7 @@ endef
 define SSCMA_APP_INSTALL_TARGET_CMDS
 	@cp -rf $(@D)/install/* $(TARGET_DIR)/
 	mkdir -p $(TARGET_DIR)/home/recamera/.node-red/node_modules
-	$(NPM) install --no-audit --no-update-notifier --no-fund --save --save-prefix=~ --production --engine-strict --prefix $(TARGET_DIR)/home/recamera/.node-red node-red-contrib-sscma@0.0.9
+	$(NPM) install --no-audit --no-update-notifier --no-fund --save --save-prefix=~ --production --engine-strict --prefix $(TARGET_DIR)/home/recamera/.node-red node-red-contrib-sscma@0.1.0
 endef
 
 $(eval $(generic-package))
