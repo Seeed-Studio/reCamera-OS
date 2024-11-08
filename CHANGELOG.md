@@ -1,3 +1,10 @@
+## 0.1.3 (2024-11-08)
+
+### sg2002_recamera_emmc
+
+- New features:
+    - support 64G emmc
+
 ## 0.1.2 (2024-11-01)
 
 ### sg2002_recamera_emmc
