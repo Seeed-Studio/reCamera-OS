@@ -5,5 +5,5 @@
 	<partition label="ROOTFS" size_in_kb="524288" file="rootfs_ext4.emmc" type="ext4"/>
 	<partition label="ROOTFS2" size_in_kb="524288" file="" type="ext4"/>
 	<partition label="RESERVED" size_in_kb="262144" file="" type="ext4"/>
-	<partition label="USERDATA" size_in_kb="6291456" file="" type="ext4"/>
+	<partition label="USERDATA" file="" type="ext4"/>
 </physical_partition>
