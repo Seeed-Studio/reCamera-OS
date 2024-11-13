@@ -105,16 +105,14 @@ function get_pack_info() {
     local file="$MOUNTPATH/$MD5_FILE"
     local file_latest="$file.latest"
 
-    if [ "$2" != "current" ]; then
-        if [ -f "$file_latest" ]; then
-            file=$file_latest
-        fi
+    if [ -f "$file_latest" ]; then
+        file=$file_latest
     fi
     if [ ! -f "$file" ]; then
         exit 1
     fi
 
-    local info=$(grep ".*ota.*\.zip" $file)
+    local info=$(grep ".*ota.zip" $file)
 
     case $1 in
     name)
@@ -428,8 +426,24 @@ start)
         exit 0
     fi
 
-    if [ ! -z "$2" ]; then echo "Usage: $0 $RUN_CASE [q|x]"; exit 1; fi
+    # Parse param
+    with_boot=0
+    zip=""
+    if [[ "$2" = "*ota.zip" ]]; then
+        zip="$2"
+        if [ "$3" = "--with-boot" ]; then with_boot=1; fi
+    elif [ "$2" = "--with-boot" ]; then
+        zip="$3"
+        with_boot=1
+    else
+        if [ ! -z "$2" ]; then echo "Usage: $0 $RUN_CASE [q|x|--with-boot] [*ota.zip]"; exit 1; fi
+    fi
 
+    if [[ "$zip" = "*ota.zip" && ! "$zip" =~ ^/ ]]; then
+        zip=$(realpath "$PWD/$zip")
+    fi
+
+    # Enter
     ps_mutex
 
     # Clean
@@ -437,29 +451,48 @@ start)
     ps_ctrl run
     step=0
 
-    # Mount recovery partition
-    let step+=1
-    echo "Step$step: Mount partition"
-    mount_recovery
-
-    zip=$(get_pack_info name current)
-    if [ -z "$zip" ]; then
-        echo "Failed: can't get zip filename."
-        exit_upgrade 1
+    if [ -z $zip ]; then
+        # Mount recovery partition
+        mount_recovery
+        zip=$(find $MOUNTPATH -maxdepth 1 -name "*ota.zip")
     fi
-
-    full_path=$MOUNTPATH/$zip
+    full_path=$zip
+    let step+=1
+    echo "Step$step: Get $full_path"
     if [ ! -f $full_path ]; then
         echo "Failed: file not exist $full_path"
         exit_upgrade 1
     fi
 
+    # Write boot partition
+    if [ $with_boot -eq 1 ]; then
+        let step+=1
+        echo "Step$step: Write fip partition"
+        read_md5=$(unzip -p $full_path md5sum.txt | grep "fip.bin" | awk '{print $1}')
+        calc_md5=$(unzip -p $full_path "fip.bin" | md5sum | awk '{print $1}')
+        if [ "$read_md5" = "$calc_md5" ]; then
+            echo "fip: $read_md5 $calc_md5"
+            echo 0 > /sys/block/mmcblk0boot0/force_ro
+            $(unzip -p $full_path "fip.bin" | dd of=/dev/mmcblk0boot0 bs=1M status=progress)
+            echo 1 > /sys/block/mmcblk0boot0/force_ro
+        fi
+
+        let step+=1
+        echo "Step$step: Write boot partition"
+        read_md5=$(unzip -p $full_path md5sum.txt | grep "boot.emmc" | awk '{print $1}')
+        calc_md5=$(unzip -p $full_path "boot.emmc" | md5sum | awk '{print $1}')
+        if [ "$read_md5" = "$calc_md5" ]; then
+            echo "boot: $read_md5 $calc_md5"
+            $(unzip -p $full_path "boot.emmc" | dd of=/dev/mmcblk0p1 bs=1M status=progress)
+        fi
+    fi
+
     # Read md5sum
     let step+=1
     read_md5=$(unzip -p $full_path md5sum.txt | grep "$ROOTFS_FILE" | awk '{print $1}')
-    echo "Step$step: Read md5sum($read_md5)"
+    echo "Step$step: Read $ROOTFS_FILE md5sum($read_md5)"
     if [ -z "$read_md5" ]; then
-        echo "Failed: can't read md5sum."
+        echo "Failed: can't read $ROOTFS_FILE md5sum."
         exit_upgrade 1
     fi
     is_stopped
