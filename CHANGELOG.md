@@ -1,3 +1,14 @@
+## 0.1.4 (2024-11-12)
+
+### sg2002_recamera_emmc
+
+- New features:
+    - support fip and boot partition update (/mnt/system/upgrade.sh start --with-boot)
+    - support /mnt/system/upgrade.sh *ota.zip
+
+- Fix bugs:
+    - factory reset failed (if sg2002_recamera_emmc_md5sum.txt is not exist)
+
 ## 0.1.3 (2024-11-08)
 
 ### sg2002_recamera_emmc
