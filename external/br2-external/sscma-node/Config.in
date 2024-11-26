@@ -1,0 +1,6 @@
+config BR2_PACKAGE_SSCMA_NODE
+    bool "sscma-node"
+    default y
+    help
+      This is the help text for the ssmca-node package.
+      It will be displayed in the Buildroot configuration menu.
