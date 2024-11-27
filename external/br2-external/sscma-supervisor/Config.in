@@ -1,6 +1,7 @@
 config BR2_PACKAGE_SSCMA_SUPERVISOR
     bool "sscma-supervisor"
     default y
+    select BR2_PACKAGE_LIBHV
     help
       This is the help text for the ssmca-supervisor package.
       It will be displayed in the Buildroot configuration menu.
