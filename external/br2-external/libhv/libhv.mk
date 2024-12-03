@@ -24,6 +24,7 @@ endef
 
 define LIBHV_INSTALL_STAGING_CMDS
 	cp -rf $(@D)/lib/* $(STAGING_DIR)/usr/lib/
+	cp -rf $(@D)/include/* $(STAGING_DIR)/usr/include/
 endef
 
 $(eval $(generic-package))

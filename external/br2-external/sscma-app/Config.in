@@ -1,6 +1,0 @@
-config BR2_PACKAGE_SSCMA_APP
-    bool "sscma-app"
-    default y
-    help
-      This is the help text for the supervisor and sscma-node package.
-      It will be displayed in the Buildroot configuration menu.
