@@ -136,6 +136,10 @@ if [ "$fs_type" != "" ]; then
       setup_swap
       force_remove
       rootfs_overlay $USERDATA_MOUNTPOINT
+      if [ -e /etc/init.d/S10udev ]; then
+         mv /etc/init.d/S10udev /etc/init.d/S99udev
+      fi
    fi
 fi
 fi
+
