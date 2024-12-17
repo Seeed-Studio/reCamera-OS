@@ -2,4 +2,4 @@
 -         -1     spi          -1  =gpio       -
 -         -1     led          -1  =led        -
 -         -1     gpio         -1  =gpio       -
-recamera  -1     recamera     -1  =recamera   /home/recamera  /bin/sh i2c,spi,led,gpio,input,dialout
+recamera  -1     recamera     -1  =recamera   /home/recamera  /bin/sh i2c,spi,led,gpio,input,dialout,audio
