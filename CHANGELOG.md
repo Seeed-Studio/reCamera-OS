@@ -5,6 +5,8 @@
 - New features:
     - support fip and boot partition update (/mnt/system/upgrade.sh start --with-boot)
     - support /mnt/system/upgrade.sh *ota.zip
+    - support gimbal (spi-can mcp2518fd)
+    - add cvi_pinmux tool
 
 - Fix bugs:
     - factory reset failed (if sg2002_recamera_emmc_md5sum.txt is not exist)
