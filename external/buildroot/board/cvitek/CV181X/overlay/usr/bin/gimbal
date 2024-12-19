@@ -1,0 +1,171 @@
+#!/bin/sh
+
+function uint8_to_hex() {
+    echo "$(printf "%02X" "$1")"
+}
+
+function uint16_to_hex_le() {
+    local num=$1
+    local hex=$(printf "%04X" "$num")
+    echo "${hex:2:2}${hex:0:2}"
+}
+
+function uint32_to_hex() {
+    local num=$1
+    local hex=$(printf "%08X" "$num")
+    echo "${hex:6:2}${hex:4:2}${hex:2:2}${hex:0:2}"
+}
+
+function check_bus_ready() {
+    local check=$(ifconfig can0 2>/dev/null | grep "HWaddr")
+
+    if [ -z "$check" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+function bus_init() {
+    check_bus_ready
+    if [ $? -eq 1 ]; then
+        # echo "Device can0 is already initialized!"
+        return
+    fi
+
+    local pinmux=$(which cvi_pinmux)
+    if [ ! -x "$pinmux" ]; then
+        echo "No pinmux tool found!"
+        return
+    fi
+
+    # Configure pinmux settings
+    $pinmux -w PAD_MIPI_TXM0/XGPIOC_12
+    $pinmux -w SD0_CLK/SPI0_SCK
+    $pinmux -w SD0_CMD/SPI0_SDO
+    $pinmux -w SD0_D0/SPI0_SDI
+    #$pinmux -w SD0_D3/SPI0_CS_X
+    $pinmux -w SD0_D3/XGPIOA_12
+
+    # Load the kernel module
+    insmod /mnt/system/ko/mcp251xfd.ko
+
+    # Check if the bus is ready again
+    check_bus_ready
+    if [ $? -eq 1 ]; then
+        echo "Init can0 ok!"
+    else
+        echo "Init can0 failed!"
+        return
+    fi
+
+    ip link set can0 type can bitrate 1000000
+    ifconfig can0 up
+}
+
+function bus_deinit() {
+    local check=$(lsmod | grep mcp251xfd)
+
+    if [ -z "$check" ]; then
+        echo "Device can0 is not initialized!"
+        return
+    fi
+
+    ifconfig can0 down
+    rmmod /mnt/system/ko/mcp251xfd.ko
+    echo "Uninstall can0 ok!"
+}
+
+function usage() {
+    echo "gimbal <init|deinit>"
+    echo "gimbal <close|run|stop|zero> id"
+    echo "gimbal angle <id> <direction> <angle> [speed]"
+    echo "    id: 1 ~ 2"
+    echo "    direction: 0 ~ 1"
+    echo "    angle: 0 ~ 36000"
+    echo "    speed: 0 ~ 60000"
+}
+
+function send_frame() {
+    local id=$1
+    if [ $id -lt 1 -o $id -gt 2 ]; then
+        usage
+        return
+    fi
+
+    bus_init
+    cansend can0 14$1#$2$3
+}
+
+function set_pos() {
+    local id dir angle speed
+
+    if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+        usage
+        return
+    fi
+
+    let id=$1
+    let direction=$2
+    let angle=$3
+
+    if [ $direction -lt 0 -o $direction -gt 1 ]; then
+        usage
+        return
+    fi
+
+    if [ $angle -lt 0 -o $angle -gt 36000 ]; then
+        usage
+        return
+    fi
+
+    if [ ! -z "$4" ]; then
+        let speed=$4
+        if [ $speed -lt 0 -o $speed -gt 60000 ]; then
+            usage
+            return
+        fi
+    else
+        let speed=360
+    fi
+
+    local dir=$(uint8_to_hex $direction)
+    local spd=$(uint16_to_hex_le $speed)
+    local agl=$(uint32_to_hex $angle)
+
+    send_frame $id "A6" "$dir$spd$agl"
+}
+
+case $1 in
+    init)
+        bus_init
+        ;;
+
+    deinit)
+        bus_deinit
+        ;;
+
+    close)
+        send_frame $2 "80" "00000000000000"
+        ;;
+
+    run)
+        send_frame $2 "88" "00000000000000"
+        ;;
+    
+    stop)
+        send_frame $2 "81" "00000000000000"
+        ;;
+
+    angle)
+        set_pos $2 $3 $4
+        ;;
+
+    zero)
+        send_frame $2 "19" "00000000000000"
+        ;;
+
+    *)
+        usage
+        ;;
+esac
