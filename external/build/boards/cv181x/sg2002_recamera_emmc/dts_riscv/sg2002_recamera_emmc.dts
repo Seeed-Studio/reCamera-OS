@@ -27,8 +27,23 @@
 	/delete-property/ mute-gpio-r;
 };
 
+&portc {
+	#interrupt-cells = <2>;
+};
+
 &spi0 {
-	status = "disabled";
+	status = "okay";
+	num-cs = <1>;
+	cs-gpios = <&porta 12 0>;
+
+	mcp2518fd: mcp2518fd@0 {
+		reg = <0>;
+		compatible = "microchip,mcp2518fd";
+		spi-max-frequency = <10000000>;
+		clocks = <&mcp2518fd_osc>;
+		interrupts = <12 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-parent = <&portc>;
+	};
 };
 
 &spi1 {
@@ -119,5 +134,11 @@
 		compatible = "cvitek,wifi-pin";
 		poweron-gpio = <&porta 30 GPIO_ACTIVE_HIGH>;
 		/*wakeup-gpio = <&porte 8 GPIO_ACTIVE_HIGH>;*/
+	};
+
+	mcp2518fd_osc: mcp2518fd_osc {
+		#clock-cells = <0>;
+		compatible = "fixed-clock";
+		clock-frequency = <40000000>;
 	};
 };
