@@ -1,4 +1,5 @@
 source "$BR2_EXTERNAL_BR2EXT_PATH/reCamera/Config.in"
 source "$BR2_EXTERNAL_BR2EXT_PATH/libhv/Config.in"
+source "$BR2_EXTERNAL_BR2EXT_PATH/libxcrypt-dev/Config.in"
 source "$BR2_EXTERNAL_BR2EXT_PATH/sscma-node/Config.in"
 source "$BR2_EXTERNAL_BR2EXT_PATH/sscma-supervisor/Config.in"
