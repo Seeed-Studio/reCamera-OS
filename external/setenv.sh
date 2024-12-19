@@ -120,8 +120,11 @@ function build_middleware()
     _build_middleware_ || return $?
 
     pushd "$MW_PATH"
-    cp -f sample/audio/sample_audio*  ${SYSTEM_OUT_DIR}/usr/bin
+    cp -fv sample/audio/sample_audio*  ${SYSTEM_OUT_DIR}/usr/bin
     popd
+
+    # ramdisk/rootfs/public/pinmux/musl_riscv64/usr/sbin/cvi_pinmux
+    cp -fv ${RAMDISK_PATH}/rootfs/public/pinmux/${SDK_VER}/usr/sbin/cvi_pinmux ${SYSTEM_OUT_DIR}/usr/bin
 )}
 
 function pack_cfg
