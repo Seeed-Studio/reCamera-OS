@@ -34,7 +34,7 @@ case "$1" in
     fi
 
     if [ -f $SYSTEMPATH/usb-net.sh ]; then
-      . $SYSTEMPATH/usb-net.sh &
+      . $SYSTEMPATH/usb-net.sh
     fi
   ;;
 
