@@ -4,7 +4,7 @@ function uint8_to_hex() {
     echo "$(printf "%02X" "$1")"
 }
 
-function uint16_to_hex_le() {
+function uint16_to_hex() {
     local num=$1
     local hex=$(printf "%04X" "$num")
     echo "${hex:2:2}${hex:0:2}"
@@ -64,15 +64,17 @@ function bus_init() {
 }
 
 function bus_deinit() {
-    local check=$(lsmod | grep mcp251xfd)
-
-    if [ -z "$check" ]; then
-        echo "Device can0 is not initialized!"
-        return
+    check_bus_ready
+    if [ $? -eq 1 ]; then
+        ifconfig can0 down
     fi
 
-    ifconfig can0 down
-    rmmod /mnt/system/ko/mcp251xfd.ko
+    if [ -z "$(lsmod | grep mcp251xfd)" ]; then
+        echo "Device can0 is not initialized!"
+        return
+    else
+        rmmod /mnt/system/ko/mcp251xfd.ko
+    fi
     echo "Uninstall can0 ok!"
 }
 
@@ -84,6 +86,11 @@ function usage() {
     echo "    direction: 0 ~ 1"
     echo "    angle: 0 ~ 36000"
     echo "    speed: 0 ~ 60000"
+    echo "gimbal cmd <id> <cmd> <data>"
+    echo "example:"
+    echo "    gimbal cmd 1 \"8100000000000000\""
+    echo "    gimbal cmd 1 \"81 00 00 00 00 00 00 00\""
+    echo "    gimbal cmd 1 \"81.00.00.00.00.00.00.00\""
 }
 
 function send_frame() {
@@ -130,7 +137,7 @@ function set_pos() {
     fi
 
     local dir=$(uint8_to_hex $direction)
-    local spd=$(uint16_to_hex_le $speed)
+    local spd=$(uint16_to_hex $speed)
     local agl=$(uint32_to_hex $angle)
 
     send_frame $id "A6" "$dir$spd$agl"
@@ -163,6 +170,15 @@ case $1 in
 
     zero)
         send_frame $2 "19" "00000000000000"
+        ;;
+
+    cmd)
+        if [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
+            usage
+            return
+        fi
+
+        send_frame $2 $3 $(echo "$4" | tr -cd '0-9a-fA-F')
         ;;
 
     *)
