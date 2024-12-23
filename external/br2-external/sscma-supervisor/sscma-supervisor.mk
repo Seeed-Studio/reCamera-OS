@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-SSCMA_SUPERVISOR_VERSION = 322bf626cb88bd8726e15d218e345fc57749d223
+SSCMA_SUPERVISOR_VERSION = d1329046138e9118e9bf1bd9a9d53c11ccc37715
 SSCMA_SUPERVISOR_SITE = https://github.com/Seeed-Studio/sscma-example-sg200x
 SSCMA_SUPERVISOR_SITE_METHOD = git
 SSCMA_SUPERVISOR_GIT_SUBMODULES = YES
@@ -29,7 +29,8 @@ define SSCMA_SUPERVISOR_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(@D)/solutions/supervisor/build/supervisor $(TARGET_DIR)/usr/local/bin/supervisor
 
 	# Copy other files from the source directory to the target directory
-	cp -r $(@D)/solutions/supervisor/files/* $(TARGET_DIR)/
+	cp -r $(@D)/solutions/supervisor/rootfs/* $(TARGET_DIR)/
+
 endef
 
 $(eval $(generic-package))

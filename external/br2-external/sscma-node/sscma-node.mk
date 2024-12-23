@@ -4,12 +4,12 @@
 #
 ################################################################################
 
-SSCMA_NODE_VERSION = 322bf626cb88bd8726e15d218e345fc57749d223
+SSCMA_NODE_VERSION = d1329046138e9118e9bf1bd9a9d53c11ccc37715
 SSCMA_NODE_SITE = https://github.com/Seeed-Studio/sscma-example-sg200x
 SSCMA_NODE_SITE_METHOD = git
 SSCMA_NODE_GIT_SUBMODULES = YES
 SSCMA_NODE_LICENSE = Apache-2.0
-SSCMA_NODE_DEPENDENCIES = host-nodejs mosquitto
+SSCMA_NODE_DEPENDENCIES = host-nodejs mosquitto libhv alsa-lib
 
 # Configure step: prepare the build environment and run CMake to configure the build
 define SSCMA_NODE_CONFIGURE_CMDS
@@ -25,17 +25,22 @@ endef
 
 # Install step: copy the built files to the target directory
 define SSCMA_NODE_INSTALL_TARGET_CMDS
-	# Install the executable file
-	$(INSTALL) -D -m 0755 $(@D)/solutions/sscma-node/build/sscma-node $(TARGET_DIR)/usr/local/bin/sscma-node
-
-	# Copy other files from the source directory to the target directory
-	cp -r $(@D)/solutions/sscma-node/files/* $(TARGET_DIR)/
 
 	# Create the necessary directories for node-red
 	mkdir -p $(TARGET_DIR)/home/recamera/.node-red/node_modules
 
-	# Use npm to install the node-red-contrib-sscma package
-	$(NPM) install --no-audit --no-update-notifier --no-fund --save --save-prefix=~ --production --engine-strict --prefix $(TARGET_DIR)/home/recamera/.node-red node-red-contrib-sscma@0.1.0
+	# Install npm packages
+	$(NPM) install --no-audit --no-update-notifier --no-fund --save --save-prefix=~ --production --engine-strict --prefix $(TARGET_DIR)/home/recamera/.node-red node-red-contrib-sscma
+	$(NPM) install --no-audit --no-update-notifier --no-fund --save --save-prefix=~ --production --engine-strict --prefix $(TARGET_DIR)/home/recamera/.node-red node-red-contrib-os
+	$(NPM) install --no-audit --no-update-notifier --no-fund --save --save-prefix=~ --production --engine-strict --prefix $(TARGET_DIR)/home/recamera/.node-red @flowfuse/node-red-dashboard
+
+	# Install the executable file
+	$(INSTALL) -D -m 0755 $(@D)/solutions/sscma-node/build/sscma-node $(TARGET_DIR)/usr/local/bin/sscma-node
+
+	# Copy other files from the source directory to the target directory
+	cp -r $(@D)/solutions/sscma-node/rootfs/* $(TARGET_DIR)/
+
+
 endef
 
 $(eval $(generic-package))
