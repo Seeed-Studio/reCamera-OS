@@ -1,4 +1,4 @@
-## 0.1.4 (2024-11-12)
+## 0.1.4 (2024-12-23)
 
 ### sg2002_recamera_emmc
 
@@ -10,6 +10,7 @@
 
 - Fix bugs:
     - factory reset failed (if sg2002_recamera_emmc_md5sum.txt is not exist)
+    - solve the problem that the pc cannot access the Internet when connected via usb
 
 ## 0.1.3 (2024-11-08)
 
