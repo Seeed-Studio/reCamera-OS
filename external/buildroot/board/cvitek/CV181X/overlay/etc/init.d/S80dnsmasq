@@ -1,8 +1,11 @@
 #!/bin/sh
 
-CONF_FILE="/etc/dnsmasq.conf"
+CONF_FILE="/etc/dnsmasq/default.conf"
 if [ "$(cat /sys/devices/platform/4340000.usb/udc/4340000.usb/state)" = "configured" ]; then
-	CONF_FILE="/etc/dnsmasq_usb.conf"
+	CONF_FILE="/etc/dnsmasq/usb_wlan1.conf"
+fi
+if [ -z "$(ifconfig wlan1 2>/dev/null)" ]; then
+	CONF_FILE="/etc/dnsmasq/usb_only.conf"
 fi
 
 [ -f $CONF_FILE ] || exit 0
