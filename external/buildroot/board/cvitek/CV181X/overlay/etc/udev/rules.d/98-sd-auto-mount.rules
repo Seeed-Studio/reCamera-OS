@@ -1,0 +1,2 @@
+ACTION=="add", KERNEL=="mmcblk[0-9]p[0-9]", RUN+="/etc/hotplug/automount.sh %k add"
+ACTION=="remove", KERNEL=="mmcblk[0-9]p[0-9]", RUN+="/etc/hotplug/automount.sh %k remove"
