@@ -33,7 +33,8 @@ function bus_init() {
         return
     fi
 
-    local pinmux=$(which cvi_pinmux)
+    # local pinmux=$(which cvi_pinmux)
+    local pinmux="/mnt/system/usr/bin/cvi_pinmux"
     if [ ! -x "$pinmux" ]; then
         echo "No pinmux tool found!"
         return

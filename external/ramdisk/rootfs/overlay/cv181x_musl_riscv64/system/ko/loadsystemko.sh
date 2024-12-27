@@ -33,6 +33,10 @@ insmod /mnt/system/ko/brcmfmac.ko
 echo 3 > /proc/sys/vm/drop_caches
 dmesg -n 4
 
+if [ ! -e /dev/mmcblk1 ] && [ -x /usr/bin/gimbal ]; then
+    /usr/bin/gimbal init
+fi
+
 #usb hub control
 #/etc/uhubon.sh host
 
