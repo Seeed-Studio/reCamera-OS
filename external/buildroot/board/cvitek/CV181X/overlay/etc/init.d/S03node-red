@@ -39,7 +39,8 @@ start() {
     fi
 
     echo "Starting $DESC: $NAME"
-    USER=$(awk -F: 'BEGIN {f=0} $1!="root" && $2!="*" && !f {print $1; f=1; exit}' /etc/shadow)
+    # USER=$(awk -F: 'BEGIN {f=0} $1!="root" && $2!="*" && !f {print $1; f=1; exit}' /etc/shadow)
+    USER=$(cat /etc/passwd | grep /bin/sh | grep -v root | awk -F':' '{print $1}')
 
     # Check if the current user is root
     if [ $(id -u) -eq 0 ]; then
