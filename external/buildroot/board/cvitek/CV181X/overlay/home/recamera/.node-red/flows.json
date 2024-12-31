@@ -23,84 +23,21 @@
         "env": []
     },
     {
-        "id": "453c8631c4e4b0d5",
+        "id": "dec794eaeb95589c",
         "type": "sscma",
         "host": "localhost",
-        "port": "1883",
+        "mqttport": "1883",
+        "apiport": "80",
         "clientid": "recamera",
         "username": "",
         "password": ""
     },
     {
-        "id": "53a493606ee6d430",
-        "type": "ui-group",
-        "name": "Preview",
-        "page": "eb4ea4ad231b87b6",
-        "width": "6",
-        "height": "12",
-        "order": 1,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "d9c66abde84c734d",
-        "type": "ui-group",
-        "name": "Model Selection",
-        "page": "eb4ea4ad231b87b6",
-        "width": "4",
-        "height": "10",
-        "order": 2,
-        "showTitle": false,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "eb4ea4ad231b87b6",
-        "type": "ui-page",
-        "name": "Preview",
-        "ui": "6b7688bddd92fc1f",
-        "path": "/preview",
-        "icon": "home",
-        "layout": "grid",
-        "theme": "234998f63c55af55",
-        "breakpoints": [
-            {
-                "name": "Default",
-                "px": "0",
-                "cols": "3"
-            },
-            {
-                "name": "Tablet",
-                "px": "576",
-                "cols": "6"
-            },
-            {
-                "name": "Small Desktop",
-                "px": "768",
-                "cols": "9"
-            },
-            {
-                "name": "Desktop",
-                "px": "1024",
-                "cols": "12"
-            }
-        ],
-        "order": 1,
-        "className": "",
-        "visible": "true",
-        "disabled": "false"
-    },
-    {
-        "id": "6b7688bddd92fc1f",
+        "id": "9ab1ee429e233a80",
         "type": "ui-base",
-        "name": "reCamera Prototype",
+        "name": "My Dashboard",
         "path": "/dashboard",
-        "appIcon": "//images.weserv.nl/?url=https://www.hbzjkhhz.fun/wp-content/uploads/2024/11/1732178239-reCameraAppIcon.png",
+        "appIcon": "",
         "includeClientData": true,
         "acceptsClientConfig": [
             "ui-notification",
@@ -109,7 +46,29 @@
         "showPathInSidebar": false,
         "showPageTitle": true,
         "navigationStyle": "default",
-        "titleBarStyle": "default"
+        "titleBarStyle": "default",
+        "showReconnectNotification": true,
+        "notificationDisplayTime": 1,
+        "showDisconnectNotification": true
+    },
+    {
+        "id": "866ca6b212de07b4",
+        "type": "ui-theme",
+        "name": "Default Theme",
+        "colors": {
+            "surface": "#ffffff",
+            "primary": "#0094CE",
+            "bgPage": "#eeeeee",
+            "groupBg": "#ffffff",
+            "groupOutline": "#cccccc"
+        },
+        "sizes": {
+            "density": "default",
+            "pagePadding": "12px",
+            "groupGap": "12px",
+            "groupBorderRadius": "4px",
+            "widgetGap": "12px"
+        }
     },
     {
         "id": "234998f63c55af55",
@@ -134,7 +93,7 @@
         "id": "2788be32a24982e1",
         "type": "ui-page",
         "name": "Network",
-        "ui": "6b7688bddd92fc1f",
+        "ui": "9ab1ee429e233a80",
         "path": "/network",
         "icon": "wifi",
         "layout": "grid",
@@ -161,28 +120,17 @@
                 "cols": "12"
             }
         ],
-        "order": 3,
+        "order": 2,
         "className": "",
         "visible": true,
         "disabled": false
-    },
-    {
-        "id": "0403368ef716b66e",
-        "type": "ui-spacer",
-        "group": "d9c66abde84c734d",
-        "name": "spacer",
-        "tooltip": "",
-        "order": 5,
-        "width": "2",
-        "height": "1",
-        "className": ""
     },
     {
         "id": "15bec593c23e2df1",
         "type": "ui-group",
         "name": "Wi-Fi",
         "page": "2788be32a24982e1",
-        "width": "6",
+        "width": "12",
         "height": "1",
         "order": 1,
         "showTitle": false,
@@ -192,38 +140,10 @@
         "groupType": "default"
     },
     {
-        "id": "853d93c4c0f19c38",
-        "type": "ui-group",
-        "name": "Power",
-        "page": "034b986fab50b7bb",
-        "width": "6",
-        "height": "1",
-        "order": 5,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "a2f6b486b575c329",
-        "type": "ui-group",
-        "name": "Sys Info",
-        "page": "034b986fab50b7bb",
-        "width": "6",
-        "height": "1",
-        "order": 1,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
         "id": "034b986fab50b7bb",
         "type": "ui-page",
         "name": "Device Info",
-        "ui": "6b7688bddd92fc1f",
+        "ui": "9ab1ee429e233a80",
         "path": "/Deviceinfo",
         "icon": "cog",
         "layout": "grid",
@@ -250,7 +170,7 @@
                 "cols": "12"
             }
         ],
-        "order": 4,
+        "order": 3,
         "className": "",
         "visible": "true",
         "disabled": "false"
@@ -301,7 +221,7 @@
         "id": "4b590614656223c2",
         "type": "ui-page",
         "name": "Security",
-        "ui": "6b7688bddd92fc1f",
+        "ui": "9ab1ee429e233a80",
         "path": "/security",
         "icon": "security",
         "layout": "grid",
@@ -328,7 +248,7 @@
                 "cols": "12"
             }
         ],
-        "order": 5,
+        "order": 4,
         "className": "",
         "visible": "true",
         "disabled": "false"
@@ -337,7 +257,7 @@
         "id": "d3e7dcd4b2447549",
         "type": "ui-page",
         "name": "Terminal",
-        "ui": "6b7688bddd92fc1f",
+        "ui": "9ab1ee429e233a80",
         "path": "/terminal",
         "icon": "console",
         "layout": "grid",
@@ -364,28 +284,17 @@
                 "cols": "12"
             }
         ],
-        "order": 6,
+        "order": 5,
         "className": "",
-        "visible": "true",
-        "disabled": "false"
-    },
-    {
-        "id": "81281cef191589bb",
-        "type": "ui-link",
-        "name": "Workspace",
-        "ui": "6b7688bddd92fc1f",
-        "path": "http://192.168.42.1:1880/",
-        "icon": "application-braces",
-        "order": 2,
-        "visible": "true",
-        "disabled": "false"
+        "visible": true,
+        "disabled": false
     },
     {
         "id": "7f84e6e11f01d5aa",
         "type": "ui-group",
         "name": "Security",
         "page": "4b590614656223c2",
-        "width": "6",
+        "width": "12",
         "height": "1",
         "order": 1,
         "showTitle": false,
@@ -399,6 +308,70 @@
         "type": "ui-group",
         "name": "Terminal",
         "page": "d3e7dcd4b2447549",
+        "width": "12",
+        "height": "1",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "eb4ea4ad231b87b6",
+        "type": "ui-page",
+        "name": "Preview",
+        "ui": "9ab1ee429e233a80",
+        "path": "/preview",
+        "icon": "home",
+        "layout": "grid",
+        "theme": "234998f63c55af55",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 1,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "853d93c4c0f19c38",
+        "type": "ui-group",
+        "name": "Power",
+        "page": "034b986fab50b7bb",
+        "width": "6",
+        "height": "1",
+        "order": 5,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "a2f6b486b575c329",
+        "type": "ui-group",
+        "name": "Sys Info",
+        "page": "034b986fab50b7bb",
         "width": "6",
         "height": "1",
         "order": 1,
@@ -409,149 +382,93 @@
         "groupType": "default"
     },
     {
-        "id": "336db381b9d5c7d9",
-        "type": "ui-theme",
-        "name": "Default Theme",
-        "colors": {
-            "surface": "#ffffff",
-            "primary": "#0094CE",
-            "bgPage": "#eeeeee",
-            "groupBg": "#ffffff",
-            "groupOutline": "#cccccc"
-        },
-        "sizes": {
-            "density": "default",
-            "pagePadding": "12px",
-            "groupGap": "12px",
-            "groupBorderRadius": "4px",
-            "widgetGap": "12px"
-        }
-    },
-    {
-        "id": "c74851666f9e9c6e",
-        "type": "camera",
-        "z": "36487a7f023a67a8",
-        "light": false,
-        "client": "453c8631c4e4b0d5",
-        "x": 231,
-        "y": 422,
-        "wires": [
-            [
-                "2696f0e9801987e4",
-                "06ec1439c52797c2",
-                "a2831dbef4c34207"
-            ]
-        ]
-    },
-    {
-        "id": "593b63a07f7f6068",
-        "type": "function",
-        "z": "36487a7f023a67a8",
-        "name": "Get base 64 img output",
-        "func": "// 获取输入消息的 payload\nvar imageData = msg.payload.data.image;\n// var imageBoxes = msg.payload.data.boxes;\n\n// 输出图像信息\nmsg.payload = {\n    image: imageData,\n    // boxes: imageBoxes\n    \n};\n\n// node.warn(msg.payload);\n\n// 返回新的消息\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 610,
-        "y": 220,
-        "wires": [
-            [
-                "e5a61b46eb1b6f86"
-            ]
-        ]
-    },
-    {
-        "id": "e5a61b46eb1b6f86",
-        "type": "ui-template",
-        "z": "36487a7f023a67a8",
-        "group": "53a493606ee6d430",
-        "page": "",
-        "ui": "",
-        "name": "Display image",
-        "order": 3,
-        "width": "0",
-        "height": "0",
-        "head": "",
-        "format": "<template>\n    <div class=\"overlay-container\">\n        <!-- Original Image -->\n        <img :src=\"'data:image/jpeg;base64,' + msg.payload.image\" \n             class=\"image\" \n             style=\"max-width: 100%; height: 640 px; object-fit: contain; position: absolute;\"/>\n    </div>\n</template>\n<style>\n    .overlay-container {\n        position: relative;\n        width: 100%;\n        height: 100%;\n    }\n    .image {\n        z-index: 1;\n        position: absolute;\n        top: 0;\n        left: 0;\n    }\n</style>\n",
-        "storeOutMessages": true,
-        "passthru": true,
-        "resendOnRefresh": true,
-        "templateScope": "local",
-        "className": "",
-        "x": 880,
-        "y": 220,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "acf09ef357b6a207",
-        "type": "ui-template",
-        "z": "36487a7f023a67a8",
-        "group": "53a493606ee6d430",
-        "page": "",
-        "ui": "",
-        "name": "draw out frame",
-        "order": 2,
-        "width": "0",
-        "height": "0",
-        "head": "",
-        "format": "<template>\n    <canvas id=\"objectCanvas\" width=\"640 px\" height=\"640 px\">\n    </canvas>\n</template>\n\n<script>\nexport default {\n    mounted() {\n        this.$nextTick(() => {\n            const canvas = document.getElementById('objectCanvas');\n            if (!canvas) {\n                console.error(\"Canvas element not found\");\n                return;\n            }\n            const ctx = canvas.getContext('2d');\n\n            // Define class colors\n            const classColors = {\n                person: \"#ff0000\", bicycle: \"#00ff00\", car: \"#0000ff\", motorcycle: \"#ffff00\", airplane: \"#ff00ff\",\n                bus: \"#00ffff\", train: \"#800000\", truck: \"#808000\", boat: \"#800080\", \"traffic light\": \"#008080\",\n                \"fire hydrant\": \"#c0c0c0\", \"stop sign\": \"#ffa500\", \"parking meter\": \"#a52a2a\", bench: \"#008000\",\n                bird: \"#000080\", cat: \"#ff6347\", dog: \"#4682b4\", horse: \"#daa520\", sheep: \"#5f9ea0\", cow: \"#9acd32\",\n                elephant: \"#6a5acd\", bear: \"#7fffd4\", zebra: \"#8b4513\", giraffe: \"#b8860b\", backpack: \"#556b2f\",\n                umbrella: \"#2e8b57\", handbag: \"#66cdaa\", tie: \"#4682b4\", suitcase: \"#8a2be2\", frisbee: \"#d2691e\",\n                skis: \"#dc143c\", snowboard: \"#00008b\", \"sports ball\": \"#006400\", kite: \"#8b008b\", \"baseball bat\": \"#9932cc\",\n                \"baseball glove\": \"#9400d3\", skateboard: \"#ff1493\", surfboard: \"#00ced1\", \"tennis racket\": \"#1e90ff\",\n                bottle: \"#ff4500\", \"wine glass\": \"#2f4f4f\", cup: \"#8b0000\", fork: \"#cd5c5c\", knife: \"#4b0082\",\n                spoon: \"#800080\", bowl: \"#e9967a\", banana: \"#f4a460\", apple: \"#ff6347\", sandwich: \"#8a2be2\",\n                orange: \"#ff4500\", broccoli: \"#32cd32\", carrot: \"#228b22\", \"hot dog\": \"#b22222\", pizza: \"#ff8c00\",\n                donut: \"#f08080\", cake: \"#ff69b4\", chair: \"#6b8e23\", couch: \"#3cb371\", \"potted plant\": \"#8fbc8f\",\n                bed: \"#00fa9a\", \"dining table\": \"#adff2f\", toilet: \"#7fff00\", tv: \"#7cfc00\", laptop: \"#00ff7f\",\n                mouse: \"#00bfff\", remote: \"#1e90ff\", keyboard: \"#4682b4\", \"cell phone\": \"#5f9ea0\", microwave: \"#6495ed\",\n                oven: \"#dc143c\", toaster: \"#ff7f50\", sink: \"#ff6347\", refrigerator: \"#ff4500\", book: \"#8b4513\",\n                clock: \"#a52a2a\", vase: \"#ff6347\", scissors: \"#9932cc\", \"teddy bear\": \"#8a2be2\", \"hair drier\": \"#9400d3\",\n                toothbrush: \"#ff1493\"\n            };\n\n            const classNames = Object.keys(classColors);\n\n            this.$watch('msg.payload', (data) => {\n                if (data && data.boxes) {\n                    ctx.clearRect(0, 0, canvas.width, canvas.height);\n\n                    const scaleX = canvas.width / data.originalWidth;\n                    const scaleY = canvas.height / data.originalHeight;\n\n                    data.boxes.forEach((box) => {\n                        const [cx, cy, width, height, confidence, classId] = box;\n                        const className = classNames[classId] || \"unknown\";\n                        const color = classColors[className] || \"#ffffff\"; // Default to white if class not found\n\n                        // Calculate top-left corner and scale\n                        const x = (cx - width / 2) * scaleX;\n                        const y = (cy - height / 2) * scaleY;\n                        const w = width * scaleX;\n                        const h = height * scaleY;\n\n                        // Draw bounding box\n                        ctx.strokeStyle = color;\n                        ctx.lineWidth = 2;\n                        ctx.strokeRect(x, y, w, h);\n\n                        // Draw label\n                        ctx.fillStyle = color;\n                        ctx.font = '14px Arial';\n                        const label = `${className} (${confidence.toFixed(2)})`;\n                        ctx.fillText(label, x + 5, y - 5);\n                    });\n                }\n            });\n        });\n    }\n};\n</script>\n\n<style>\ncanvas {\n    z-index: 2;\n    position: absolute;\n    top: 0;\n    left: 0;\n    pointer-events: none;\n    width: 640;\n    height: 640;\n}\n</style>\n",
-        "storeOutMessages": true,
-        "passthru": true,
-        "resendOnRefresh": true,
-        "templateScope": "local",
-        "className": "",
-        "x": 860,
-        "y": 480,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "d2d741215066436a",
-        "type": "function",
-        "z": "36487a7f023a67a8",
-        "name": "Get detection box info",
-        "func": "// 获取输入消息的 payload\nvar imageBoxes = msg.payload.data.boxes;\n// var boxNum = msg.payload.data.boxes.length();\n\n\n// 输出图像信息\nmsg.payload = {\n    boxes: imageBoxes,\n    originalWidth:640,\n    originalHeight:480\n};\n\n// node.warn(msg.payload);\n\n// 返回新的消息\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 620,
-        "y": 480,
-        "wires": [
-            [
-                "acf09ef357b6a207"
-            ]
-        ]
-    },
-    {
-        "id": "263684946e55f174",
-        "type": "ui-text",
-        "z": "36487a7f023a67a8",
-        "group": "d9c66abde84c734d",
+        "id": "53a493606ee6d430",
+        "type": "ui-group",
+        "name": "Preview",
+        "page": "eb4ea4ad231b87b6",
+        "width": "6",
+        "height": "1",
         "order": 1,
-        "width": 0,
-        "height": 0,
-        "name": "",
-        "label": "Current Model is: Yolo 11n",
-        "format": "{{msg.payload}}",
-        "layout": "row-spread",
-        "style": false,
-        "font": "",
-        "fontSize": 16,
-        "color": "#717171",
-        "wrapText": false,
+        "showTitle": true,
         "className": "",
-        "x": 1260,
-        "y": 380,
-        "wires": []
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "d9c66abde84c734d",
+        "type": "ui-group",
+        "name": "Model Selection",
+        "page": "eb4ea4ad231b87b6",
+        "width": "6",
+        "height": "1",
+        "order": 2,
+        "showTitle": false,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "0403368ef716b66e",
+        "type": "ui-spacer",
+        "group": "d9c66abde84c734d",
+        "name": "spacer",
+        "tooltip": "",
+        "order": 5,
+        "width": "2",
+        "height": "1",
+        "className": ""
+    },
+    {
+        "id": "f55b8c3e9a243e2d",
+        "type": "ui-page",
+        "name": "DisplayNone",
+        "ui": "9ab1ee429e233a80",
+        "path": "/page6",
+        "icon": "home",
+        "layout": "grid",
+        "theme": "866ca6b212de07b4",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 6,
+        "className": "",
+        "visible": "false",
+        "disabled": "false"
+    },
+    {
+        "id": "56e94a4a52495b4e",
+        "type": "ui-group",
+        "name": "Hidden",
+        "page": "f55b8c3e9a243e2d",
+        "width": 6,
+        "height": 1,
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": false,
+        "disabled": "false",
+        "groupType": "default"
     },
     {
         "id": "5ded44dc7402ea98",
@@ -575,62 +492,33 @@
                 "type": "str"
             },
             {
-                "label": "Gesture Recognition",
+                "label": "Counting Cat",
                 "value": "1",
                 "type": "str"
             },
             {
-                "label": "More",
+                "label": "Counting Dog",
                 "value": "2",
+                "type": "str"
+            },
+            {
+                "label": "Counting Bottle",
+                "value": "3",
                 "type": "str"
             }
         ],
         "payload": "",
         "topic": "topic",
-        "topicType": "msg",
+        "topicType": "flow",
         "className": "",
         "typeIsComboBox": true,
-        "x": 1220,
-        "y": 460,
+        "msgTrigger": "onChange",
+        "x": 960,
+        "y": 420,
         "wires": [
-            []
-        ]
-    },
-    {
-        "id": "378623334dee45b4",
-        "type": "ui-button",
-        "z": "36487a7f023a67a8",
-        "group": "d9c66abde84c734d",
-        "name": "",
-        "label": "Apply",
-        "order": 4,
-        "width": 0,
-        "height": 0,
-        "emulateClick": false,
-        "tooltip": "",
-        "color": "",
-        "bgcolor": "",
-        "className": "",
-        "icon": "",
-        "iconPosition": "left",
-        "payload": "",
-        "payloadType": "str",
-        "topic": "topic",
-        "topicType": "msg",
-        "buttonColor": "",
-        "textColor": "",
-        "iconColor": "",
-        "enableClick": true,
-        "enablePointerdown": false,
-        "pointerdownPayload": "",
-        "pointerdownPayloadType": "str",
-        "enablePointerup": false,
-        "pointerupPayload": "",
-        "pointerupPayloadType": "str",
-        "x": 1190,
-        "y": 500,
-        "wires": [
-            []
+            [
+                "dfd1d85ecbef2fbc"
+            ]
         ]
     },
     {
@@ -651,8 +539,8 @@
         "color": "#717171",
         "wrapText": false,
         "className": "",
-        "x": 1220,
-        "y": 300,
+        "x": 960,
+        "y": 360,
         "wires": []
     },
     {
@@ -665,34 +553,10 @@
         "session": "live",
         "username": "admin",
         "password": "admin",
-        "client": "453c8631c4e4b0d5",
-        "x": 390,
-        "y": 500,
+        "client": "dec794eaeb95589c",
+        "x": 770,
+        "y": 800,
         "wires": []
-    },
-    {
-        "id": "06ec1439c52797c2",
-        "type": "model",
-        "z": "36487a7f023a67a8",
-        "name": "",
-        "uri": "",
-        "model": "yolo11n_cv181x_int8.cvimodel",
-        "tscore": 0.45,
-        "tiou": 0.25,
-        "debug": true,
-        "trace": false,
-        "counting": false,
-        "classes": "person,bicycle,car,motorcycle,airplane,bus,train,truck,boat,traffic light,fire hydrant,stop sign,parking meter,bench,bird,cat,dog,horse,sheep,cow,elephant,bear,zebra,giraffe,backpack,umbrella,handbag,tie,suitcase,frisbee,skis,snowboard,sports ball,kite,baseball bat,baseball glove,skateboard,surfboard,tennis racket,bottle,wine glass,cup,fork,knife,spoon,bowl,banana,apple,sandwich,orange,broccoli,carrot,hot dog,pizza,donut,cake,chair,couch,potted plant,bed,dining table,toilet,tv,laptop,mouse,remote,keyboard,cell phone,microwave,oven,toaster,sink,refrigerator,book,clock,vase,scissors,teddy bear,hair drier,toothbrush",
-        "splitter": "0,0,0,0",
-        "client": "453c8631c4e4b0d5",
-        "x": 390,
-        "y": 360,
-        "wires": [
-            [
-                "593b63a07f7f6068",
-                "d2d741215066436a"
-            ]
-        ]
     },
     {
         "id": "713e323f54f5dfd2",
@@ -720,10 +584,12 @@
         "color": "",
         "colorTrack": "",
         "colorThumb": "",
-        "x": 1210,
-        "y": 560,
+        "x": 290,
+        "y": 520,
         "wires": [
-            []
+            [
+                "f68905655374f16f"
+            ]
         ]
     },
     {
@@ -752,52 +618,12 @@
         "color": "",
         "colorTrack": "",
         "colorThumb": "",
-        "x": 1190,
-        "y": 620,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "a2831dbef4c34207",
-        "type": "save",
-        "z": "36487a7f023a67a8",
-        "name": "save",
-        "slice": "300",
-        "storage": "local",
-        "duration": "1",
-        "start": true,
-        "client": "453c8631c4e4b0d5",
-        "x": 370,
-        "y": 700,
-        "wires": []
-    },
-    {
-        "id": "1649ae1e846acd4a",
-        "type": "inject",
-        "z": "36487a7f023a67a8",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 700,
+        "showTextField": false,
+        "x": 310,
+        "y": 440,
         "wires": [
             [
-                "a2831dbef4c34207"
+                "0d8f58533bbacf98"
             ]
         ]
     },
@@ -819,9 +645,320 @@
         "color": "#717171",
         "wrapText": false,
         "className": "",
-        "x": 1270,
-        "y": 220,
+        "x": 950,
+        "y": 100,
         "wires": []
+    },
+    {
+        "id": "67ce14ae1f5d1812",
+        "type": "model",
+        "z": "36487a7f023a67a8",
+        "name": "",
+        "uri": "/usr/share/supervisor/models/yolo11n_detection_cv181x_int8.cvimodel",
+        "model": "yolo11n_cv181x_int8.cvimodel",
+        "tscore": "0.42",
+        "tiou": "0.31",
+        "debug": true,
+        "trace": false,
+        "counting": false,
+        "classes": "person,bicycle,car,motorcycle,airplane,bus,train,truck,boat,traffic light,fire hydrant,stop sign,parking meter,bench,bird,cat,dog,horse,sheep,cow,elephant,bear,zebra,giraffe,backpack,umbrella,handbag,tie,suitcase,frisbee,skis,snowboard,sports ball,kite,baseball bat,baseball glove,skateboard,surfboard,tennis racket,bottle,wine glass,cup,fork,knife,spoon,bowl,banana,apple,sandwich,orange,broccoli,carrot,hot dog,pizza,donut,cake,chair,couch,potted plant,bed,dining table,toilet,tv,laptop,mouse,remote,keyboard,cell phone,microwave,oven,toaster,sink,refrigerator,book,clock,vase,scissors,teddy bear,hair drier,toothbrush",
+        "splitter": "0,0,0,0",
+        "client": "dec794eaeb95589c",
+        "x": 770,
+        "y": 620,
+        "wires": [
+            [
+                "cf210a8ab9eda925",
+                "7e0283afd942c6f5"
+            ]
+        ]
+    },
+    {
+        "id": "a124b4b176d13f8f",
+        "type": "camera",
+        "z": "36487a7f023a67a8",
+        "option": 0,
+        "client": "dec794eaeb95589c",
+        "x": 590,
+        "y": 720,
+        "wires": [
+            [
+                "67ce14ae1f5d1812",
+                "2696f0e9801987e4"
+            ]
+        ]
+    },
+    {
+        "id": "cf210a8ab9eda925",
+        "type": "ui-template",
+        "z": "36487a7f023a67a8",
+        "group": "53a493606ee6d430",
+        "page": "",
+        "ui": "",
+        "name": "Preview",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "head": "",
+        "format": "<template>\n  <div style=\"width: 100%; aspect-ratio: 1\">\n    <canvas ref=\"imageCanvas\" style=\"width: 100%; height: 100%;\"></canvas>\n  </div>\n</template>\n\n<script>\n  export default {\n    data() {\n      return {\n        ctx: null,\n        imageObj: null,\n        widthRatio: 1,\n        heightRatio: 1,\n        COLORS: [\n          '#FF0000', // Red\n          '#FF4500', // OrangeRed\n          '#FF6347', // Tomato\n          '#FF8C00', // DarkOrange\n          '#FFA500', // Orange\n          '#FFD700', // Gold\n          '#32CD32', // LimeGreen\n          '#006400', // DarkGreen\n          '#4169E1', // RoyalBlue\n          '#0000FF', // Blue\n          '#1E90FF', // DodgerBlue\n          '#00FFFF', // Aqua\n          '#00CED1', // DarkTurquoise\n          '#20B2AA', // LightSeaGreen\n          '#FF1493', // DeepPink\n          '#FF69B4', // HotPink\n          '#800080', // Purple\n          '#8A2BE2', // BlueViolet\n          '#9400D3', // DarkViolet\n          '#9932CC', // DarkOrchid\n          '#BA55D3', // MediumOrchid\n          '#FF00FF', // Magenta\n          '#C71585', // MediumVioletRed\n          '#D2691E', // Chocolate\n          '#A52A2A', // Brown\n          '#B22222', // FireBrick\n          '#8B4513', // SaddleBrown\n          '#DEB887', // Burlywood\n          '#CD853F', // Peru\n          '#F4A460', // SandyBrown\n          '#D2B48C', // Tan\n          '#F5DEB3', // Wheat\n          '#BC8F8F', // RosyBrown\n          '#C0C0C0', // Silver\n          '#808080', // Gray\n          '#696969', // DimGray\n          '#A9A9A9', // DarkGray\n          '#BDB76B', // DarkKhaki\n          '#F5F5DC', // Beige\n          '#FFFACD', // LemonChiffon\n          '#FFE4B5', // Moccasin\n          '#FFDAB9', // PeachPuff\n          '#F0E68C', // Khaki\n          '#EEE8AA', // PaleGoldenrod\n        ],\n      };\n    },\n    mounted() {\n      \n      // 获取canvas上下文\n      const canvas = this.$refs.imageCanvas;\n      this.ctx = canvas.getContext('2d');\n      const { width, height } = canvas.getBoundingClientRect();\n      this.canvasW = width;\n      this.canvasH = height;\n      // 创建Image对象用于加载\n      this.imageObj = new Image();\n      this.imageObj.onload = () => {\n        const {width: imgW, height: imgH} = this.imageObj\n        this.widthRatio = width / imgW;\n        this.heightRatio = height / imgH;\n        this.ctx.clearRect(0, 0, width, height);\n        canvas.width = width;\n        canvas.height = height;\n        this.ctx.drawImage(this.imageObj, 0, 0, width, height);\n        const data = this.msg?.payload?.data ?? {};\n        if (Array.isArray(data.boxes)) {\n          // 绘制边界框\n          this.handleBoxes(data);\n        }\n      };\n    },\n    methods: {\n      handleBoxes(data) {\n        data.boxes.forEach((box, i) => {\n          if (box?.length !== 6) {\n            return;\n          }\n          let [x, y, w, h, score, tar] = box;\n          w = w*this.widthRatio;\n          h = h*this.heightRatio;\n          x = x*this.widthRatio;\n          y = y*this.heightRatio;\n          const color = this.COLORS[tar];\n          const tarStr = data.labels?.[i] ?? `NA-${tar}`;\n          // 保存当前绘图状态\n          this.ctx.save();\n          // 绘制边界框\n          this.ctx.strokeStyle = color;\n          this.ctx.lineWidth = 2;\n          this.ctx.strokeRect(x - w / 2, y - h / 2, w, h);\n\n          // 绘制文本背景框\n          this.ctx.fillStyle = color;\n          this.ctx.fillRect(x - w / 2, y - h / 2 - 14, w, 16);\n\n          // 绘制文本\n          this.ctx.fillStyle = 'white';\n          this.ctx.font = '14px Arial';\n          const text = data?.tracks\n            ? `#${data.tracks[i]}: ${tarStr}(${score})`\n            : `${tarStr}(${score})`;\n\n          // 文本位置与SVG保持一致\n          this.ctx.fillText(text, x - w / 2 + 5, y - h / 2 - 2);\n\n          // 恢复绘图状态\n          this.ctx.restore();\n        });\n      },\n    },\n    watch: {\n      msg: function () {\n        const data = this.msg?.payload?.data ?? {};\n        const image = data.image;\n        if (image) {\n          // 更新canvas内容\n          this.imageObj.src = `data:image/jpeg;base64,${image}`;\n        }\n      },\n    },\n  };\n</script>\n",
+        "storeOutMessages": true,
+        "passthru": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 940,
+        "y": 620,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "b3f81dfa30e71a79",
+        "type": "light",
+        "z": "36487a7f023a67a8",
+        "light": false,
+        "x": 630,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "65dddcde67a4cfa8",
+        "type": "switch",
+        "z": "36487a7f023a67a8",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "on",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "off",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 450,
+        "y": 280,
+        "wires": [
+            [
+                "b3f81dfa30e71a79"
+            ],
+            [
+                "b3f81dfa30e71a79"
+            ]
+        ]
+    },
+    {
+        "id": "029c6b76271b61f3",
+        "type": "inject",
+        "z": "36487a7f023a67a8",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "on",
+        "payloadType": "str",
+        "x": 290,
+        "y": 220,
+        "wires": [
+            [
+                "65dddcde67a4cfa8"
+            ]
+        ]
+    },
+    {
+        "id": "7011873c74b0fcd6",
+        "type": "inject",
+        "z": "36487a7f023a67a8",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "off",
+        "payloadType": "str",
+        "x": 290,
+        "y": 300,
+        "wires": [
+            [
+                "65dddcde67a4cfa8"
+            ]
+        ]
+    },
+    {
+        "id": "f68905655374f16f",
+        "type": "function",
+        "z": "36487a7f023a67a8",
+        "name": "function 3",
+        "func": "const tscore = Number((Number(msg.payload)/100).toFixed(2))\nmsg.payload = {tscore}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 520,
+        "wires": [
+            [
+                "67ce14ae1f5d1812"
+            ]
+        ]
+    },
+    {
+        "id": "0d8f58533bbacf98",
+        "type": "function",
+        "z": "36487a7f023a67a8",
+        "name": "function 4",
+        "func": "const tiou = Number((Number(msg.payload)/100).toFixed(2))\nmsg.payload = {tiou}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 440,
+        "wires": [
+            [
+                "67ce14ae1f5d1812"
+            ]
+        ]
+    },
+    {
+        "id": "dd593dc14ed6a1d4",
+        "type": "ui-text",
+        "z": "36487a7f023a67a8",
+        "group": "d9c66abde84c734d",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "name": "Result",
+        "label": "",
+        "format": "{{msg.payload}}",
+        "layout": "row-left",
+        "style": true,
+        "font": "Courier,monospace",
+        "fontSize": 16,
+        "color": "#717171",
+        "wrapText": false,
+        "className": "",
+        "x": 1170,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "dfd1d85ecbef2fbc",
+        "type": "function",
+        "z": "36487a7f023a67a8",
+        "name": "Select Handle",
+        "func": "flow.set(\"option_model\", msg.payload)\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1200,
+        "y": 420,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "7e0283afd942c6f5",
+        "type": "function",
+        "z": "36487a7f023a67a8",
+        "name": "Model Info Handle",
+        "func": "const selectModel = flow.get(\"option_model\")\nlet currentModel = \"Current \"\nlet object = ''\nswitch(selectModel) {\n    case \"0\":\n        currentModel += \"People\";\n        object = 'person'\n        break;\n    case \"1\":\n        currentModel += \"Cat\";\n        object = 'cat'\n        break;\n    case \"2\":\n        currentModel += \"Dog\";\n        object = 'dog'\n        break;\n    case \"2\":\n        currentModel += \"Bottle\";\n        object = 'bottle'\n        break;\n    default:\n    currentModel = null\n}\nif (currentModel) {\n    const labels = msg.payload?.data?.labels ?? []\n    if (!Array.isArray(labels)) {\n        return { payload: '' }\n    }\n    const num = labels.filter(label => String(label).toLowerCase() === object).length\n    currentModel += ` number: ${num}`\n    return {payload: currentModel}\n} else {\n    return {payload: ''}\n}",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 970,
+        "y": 480,
+        "wires": [
+            [
+                "dd593dc14ed6a1d4"
+            ]
+        ]
+    },
+    {
+        "id": "263684946e55f174",
+        "type": "ui-text",
+        "z": "36487a7f023a67a8",
+        "group": "d9c66abde84c734d",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Current Model is: ",
+        "format": "{{msg.payload}}",
+        "layout": "row-left",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#717171",
+        "wrapText": false,
+        "className": "",
+        "x": 1210,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "bea40eca88e478fe",
+        "type": "ui-template",
+        "z": "36487a7f023a67a8",
+        "group": "56e94a4a52495b4e",
+        "page": "",
+        "ui": "",
+        "name": "Current Model",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "head": "",
+        "format": "<template>\n    <div style=\"display: none\"></div>\n</template>\n\n<script>\n    export default {\n        data() {\n            // define variables available component-wide\n            // (in <template> and component functions)\n            return {\n                name: 0\n            }\n        },\n        watch: {\n            // watch for any changes of \"count\"\n            name: function () {\n                this.send({payload: this.name})\n            }\n        },\n        async mounted() {\n            const response = await fetch(`http://192.168.42.1/api/deviceMgr/getModelInfo`)\n            // const response = await fetch(`http://${window.location.host}/api/deviceMgr/getModelInfo`)\n            const data = await response.json()\n            const modelInfo = JSON.parse(data.data.model_info)\n            this.name = modelInfo.model_name\n        },\n    }\n</script>\n<style>\n</style>",
+        "storeOutMessages": true,
+        "passthru": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 960,
+        "y": 300,
+        "wires": [
+            [
+                "263684946e55f174"
+            ]
+        ]
     },
     {
         "id": "ed27cae4.70b728",
@@ -1310,7 +1447,7 @@
         "timer": "",
         "winHide": false,
         "name": "Shutdown",
-        "x": 300,
+        "x": 310,
         "y": 1200,
         "wires": [
             [],
@@ -1519,7 +1656,7 @@
         "type": "function",
         "z": "772e6979.67cd08",
         "name": "function 2",
-        "func": "// Input payload as a string\nlet data = msg.payload;\n\n// Split the input into lines\nlet lines = data.split('\\n');\n\n// Initialize variables\nlet totalSize = 0;       // Total space size in GB\nlet totalUsed = 0;       // Used space in GB\nlet totalAvailable = 0;   // Available space in GB\n\n// Regular expression to extract size, used, and available space from each line\nlet regex = /\\/dev\\/\\S+\\s+([\\d.]+)G\\s+([\\d.]+)G\\s+([\\d.]+)G\\s+\\d+%/;\n\n// Iterate through each line and sum the values\nfor (let line of lines) {\n    let match = line.match(regex);\n    if (match) {\n        // Extract the values in GB\n        totalSize += parseFloat(match[1]);       // Total Size\n        totalUsed += parseFloat(match[2]);        // Used\n        totalAvailable += parseFloat(match[3]);   // Available\n    }\n}\n\n// Format the results to two decimal places\ntotalSize = totalSize.toFixed(2);         \ntotalUsed = totalUsed.toFixed(2);       \ntotalAvailable = totalAvailable.toFixed(2);   \n\n// Calculate used and free percentages\nlet usedPercentage = ((totalUsed / totalSize) * 100).toFixed(2);\nlet freePercentage = ((totalAvailable / totalSize) * 100).toFixed(2);\n\n// Create different messages for each output\nlet output1 = { payload: totalSize };           // Total size in GB\nlet output2 = { payload: totalUsed };            // Used space in GB\nlet output3 = { payload: totalAvailable };       // Available space in GB\nlet output4 = { payload: usedPercentage };       // Used percentage\nlet output5 = { payload: freePercentage };       // Free percentage\n\n// Return all five outputs as an array\nreturn [output1, output2, output3, output4, output5];\n",
+        "func": "// Input payload as a string\nlet data = msg.payload;\n\n// Split the input into lines\nlet lines = data.split('\\n');\n\n// Initialize variables\nlet totalSize = 0;       // Total space size in GB\nlet totalUsed = 0;       // Used space in GB\nlet totalAvailable = 0;   // Available space in GB\n\n// Updated regex to match both MB and GB, and all filesystem types\nlet regex = /(\\S+)\\s+([\\d.]+)(M|G)\\s+([\\d.]+)(M|G)\\s+([\\d.]+)(M|G)\\s+(\\d+)%/;\n\n// Function to convert MB to GB\nfunction mbToGb(value, unit) {\n    return unit === 'M' ? value / 1024 : value;\n}\n\n// Iterate through each line and sum the values\nfor (let line of lines) {\n    let match = line.match(regex);\n    if (match) {\n        // Extract values and units\n        let size = parseFloat(match[2]);\n        let sizeUnit = match[3];\n        let used = parseFloat(match[4]);\n        let usedUnit = match[5];\n        let available = parseFloat(match[6]);\n        let availUnit = match[7];\n        \n        // Convert all values to GB\n        totalSize += mbToGb(size, sizeUnit);\n        totalUsed += mbToGb(used, usedUnit);\n        totalAvailable += mbToGb(available, availUnit);\n    }\n}\n\n// Format the results to two decimal places\ntotalSize = totalSize.toFixed(2);         \ntotalUsed = totalUsed.toFixed(2);       \ntotalAvailable = totalAvailable.toFixed(2);   \n\n// Calculate used and free percentages\nlet usedPercentage = ((totalUsed / totalSize) * 100).toFixed(2);\nlet freePercentage = ((totalAvailable / totalSize) * 100).toFixed(2);\n\n// Create different messages for each output\nlet output1 = { payload: totalSize };           // Total size in GB\nlet output2 = { payload: totalUsed };            // Used space in GB\nlet output3 = { payload: totalAvailable };       // Available space in GB\nlet output4 = { payload: usedPercentage };       // Used percentage\nlet output5 = { payload: freePercentage };       // Free percentage\n\n// Return all five outputs as an array\nreturn [output1, output2, output3, output4, output5];\n",
         "outputs": 5,
         "timeout": 0,
         "noerr": 0,
@@ -1778,10 +1915,10 @@
         "ui": "",
         "name": "Security",
         "order": 1,
-        "width": "6",
-        "height": "6",
+        "width": "0",
+        "height": "0",
         "head": "",
-        "format": "<template>\n  <div>\n    <div id=\"iframe_block\">\n      <div v-if=\"isScaning && !iframeUrl\" class=\"skeleton_box\"></div>\n      <iframe id=\"iframe_recamera\" v-else-if=\"iframeUrl\" :src=\"iframeUrl\"></iframe>\n      <div v-else>\n        No website found, please check your network connection and\n        <button @click=\"function(){location.reload()}\">Refresh</button>\n      </div>\n    </div>\n  </div>\n</template>\n\n<script>\n  export default {\n    data() {\n      console.log(12312);\n      function getDeviceType() {\n        const userAgent = navigator.userAgent.toLowerCase();\n        return;\n        /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(\n          userAgent\n        )\n          ? \"PC\"\n          : \"mobile\";\n      }\n      return {\n        ipByDevice: \"\",\n        enabledIpList: [],\n        checkAllIps: true,\n        isScaning: false,\n        scanningTimeout: 3000, // ms\n        deviceType: getDeviceType()\n      };\n    },\n    computed: {\n      iframeUrl: function () {\n        if (this.isScaning) {\n          return;\n        }\n        const ipByDevice = this.ipByDevice;\n        const ipList = this.enabledIpList;\n\n        // 无任何可用\n        if (!(ipList.length > 0)) {\n          return ipByDevice ? this.getUrl(ipByDevice) : null;\n        }\n\n        if (ipByDevice && ipList.includes(ipByDevice)) {\n          return this.getUrl(ipByDevice);\n        }\n\n        return this.getUrl(ipList[0]);\n      }\n    },\n    watch: {\n      msg: function (msg, prevMsg) {\n        try {\n          //debounce 防抖\n          if (\n            prevMsg &&\n            prevMsg.interfaces &&\n            JSON.stringify(prevMsg.interfaces) ===\n              JSON.stringify(msg.interfaces)\n          ) {\n            console.log('🙈🙈 Same msg: Skip....')\n            return;\n          }\n        } catch (e) {\n          console.log(e);\n        }\n        this.scanning(msg);\n      }\n    },\n    methods: {\n      getUrl(ipAddress) {\n        return `http://${ipAddress}/#/security`;\n      },\n      scanning(msg) {\n        if (!(msg && msg.interfaces)) {\n          return;\n        }\n        this.ipByDevice = this.getIpByDevice(msg.interfaces);\n        this.scaningAddreses(msg.interfaces);\n      },\n      getIpByDevice: function (addresses) {\n        const ipAddress =\n          (this.deviceType === \"PC\"\n            ? addresses[\"usb\"] || addresses[\"wlan\"]\n            : addresses[\"wlan\"] || addresses[\"usb\"]) ||\n          addresses[\"eth\"] ||\n          addresses[\"en\"];\n        if (!ipAddress) {\n          return null;\n        }\n        return ipAddress;\n      },\n\n      scaningAddreses: function (addresses) {\n        if (!addresses || this.isScaning) {\n          return;\n        }\n        console.log(\"scanning addresses\");\n        const self = this;\n        let results = [];\n        var keys = Object.keys(addresses);\n        const len = keys.length;\n        self.isScaning = true;\n\n        let fn = (i) => {\n          if (\n            i >= len ||\n            (!self.checkAllIps && self.enabledIpList.length > 0)\n          ) {\n            self.isScaning = false;\n            self.enabledIpList = results;\n            console.log(\n              `%cScaning Finished ✅\\n✨Enabled Addresses: ${self.enabledIpList.join(\n                \",\"\n              )}`,\n              \"color:#87ba32\"\n            );\n\n            fn = () => {};\n            return;\n          }\n          let src = self.getUrl(addresses[keys[i]]);\n          const xhr = new XMLHttpRequest();\n          xhr.timeout = self.scanningTimeout;\n\n          const errorFn = () => {\n            fn(++i);\n          };\n\n          xhr.onload = function () {\n            if (xhr.status >= 200 && xhr.status < 300) {\n              results.push(addresses[keys[i]]);\n              console.log(\n                `%c✨(${i + 1}/${len})ping test Success: ${src}`,\n                \"color: #87ba32;\"\n              );\n              fn(++i);\n              return;\n            }\n            errorFn();\n          };\n\n          xhr.onerror = function () {\n            errorFn();\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test error: ${src}`,\n              \"color:red\"\n            );\n          };\n          // 定义超时回调\n          xhr.ontimeout = function () {\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test timeout: ${src}`,\n              \"color:red;\"\n            );\n            errorFn();\n          };\n\n          console.log(\n            `%c🚥(${i + 1}/${len}) start ping test: ${src}`,\n            \"color: #d8eeff;\"\n          );\n          xhr.open(\"GET\", src, true);\n          // 发送请求\n          xhr.send();\n        };\n        fn(0);\n      },\n\n      // 获取所有可用IP\n      getIpAddresses: function (interfaces) {\n        const reg = /^(wlan|usb|eth|en)/;\n        const addresses = {};\n        for (let iface in interfaces) {\n          for (let i = 0; i < interfaces[iface].length; i++) {\n            let address = interfaces[iface][i];\n            /* Ipv4 & 排除内部接口 & 匹配当前优先级的网口名称 */\n            var matches = iface.match(reg);\n            if (\n              matches &&\n              matches[1] &&\n              address.family === \"IPv4\" &&\n              !address.internal\n            ) {\n              addresses[matches[1]] = address.address;\n            }\n          }\n        }\n        return addresses;\n      }\n    },\n    mounted() {\n      this.scanning(this.msg);\n    }\n  };\n</script>\n<style>\n  body,\n  html {\n    overflow: hidden;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n  }\n\n  #iframe_block {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    min-height: 500px;\n    z-index: 10000;\n    background-color: #eee;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n  }\n\n  #iframe_block iframe {\n    width: 100%;\n    height: 100%;\n    border: 0;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n  }\n\n  .skeleton_box {\n    width: 50%;\n    height: 50%;\n    background: #e0e0e0;\n    border-radius: 20px;\n    position: relative;\n    overflow: hidden;\n  }\n\n  .skeleton_box::after {\n    content: \"\";\n    position: absolute;\n    top: 0;\n    left: -100%;\n    width: 100%;\n    height: 100%;\n    background: linear-gradient(90deg,\n        rgba(255, 255, 255, 0) 0%,\n        rgba(255, 255, 255, 0.5) 50%,\n        rgba(255, 255, 255, 0) 100%);\n    animation: shimmer 1.5s infinite;\n  }\n\n  @keyframes shimmer {\n    0% {\n      left: -100%;\n    }\n\n    100% {\n      left: 100%;\n    }\n  }\n</style>",
+        "format": "<template>\n  <div>\n    <div id=\"iframe_block\">\n      <!-- <div v-if=\"isScaning && !iframeUrl\" class=\"skeleton_box\"></div> -->\n      <iframe id=\"iframe_recamera\"  :src=\"iframeUrl\"></iframe>\n      <!-- <div v-else>\n        No website found, please check your network connection and\n        <button @click=\"function(){location.reload()}\">Refresh</button>\n      </div> -->\n    </div>\n  </div>\n</template>\n\n<script>\n  export default {\n    data() {\n      console.log(12312);\n      function getDeviceType() {\n        const userAgent = navigator.userAgent.toLowerCase();\n        return;\n        /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(\n          userAgent\n        )\n          ? \"PC\"\n          : \"mobile\";\n      }\n      return {\n        ipByDevice: \"\",\n        enabledIpList: [],\n        checkAllIps: true,\n        isScaning: false,\n        scanningTimeout: 3000, // ms\n        deviceType: getDeviceType(),\n        iframeUrl: `http://${window.location.hostname}/#/security?disablelayout=1`\n      };\n    },\n    computed: {\n      // iframeUrl: function () {\n      //   if (this.isScaning) {\n      //     return;\n      //   }\n      //   const ipByDevice = this.ipByDevice;\n      //   const ipList = this.enabledIpList;\n\n      //   // 无任何可用\n      //   if (!(ipList.length > 0)) {\n      //     return ipByDevice ? this.getUrl(ipByDevice) : null;\n      //   }\n\n      //   if (ipByDevice && ipList.includes(ipByDevice)) {\n      //     return this.getUrl(ipByDevice);\n      //   }\n\n      //   return this.getUrl(ipList[0]);\n      // }\n    },\n    watch: {\n      msg: function (msg, prevMsg) {\n        try {\n          //debounce 防抖\n          if (\n            prevMsg &&\n            prevMsg.interfaces &&\n            JSON.stringify(prevMsg.interfaces) ===\n              JSON.stringify(msg.interfaces)\n          ) {\n            console.log('🙈🙈 Same msg: Skip....')\n            return;\n          }\n        } catch (e) {\n          console.log(e);\n        }\n        this.scanning(msg);\n      }\n    },\n    methods: {\n      getUrl(ipAddress) {\n        return `http://${window.location.hostname}/#/security?disablelayout=1`;\n      },\n      scanning(msg) {\n        if (!(msg && msg.interfaces)) {\n          return;\n        }\n        this.ipByDevice = this.getIpByDevice(msg.interfaces);\n        this.scaningAddreses(msg.interfaces);\n      },\n      getIpByDevice: function (addresses) {\n        const ipAddress =\n          (this.deviceType === \"PC\"\n            ? addresses[\"usb\"] || addresses[\"wlan\"]\n            : addresses[\"wlan\"] || addresses[\"usb\"]) ||\n          addresses[\"eth\"] ||\n          addresses[\"en\"];\n        if (!ipAddress) {\n          return null;\n        }\n        return ipAddress;\n      },\n\n      scaningAddreses: function (addresses) {\n        if (!addresses || this.isScaning) {\n          return;\n        }\n        console.log(\"scanning addresses\");\n        const self = this;\n        let results = [];\n        var keys = Object.keys(addresses);\n        const len = keys.length;\n        self.isScaning = true;\n\n        let fn = (i) => {\n          if (\n            i >= len ||\n            (!self.checkAllIps && self.enabledIpList.length > 0)\n          ) {\n            self.isScaning = false;\n            self.enabledIpList = results;\n            console.log(\n              `%cScaning Finished ✅\\n✨Enabled Addresses: ${self.enabledIpList.join(\n                \",\"\n              )}`,\n              \"color:#87ba32\"\n            );\n\n            fn = () => {};\n            return;\n          }\n          let src = self.getUrl(addresses[keys[i]]);\n          const xhr = new XMLHttpRequest();\n          xhr.timeout = self.scanningTimeout;\n\n          const errorFn = () => {\n            fn(++i);\n          };\n\n          xhr.onload = function () {\n            if (xhr.status >= 200 && xhr.status < 300) {\n              results.push(addresses[keys[i]]);\n              console.log(\n                `%c✨(${i + 1}/${len})ping test Success: ${src}`,\n                \"color: #87ba32;\"\n              );\n              fn(++i);\n              return;\n            }\n            errorFn();\n          };\n\n          xhr.onerror = function () {\n            errorFn();\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test error: ${src}`,\n              \"color:red\"\n            );\n          };\n          // 定义超时回调\n          xhr.ontimeout = function () {\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test timeout: ${src}`,\n              \"color:red;\"\n            );\n            errorFn();\n          };\n\n          console.log(\n            `%c🚥(${i + 1}/${len}) start ping test: ${src}`,\n            \"color: #d8eeff;\"\n          );\n          xhr.open(\"GET\", src, true);\n          // 发送请求\n          xhr.send();\n        };\n        fn(0);\n      },\n\n      // 获取所有可用IP\n      getIpAddresses: function (interfaces) {\n        const reg = /^(wlan|usb|eth|en)/;\n        const addresses = {};\n        for (let iface in interfaces) {\n          for (let i = 0; i < interfaces[iface].length; i++) {\n            let address = interfaces[iface][i];\n            /* Ipv4 & 排除内部接口 & 匹配当前优先级的网口名称 */\n            var matches = iface.match(reg);\n            if (\n              matches &&\n              matches[1] &&\n              address.family === \"IPv4\" &&\n              !address.internal\n            ) {\n              addresses[matches[1]] = address.address;\n            }\n          }\n        }\n        return addresses;\n      }\n    },\n    mounted() {\n      this.scanning(this.msg);\n    }\n  };\n</script>\n<style>\n  body,\n  html {\n    overflow: hidden;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n  }\n\n  #iframe_block {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    min-height: 500px;\n    z-index: 10000;\n    background-color: #eee;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n  }\n\n  #iframe_block iframe {\n    width: 100%;\n    height: 100%;\n    border: 0;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n  }\n\n  .skeleton_box {\n    width: 50%;\n    height: 50%;\n    background: #e0e0e0;\n    border-radius: 20px;\n    position: relative;\n    overflow: hidden;\n  }\n\n  .skeleton_box::after {\n    content: \"\";\n    position: absolute;\n    top: 0;\n    left: -100%;\n    width: 100%;\n    height: 100%;\n    background: linear-gradient(90deg,\n        rgba(255, 255, 255, 0) 0%,\n        rgba(255, 255, 255, 0.5) 50%,\n        rgba(255, 255, 255, 0) 100%);\n    animation: shimmer 1.5s infinite;\n  }\n\n  @keyframes shimmer {\n    0% {\n      left: -100%;\n    }\n\n    100% {\n      left: 100%;\n    }\n  }\n\n</style>",
         "storeOutMessages": true,
         "passthru": true,
         "resendOnRefresh": true,
@@ -1802,10 +1939,10 @@
         "ui": "",
         "name": "Network",
         "order": 1,
-        "width": "6",
-        "height": "6",
+        "width": "12",
+        "height": "12",
         "head": "",
-        "format": "<template>\n  <div>\n    <div id=\"iframe_block\">\n      <div v-if=\"isScaning && !iframeUrl\" class=\"skeleton_box\"></div>\n      <iframe id=\"iframe_recamera\" v-else-if=\"iframeUrl\" :src=\"iframeUrl\"></iframe>\n      <div v-else>\n        No website found, please check your network connection and\n        <button @click=\"function(){location.reload()}\">Refresh</button>\n      </div>\n    </div>\n  </div>\n</template>\n\n<script>\n  export default {\n    data() {\n      console.log(12312);\n      function getDeviceType() {\n        const userAgent = navigator.userAgent.toLowerCase();\n        return;\n        /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(\n          userAgent\n        )\n          ? \"PC\"\n          : \"mobile\";\n      }\n      return {\n        ipByDevice: \"\",\n        enabledIpList: [],\n        checkAllIps: true,\n        isScaning: false,\n        scanningTimeout: 3000, // ms\n        deviceType: getDeviceType()\n      };\n    },\n    computed: {\n      iframeUrl: function () {\n        if (this.isScaning) {\n          return;\n        }\n        const ipByDevice = this.ipByDevice;\n        const ipList = this.enabledIpList;\n\n        // 无任何可用\n        if (!(ipList.length > 0)) {\n          return ipByDevice ? this.getUrl(ipByDevice) : null;\n        }\n\n        if (ipByDevice && ipList.includes(ipByDevice)) {\n          return this.getUrl(ipByDevice);\n        }\n\n        return this.getUrl(ipList[0]);\n      }\n    },\n    watch: {\n      msg: function (msg, prevMsg) {\n        try {\n          //debounce 防抖\n          if (\n            prevMsg &&\n            prevMsg.interfaces &&\n            JSON.stringify(prevMsg.interfaces) ===\n              JSON.stringify(msg.interfaces)\n          ) {\n            console.log('🙈🙈 Same msg: Skip....')\n            return;\n          }\n        } catch (e) {\n          console.log(e);\n        }\n        this.scanning(msg);\n      }\n    },\n    methods: {\n      getUrl(ipAddress) {\n        return `http://${ipAddress}/#/network`;\n      },\n      scanning(msg) {\n        if (!(msg && msg.interfaces)) {\n          return;\n        }\n        this.ipByDevice = this.getIpByDevice(msg.interfaces);\n        this.scaningAddreses(msg.interfaces);\n      },\n      getIpByDevice: function (addresses) {\n        const ipAddress =\n          (this.deviceType === \"PC\"\n            ? addresses[\"usb\"] || addresses[\"wlan\"]\n            : addresses[\"wlan\"] || addresses[\"usb\"]) ||\n          addresses[\"eth\"] ||\n          addresses[\"en\"];\n        if (!ipAddress) {\n          return null;\n        }\n        return ipAddress;\n      },\n\n      scaningAddreses: function (addresses) {\n        if (!addresses || this.isScaning) {\n          return;\n        }\n        console.log(\"scanning addresses\");\n        const self = this;\n        let results = [];\n        var keys = Object.keys(addresses);\n        const len = keys.length;\n        self.isScaning = true;\n\n        let fn = (i) => {\n          if (\n            i >= len ||\n            (!self.checkAllIps && self.enabledIpList.length > 0)\n          ) {\n            self.isScaning = false;\n            self.enabledIpList = results;\n            console.log(\n              `%cScaning Finished ✅\\n✨Enabled Addresses: ${self.enabledIpList.join(\n                \",\"\n              )}`,\n              \"color:#87ba32\"\n            );\n\n            fn = () => {};\n            return;\n          }\n          let src = self.getUrl(addresses[keys[i]]);\n          const xhr = new XMLHttpRequest();\n          xhr.timeout = self.scanningTimeout;\n\n          const errorFn = () => {\n            fn(++i);\n          };\n\n          xhr.onload = function () {\n            if (xhr.status >= 200 && xhr.status < 300) {\n              results.push(addresses[keys[i]]);\n              console.log(\n                `%c✨(${i + 1}/${len})ping test Success: ${src}`,\n                \"color: #87ba32;\"\n              );\n              fn(++i);\n              return;\n            }\n            errorFn();\n          };\n\n          xhr.onerror = function () {\n            errorFn();\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test error: ${src}`,\n              \"color:red\"\n            );\n          };\n          // 定义超时回调\n          xhr.ontimeout = function () {\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test timeout: ${src}`,\n              \"color:red;\"\n            );\n            errorFn();\n          };\n\n          console.log(\n            `%c🚥(${i + 1}/${len}) start ping test: ${src}`,\n            \"color: #d8eeff;\"\n          );\n          xhr.open(\"GET\", src, true);\n          // 发送请求\n          xhr.send();\n        };\n        fn(0);\n      },\n\n      // 获取所有可用IP\n      getIpAddresses: function (interfaces) {\n        const reg = /^(wlan|usb|eth|en)/;\n        const addresses = {};\n        for (let iface in interfaces) {\n          for (let i = 0; i < interfaces[iface].length; i++) {\n            let address = interfaces[iface][i];\n            /* Ipv4 & 排除内部接口 & 匹配当前优先级的网口名称 */\n            var matches = iface.match(reg);\n            if (\n              matches &&\n              matches[1] &&\n              address.family === \"IPv4\" &&\n              !address.internal\n            ) {\n              addresses[matches[1]] = address.address;\n            }\n          }\n        }\n        return addresses;\n      }\n    },\n    mounted() {\n      this.scanning(this.msg);\n    }\n  };\n</script>\n<style>\n  body,\n  html {\n    overflow: hidden;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n  }\n\n  #iframe_block {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    min-height: 500px;\n    z-index: 10000;\n    background-color: #eee;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n  }\n\n  #iframe_block iframe {\n    width: 100%;\n    height: 100%;\n    border: 0;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n  }\n\n  .skeleton_box {\n    width: 50%;\n    height: 50%;\n    background: #e0e0e0;\n    border-radius: 20px;\n    position: relative;\n    overflow: hidden;\n  }\n\n  .skeleton_box::after {\n    content: \"\";\n    position: absolute;\n    top: 0;\n    left: -100%;\n    width: 100%;\n    height: 100%;\n    background: linear-gradient(90deg,\n        rgba(255, 255, 255, 0) 0%,\n        rgba(255, 255, 255, 0.5) 50%,\n        rgba(255, 255, 255, 0) 100%);\n    animation: shimmer 1.5s infinite;\n  }\n\n  @keyframes shimmer {\n    0% {\n      left: -100%;\n    }\n\n    100% {\n      left: 100%;\n    }\n  }\n</style>",
+        "format": "<template>\n  <div>\n    <div id=\"iframe_block\">\n      <!-- <div v-if=\"isScaning && !iframeUrl\" class=\"skeleton_box\"></div> -->\n      <iframe id=\"iframe_recamera\" :src=\"iframeUrl\"></iframe>\n      <!-- <div v-else>\n        No website found, please check your network connection and\n        <button @click=\"function(){location.reload()}\">Refresh</button>\n      </div> -->\n    </div>\n  </div>\n</template>\n\n<script>\n  export default {\n    data() {\n      console.log(12312);\n      function getDeviceType() {\n        const userAgent = navigator.userAgent.toLowerCase();\n        return;\n        /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(\n          userAgent\n        )\n          ? \"PC\"\n          : \"mobile\";\n      }\n      return {\n        ipByDevice: \"\",\n        enabledIpList: [],\n        checkAllIps: true,\n        isScaning: false,\n        scanningTimeout: 3000, // ms\n        deviceType: getDeviceType(),\n        iframeUrl: `http://${window.location.hostname}/#/network?disablelayout=1`\n      };\n    },\n    computed: {\n      // iframeUrl: function () {\n      //   if (this.isScaning) {\n      //     return;\n      //   }\n      //   const ipByDevice = this.ipByDevice;\n      //   const ipList = this.enabledIpList;\n\n      //   // 无任何可用\n      //   if (!(ipList.length > 0)) {\n      //     return ipByDevice ? this.getUrl(ipByDevice) : null;\n      //   }\n\n      //   if (ipByDevice && ipList.includes(ipByDevice)) {\n      //     return this.getUrl(ipByDevice);\n      //   }\n\n      //   return this.getUrl(ipList[0]);\n      // }\n    },\n    watch: {\n      msg: function (msg, prevMsg) {\n        try {\n          //debounce 防抖\n          if (\n            prevMsg &&\n            prevMsg.interfaces &&\n            JSON.stringify(prevMsg.interfaces) ===\n              JSON.stringify(msg.interfaces)\n          ) {\n            console.log('🙈🙈 Same msg: Skip....')\n            return;\n          }\n        } catch (e) {\n          console.log(e);\n        }\n        this.scanning(msg);\n      }\n    },\n    methods: {\n      getUrl(ipAddress) {\n        return `http://${ipAddress}/#/network?disablelayout=1`;\n      },\n      scanning(msg) {\n        if (!(msg && msg.interfaces)) {\n          return;\n        }\n        this.ipByDevice = this.getIpByDevice(msg.interfaces);\n        this.scaningAddreses(msg.interfaces);\n        console.log(msg.interfaces, '---msg.interfaces---')\n      },\n      getIpByDevice: function (addresses) {\n        const ipAddress =\n          (this.deviceType === \"PC\"\n            ? addresses[\"usb\"] || addresses[\"wlan\"]\n            : addresses[\"wlan\"] || addresses[\"usb\"]) ||\n          addresses[\"eth\"] ||\n          addresses[\"en\"];\n        if (!ipAddress) {\n          return null;\n        }\n        return ipAddress;\n      },\n\n      scaningAddreses: function (addresses) {\n        if (!addresses || this.isScaning) {\n          return;\n        }\n        console.log(\"scanning addresses\");\n        const self = this;\n        let results = [];\n        var keys = Object.keys(addresses);\n        const len = keys.length;\n        self.isScaning = true;\n\n        let fn = (i) => {\n          if (\n            i >= len ||\n            (!self.checkAllIps && self.enabledIpList.length > 0)\n          ) {\n            self.isScaning = false;\n            self.enabledIpList = results;\n            console.log(\n              `%cScaning Finished ✅\\n✨Enabled Addresses: ${self.enabledIpList.join(\n                \",\"\n              )}`,\n              \"color:#87ba32\"\n            );\n\n            fn = () => {};\n            return;\n          }\n          let src = self.getUrl(addresses[keys[i]]);\n          const xhr = new XMLHttpRequest();\n          xhr.timeout = self.scanningTimeout;\n\n          const errorFn = () => {\n            fn(++i);\n          };\n\n          xhr.onload = function () {\n            if (xhr.status >= 200 && xhr.status < 300) {\n              results.push(addresses[keys[i]]);\n              console.log(\n                `%c✨(${i + 1}/${len})ping test Success: ${src}`,\n                \"color: #87ba32;\"\n              );\n              fn(++i);\n              return;\n            }\n            errorFn();\n          };\n\n          xhr.onerror = function () {\n            errorFn();\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test error: ${src}`,\n              \"color:red\"\n            );\n          };\n          // 定义超时回调\n          xhr.ontimeout = function () {\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test timeout: ${src}`,\n              \"color:red;\"\n            );\n            errorFn();\n          };\n\n          console.log(\n            `%c🚥(${i + 1}/${len}) start ping test: ${src}`,\n            \"color: #d8eeff;\"\n          );\n          xhr.open(\"GET\", src, true);\n          // 发送请求\n          xhr.send();\n        };\n        fn(0);\n      },\n\n      // 获取所有可用IP\n      getIpAddresses: function (interfaces) {\n        const reg = /^(wlan|usb|eth|en)/;\n        const addresses = {};\n        for (let iface in interfaces) {\n          for (let i = 0; i < interfaces[iface].length; i++) {\n            let address = interfaces[iface][i];\n            /* Ipv4 & 排除内部接口 & 匹配当前优先级的网口名称 */\n            var matches = iface.match(reg);\n            if (\n              matches &&\n              matches[1] &&\n              address.family === \"IPv4\" &&\n              !address.internal\n            ) {\n              addresses[matches[1]] = address.address;\n            }\n          }\n        }\n        return addresses;\n      }\n    },\n    mounted() {\n      this.scanning(this.msg);\n    }\n  };\n</script>\n<style>\n  body,\n  html {\n    overflow: hidden;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n  }\n\n  #iframe_block {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    min-height: 500px;\n    z-index: 10000;\n    background-color: #eee;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n  }\n\n  #iframe_block iframe {\n    width: 100%;\n    height: 100%;\n    border: 0;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n  }\n\n  .skeleton_box {\n    width: 50%;\n    height: 50%;\n    background: #e0e0e0;\n    border-radius: 20px;\n    position: relative;\n    overflow: hidden;\n  }\n\n  .skeleton_box::after {\n    content: \"\";\n    position: absolute;\n    top: 0;\n    left: -100%;\n    width: 100%;\n    height: 100%;\n    background: linear-gradient(90deg,\n        rgba(255, 255, 255, 0) 0%,\n        rgba(255, 255, 255, 0.5) 50%,\n        rgba(255, 255, 255, 0) 100%);\n    animation: shimmer 1.5s infinite;\n  }\n\n  @keyframes shimmer {\n    0% {\n      left: -100%;\n    }\n\n    100% {\n      left: 100%;\n    }\n  }\n</style>",
         "storeOutMessages": true,
         "passthru": true,
         "resendOnRefresh": true,
@@ -1826,10 +1963,10 @@
         "ui": "",
         "name": "Terminal",
         "order": 1,
-        "width": "6",
-        "height": "6",
+        "width": "0",
+        "height": "0",
         "head": "",
-        "format": "<template>\n  <div>\n    <div id=\"iframe_block\">\n      <div v-if=\"isScaning && !iframeUrl\" class=\"skeleton_box\"></div>\n      <iframe id=\"iframe_recamera\" v-else-if=\"iframeUrl\" :src=\"iframeUrl\"></iframe>\n      <div v-else>\n        No website found, please check your network connection and\n        <button @click=\"function(){location.reload()}\">Refresh</button>\n      </div>\n    </div>\n  </div>\n</template>\n\n<script>\n  export default {\n    data() {\n      console.log(12312);\n      function getDeviceType() {\n        const userAgent = navigator.userAgent.toLowerCase();\n        return;\n        /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(\n          userAgent\n        )\n          ? \"PC\"\n          : \"mobile\";\n      }\n      return {\n        ipByDevice: \"\",\n        enabledIpList: [],\n        checkAllIps: true,\n        isScaning: false,\n        scanningTimeout: 3000, // ms\n        deviceType: getDeviceType()\n      };\n    },\n    computed: {\n      iframeUrl: function () {\n        if (this.isScaning) {\n          return;\n        }\n        const ipByDevice = this.ipByDevice;\n        const ipList = this.enabledIpList;\n\n        // 无任何可用\n        if (!(ipList.length > 0)) {\n          return ipByDevice ? this.getUrl(ipByDevice) : null;\n        }\n\n        if (ipByDevice && ipList.includes(ipByDevice)) {\n          return this.getUrl(ipByDevice);\n        }\n\n        return this.getUrl(ipList[0]);\n      }\n    },\n    watch: {\n      msg: function (msg, prevMsg) {\n        try {\n          //debounce 防抖\n          if (\n            prevMsg &&\n            prevMsg.interfaces &&\n            JSON.stringify(prevMsg.interfaces) ===\n              JSON.stringify(msg.interfaces)\n          ) {\n            console.log('🙈🙈 Same msg: Skip....')\n            return;\n          }\n        } catch (e) {\n          console.log(e);\n        }\n        this.scanning(msg);\n      }\n    },\n    methods: {\n      getUrl(ipAddress) {\n        return `http://${ipAddress}/#/terminal`;\n      },\n      scanning(msg) {\n        if (!(msg && msg.interfaces)) {\n          return;\n        }\n        this.ipByDevice = this.getIpByDevice(msg.interfaces);\n        this.scaningAddreses(msg.interfaces);\n      },\n      getIpByDevice: function (addresses) {\n        const ipAddress =\n          (this.deviceType === \"PC\"\n            ? addresses[\"usb\"] || addresses[\"wlan\"]\n            : addresses[\"wlan\"] || addresses[\"usb\"]) ||\n          addresses[\"eth\"] ||\n          addresses[\"en\"];\n        if (!ipAddress) {\n          return null;\n        }\n        return ipAddress;\n      },\n\n      scaningAddreses: function (addresses) {\n        if (!addresses || this.isScaning) {\n          return;\n        }\n        console.log(\"scanning addresses\");\n        const self = this;\n        let results = [];\n        var keys = Object.keys(addresses);\n        const len = keys.length;\n        self.isScaning = true;\n\n        let fn = (i) => {\n          if (\n            i >= len ||\n            (!self.checkAllIps && self.enabledIpList.length > 0)\n          ) {\n            self.isScaning = false;\n            self.enabledIpList = results;\n            console.log(\n              `%cScaning Finished ✅\\n✨Enabled Addresses: ${self.enabledIpList.join(\n                \",\"\n              )}`,\n              \"color:#87ba32\"\n            );\n\n            fn = () => {};\n            return;\n          }\n          let src = self.getUrl(addresses[keys[i]]);\n          const xhr = new XMLHttpRequest();\n          xhr.timeout = self.scanningTimeout;\n\n          const errorFn = () => {\n            fn(++i);\n          };\n\n          xhr.onload = function () {\n            if (xhr.status >= 200 && xhr.status < 300) {\n              results.push(addresses[keys[i]]);\n              console.log(\n                `%c✨(${i + 1}/${len})ping test Success: ${src}`,\n                \"color: #87ba32;\"\n              );\n              fn(++i);\n              return;\n            }\n            errorFn();\n          };\n\n          xhr.onerror = function () {\n            errorFn();\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test error: ${src}`,\n              \"color:red\"\n            );\n          };\n          // 定义超时回调\n          xhr.ontimeout = function () {\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test timeout: ${src}`,\n              \"color:red;\"\n            );\n            errorFn();\n          };\n\n          console.log(\n            `%c🚥(${i + 1}/${len}) start ping test: ${src}`,\n            \"color: #d8eeff;\"\n          );\n          xhr.open(\"GET\", src, true);\n          // 发送请求\n          xhr.send();\n        };\n        fn(0);\n      },\n\n      // 获取所有可用IP\n      getIpAddresses: function (interfaces) {\n        const reg = /^(wlan|usb|eth|en)/;\n        const addresses = {};\n        for (let iface in interfaces) {\n          for (let i = 0; i < interfaces[iface].length; i++) {\n            let address = interfaces[iface][i];\n            /* Ipv4 & 排除内部接口 & 匹配当前优先级的网口名称 */\n            var matches = iface.match(reg);\n            if (\n              matches &&\n              matches[1] &&\n              address.family === \"IPv4\" &&\n              !address.internal\n            ) {\n              addresses[matches[1]] = address.address;\n            }\n          }\n        }\n        return addresses;\n      }\n    },\n    mounted() {\n      this.scanning(this.msg);\n    }\n  };\n</script>\n<style>\n  body,\n  html {\n    overflow: hidden;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n  }\n\n  #iframe_block {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    min-height: 500px;\n    z-index: 10000;\n    background-color: #eee;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n  }\n\n  #iframe_block iframe {\n    width: 100%;\n    height: 100%;\n    border: 0;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n  }\n\n  .skeleton_box {\n    width: 50%;\n    height: 50%;\n    background: #e0e0e0;\n    border-radius: 20px;\n    position: relative;\n    overflow: hidden;\n  }\n\n  .skeleton_box::after {\n    content: \"\";\n    position: absolute;\n    top: 0;\n    left: -100%;\n    width: 100%;\n    height: 100%;\n    background: linear-gradient(90deg,\n        rgba(255, 255, 255, 0) 0%,\n        rgba(255, 255, 255, 0.5) 50%,\n        rgba(255, 255, 255, 0) 100%);\n    animation: shimmer 1.5s infinite;\n  }\n\n  @keyframes shimmer {\n    0% {\n      left: -100%;\n    }\n\n    100% {\n      left: 100%;\n    }\n  }\n</style>",
+        "format": "<template>\n  <div>\n    <div id=\"iframe_block\">\n      <!-- <div v-if=\"isScaning && !iframeUrl\" class=\"skeleton_box\"></div> -->\n      <iframe id=\"iframe_recamera\" :src=\"iframeUrl\"></iframe>\n      <!-- <div v-else>\n        No website found, please check your network connection and\n        <button @click=\"function(){location.reload()}\">Refresh</button>\n      </div> -->\n    </div>\n  </div>\n</template>\n\n<script>\n  export default {\n    data() {\n      console.log(12312);\n      function getDeviceType() {\n        const userAgent = navigator.userAgent.toLowerCase();\n        return;\n        /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(\n          userAgent\n        )\n          ? \"PC\"\n          : \"mobile\";\n      }\n      return {\n        ipByDevice: \"\",\n        enabledIpList: [],\n        checkAllIps: true,\n        isScaning: false,\n        scanningTimeout: 3000, // ms\n        deviceType: getDeviceType(),\n        iframeUrl: `http://${window.location.hostname}/#/terminal?disablelayout=1`\n      };\n    },\n    computed: {\n      // iframeUrl: function () {\n      //   if (this.isScaning) {\n      //     return;\n      //   }\n      //   const ipByDevice = this.ipByDevice;\n      //   const ipList = this.enabledIpList;\n\n      //   // 无任何可用\n      //   if (!(ipList.length > 0)) {\n      //     return ipByDevice ? this.getUrl(ipByDevice) : null;\n      //   }\n\n      //   if (ipByDevice && ipList.includes(ipByDevice)) {\n      //     return this.getUrl(ipByDevice);\n      //   }\n\n      //   return this.getUrl(ipList[0]);\n      // }\n    },\n    watch: {\n      msg: function (msg, prevMsg) {\n        try {\n          //debounce 防抖\n          if (\n            prevMsg &&\n            prevMsg.interfaces &&\n            JSON.stringify(prevMsg.interfaces) ===\n              JSON.stringify(msg.interfaces)\n          ) {\n            console.log('🙈🙈 Same msg: Skip....')\n            return;\n          }\n        } catch (e) {\n          console.log(e);\n        }\n        this.scanning(msg);\n      }\n    },\n    methods: {\n      getUrl(ipAddress) {\n        return `http://${ipAddress}/#/terminal?disablelayout=1`;\n      },\n      scanning(msg) {\n        if (!(msg && msg.interfaces)) {\n          return;\n        }\n        this.ipByDevice = this.getIpByDevice(msg.interfaces);\n        this.scaningAddreses(msg.interfaces);\n      },\n      getIpByDevice: function (addresses) {\n        const ipAddress =\n          (this.deviceType === \"PC\"\n            ? addresses[\"usb\"] || addresses[\"wlan\"]\n            : addresses[\"wlan\"] || addresses[\"usb\"]) ||\n          addresses[\"eth\"] ||\n          addresses[\"en\"];\n        if (!ipAddress) {\n          return null;\n        }\n        return ipAddress;\n      },\n\n      scaningAddreses: function (addresses) {\n        if (!addresses || this.isScaning) {\n          return;\n        }\n        console.log(\"scanning addresses\");\n        const self = this;\n        let results = [];\n        var keys = Object.keys(addresses);\n        const len = keys.length;\n        self.isScaning = true;\n\n        let fn = (i) => {\n          if (\n            i >= len ||\n            (!self.checkAllIps && self.enabledIpList.length > 0)\n          ) {\n            self.isScaning = false;\n            self.enabledIpList = results;\n            console.log(\n              `%cScaning Finished ✅\\n✨Enabled Addresses: ${self.enabledIpList.join(\n                \",\"\n              )}`,\n              \"color:#87ba32\"\n            );\n\n            fn = () => {};\n            return;\n          }\n          let src = self.getUrl(addresses[keys[i]]);\n          const xhr = new XMLHttpRequest();\n          xhr.timeout = self.scanningTimeout;\n\n          const errorFn = () => {\n            fn(++i);\n          };\n\n          xhr.onload = function () {\n            if (xhr.status >= 200 && xhr.status < 300) {\n              results.push(addresses[keys[i]]);\n              console.log(\n                `%c✨(${i + 1}/${len})ping test Success: ${src}`,\n                \"color: #87ba32;\"\n              );\n              fn(++i);\n              return;\n            }\n            errorFn();\n          };\n\n          xhr.onerror = function () {\n            errorFn();\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test error: ${src}`,\n              \"color:red\"\n            );\n          };\n          // 定义超时回调\n          xhr.ontimeout = function () {\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test timeout: ${src}`,\n              \"color:red;\"\n            );\n            errorFn();\n          };\n\n          console.log(\n            `%c🚥(${i + 1}/${len}) start ping test: ${src}`,\n            \"color: #d8eeff;\"\n          );\n          xhr.open(\"GET\", src, true);\n          // 发送请求\n          xhr.send();\n        };\n        fn(0);\n      },\n\n      // 获取所有可用IP\n      getIpAddresses: function (interfaces) {\n        const reg = /^(wlan|usb|eth|en)/;\n        const addresses = {};\n        for (let iface in interfaces) {\n          for (let i = 0; i < interfaces[iface].length; i++) {\n            let address = interfaces[iface][i];\n            /* Ipv4 & 排除内部接口 & 匹配当前优先级的网口名称 */\n            var matches = iface.match(reg);\n            if (\n              matches &&\n              matches[1] &&\n              address.family === \"IPv4\" &&\n              !address.internal\n            ) {\n              addresses[matches[1]] = address.address;\n            }\n          }\n        }\n        return addresses;\n      }\n    },\n    mounted() {\n      this.scanning(this.msg);\n    }\n  };\n</script>\n<style>\n  body,\n  html {\n    overflow: hidden;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n  }\n\n  #iframe_block {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    min-height: 500px;\n    z-index: 10000;\n    background-color: #eee;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n  }\n\n  #iframe_block iframe {\n    width: 100%;\n    height: 100%;\n    border: 0;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n  }\n\n  .skeleton_box {\n    width: 50%;\n    height: 50%;\n    background: #e0e0e0;\n    border-radius: 20px;\n    position: relative;\n    overflow: hidden;\n  }\n\n  .skeleton_box::after {\n    content: \"\";\n    position: absolute;\n    top: 0;\n    left: -100%;\n    width: 100%;\n    height: 100%;\n    background: linear-gradient(90deg,\n        rgba(255, 255, 255, 0) 0%,\n        rgba(255, 255, 255, 0.5) 50%,\n        rgba(255, 255, 255, 0) 100%);\n    animation: shimmer 1.5s infinite;\n  }\n\n  @keyframes shimmer {\n    0% {\n      left: -100%;\n    }\n\n    100% {\n      left: 100%;\n    }\n  }\n</style>",
         "storeOutMessages": true,
         "passthru": true,
         "resendOnRefresh": true,
@@ -1862,8 +1999,6 @@
         "y": 840,
         "wires": [
             [
-                "36c04b9a8d047906",
-                "f30cbff361cfc7bb",
                 "f73564e80b2a2bfd",
                 "58e87c59b595124b",
                 "3aaf66ed6c80b35e",
@@ -1871,23 +2006,6 @@
                 "b5ef265bb78e7c5f"
             ]
         ]
-    },
-    {
-        "id": "36c04b9a8d047906",
-        "type": "debug",
-        "z": "35445cf45a7ff5ec",
-        "name": "debug 1",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "payload",
-        "targetType": "msg",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 760,
-        "y": 1000,
-        "wires": []
     },
     {
         "id": "89f52341ff95aae7",
@@ -1919,23 +2037,6 @@
         ]
     },
     {
-        "id": "f30cbff361cfc7bb",
-        "type": "debug",
-        "z": "35445cf45a7ff5ec",
-        "name": "debug 2",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "interfaces",
-        "targetType": "msg",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 760,
-        "y": 940,
-        "wires": []
-    },
-    {
         "id": "e7d3b5e8a1f8b1a4",
         "type": "comment",
         "z": "35445cf45a7ff5ec",
@@ -1957,7 +2058,7 @@
         "width": "6",
         "height": "6",
         "head": "",
-        "format": "<template>\n  <div>\n    <div id=\"iframe_block\">\n      <div v-if=\"isScaning && !iframeUrl\" class=\"skeleton_box\"></div>\n      <iframe id=\"iframe_recamera\" v-else-if=\"iframeUrl\" :src=\"iframeUrl\"></iframe>\n      <div v-else>\n        No website found, please check your network connection and\n        <button @click=\"function(){location.reload()}\">Refresh</button>\n      </div>\n    </div>\n  </div>\n</template>\n\n<script>\n  export default {\n    data() {\n      console.log(12312);\n      function getDeviceType() {\n        const userAgent = navigator.userAgent.toLowerCase();\n        return;\n        /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(\n          userAgent\n        )\n          ? \"PC\"\n          : \"mobile\";\n      }\n      return {\n        ipByDevice: \"\",\n        enabledIpList: [],\n        checkAllIps: true,\n        isScaning: false,\n        scanningTimeout: 3000, // ms\n        deviceType: getDeviceType()\n      };\n    },\n    computed: {\n      iframeUrl: function () {\n        if (this.isScaning) {\n          return;\n        }\n        const ipByDevice = this.ipByDevice;\n        const ipList = this.enabledIpList;\n\n        // 无任何可用\n        if (!(ipList.length > 0)) {\n          return ipByDevice ? this.getUrl(ipByDevice) : null;\n        }\n\n        if (ipByDevice && ipList.includes(ipByDevice)) {\n          return this.getUrl(ipByDevice);\n        }\n\n        return this.getUrl(ipList[0]);\n      }\n    },\n    watch: {\n      msg: function (msg, prevMsg) {\n        try {\n          //debounce 防抖\n          if (\n            prevMsg &&\n            prevMsg.interfaces &&\n            JSON.stringify(prevMsg.interfaces) ===\n              JSON.stringify(msg.interfaces)\n          ) {\n            console.log('🙈🙈 Same msg: Skip....')\n            return;\n          }\n        } catch (e) {\n          console.log(e);\n        }\n        this.scanning(msg);\n      }\n    },\n    methods: {\n      getUrl(ipAddress) {\n        return `http://${ipAddress}/#/system`;\n      },\n      scanning(msg) {\n        if (!(msg && msg.interfaces)) {\n          return;\n        }\n        this.ipByDevice = this.getIpByDevice(msg.interfaces);\n        this.scaningAddreses(msg.interfaces);\n      },\n      getIpByDevice: function (addresses) {\n        const ipAddress =\n          (this.deviceType === \"PC\"\n            ? addresses[\"usb\"] || addresses[\"wlan\"]\n            : addresses[\"wlan\"] || addresses[\"usb\"]) ||\n          addresses[\"eth\"] ||\n          addresses[\"en\"];\n        if (!ipAddress) {\n          return null;\n        }\n        return ipAddress;\n      },\n\n      scaningAddreses: function (addresses) {\n        if (!addresses || this.isScaning) {\n          return;\n        }\n        console.log(\"scanning addresses\");\n        const self = this;\n        let results = [];\n        var keys = Object.keys(addresses);\n        const len = keys.length;\n        self.isScaning = true;\n\n        let fn = (i) => {\n          if (\n            i >= len ||\n            (!self.checkAllIps && self.enabledIpList.length > 0)\n          ) {\n            self.isScaning = false;\n            self.enabledIpList = results;\n            console.log(\n              `%cScaning Finished ✅\\n✨Enabled Addresses: ${self.enabledIpList.join(\n                \",\"\n              )}`,\n              \"color:#87ba32\"\n            );\n\n            fn = () => {};\n            return;\n          }\n          let src = self.getUrl(addresses[keys[i]]);\n          const xhr = new XMLHttpRequest();\n          xhr.timeout = self.scanningTimeout;\n\n          const errorFn = () => {\n            fn(++i);\n          };\n\n          xhr.onload = function () {\n            if (xhr.status >= 200 && xhr.status < 300) {\n              results.push(addresses[keys[i]]);\n              console.log(\n                `%c✨(${i + 1}/${len})ping test Success: ${src}`,\n                \"color: #87ba32;\"\n              );\n              fn(++i);\n              return;\n            }\n            errorFn();\n          };\n\n          xhr.onerror = function () {\n            errorFn();\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test error: ${src}`,\n              \"color:red\"\n            );\n          };\n          // 定义超时回调\n          xhr.ontimeout = function () {\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test timeout: ${src}`,\n              \"color:red;\"\n            );\n            errorFn();\n          };\n\n          console.log(\n            `%c🚥(${i + 1}/${len}) start ping test: ${src}`,\n            \"color: #d8eeff;\"\n          );\n          xhr.open(\"GET\", src, true);\n          // 发送请求\n          xhr.send();\n        };\n        fn(0);\n      },\n\n      // 获取所有可用IP\n      getIpAddresses: function (interfaces) {\n        const reg = /^(wlan|usb|eth|en)/;\n        const addresses = {};\n        for (let iface in interfaces) {\n          for (let i = 0; i < interfaces[iface].length; i++) {\n            let address = interfaces[iface][i];\n            /* Ipv4 & 排除内部接口 & 匹配当前优先级的网口名称 */\n            var matches = iface.match(reg);\n            if (\n              matches &&\n              matches[1] &&\n              address.family === \"IPv4\" &&\n              !address.internal\n            ) {\n              addresses[matches[1]] = address.address;\n            }\n          }\n        }\n        return addresses;\n      }\n    },\n    mounted() {\n      this.scanning(this.msg);\n    }\n  };\n</script>\n<style>\n  body,\n  html {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n  }\n\n  #iframe_block {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    min-height: 500px;\n    z-index: 10000;\n    background-color: #eee;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n  }\n\n  #iframe_block iframe {\n    width: 100%;\n    height: 100%;\n    border: 0;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n  }\n\n  .skeleton_box {\n    width: 50%;\n    height: 50%;\n    background: #e0e0e0;\n    border-radius: 20px;\n    position: relative;\n    overflow: hidden;\n  }\n\n  .skeleton_box::after {\n    content: \"\";\n    position: absolute;\n    top: 0;\n    left: -100%;\n    width: 100%;\n    height: 100%;\n    background: linear-gradient(90deg,\n        rgba(255, 255, 255, 0) 0%,\n        rgba(255, 255, 255, 0.5) 50%,\n        rgba(255, 255, 255, 0) 100%);\n    animation: shimmer 1.5s infinite;\n  }\n\n  @keyframes shimmer {\n    0% {\n      left: -100%;\n    }\n\n    100% {\n      left: 100%;\n    }\n  }\n</style>",
+        "format": "<template>\n  <div>\n    <div id=\"iframe_block\">\n      <!-- <div v-if=\"isScaning && !iframeUrl\" class=\"skeleton_box\"></div> -->\n      <iframe id=\"iframe_recamera\" :src=\"iframeUrl\"></iframe>\n      <!-- <div v-else>\n        No website found, please check your network connection and\n        <button @click=\"function(){location.reload()}\">Refresh</button>\n      </div> -->\n    </div>\n  </div>\n</template>\n\n<script>\n  export default {\n    data() {\n      console.log(12312);\n      function getDeviceType() {\n        const userAgent = navigator.userAgent.toLowerCase();\n        return;\n        /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(\n          userAgent\n        )\n          ? \"PC\"\n          : \"mobile\";\n      }\n      return {\n        ipByDevice: \"\",\n        enabledIpList: [],\n        checkAllIps: true,\n        isScaning: false,\n        scanningTimeout: 3000, // ms\n        deviceType: getDeviceType(),\n        iframeUrl: `http://${window.location.hostname}/#/system?disablelayout=1`\n      };\n    },\n    computed: {\n      // iframeUrl: function () {\n      //   if (this.isScaning) {\n      //     return;\n      //   }\n      //   const ipByDevice = this.ipByDevice;\n      //   const ipList = this.enabledIpList;\n\n      //   // 无任何可用\n      //   if (!(ipList.length > 0)) {\n      //     return ipByDevice ? this.getUrl(ipByDevice) : null;\n      //   }\n\n      //   if (ipByDevice && ipList.includes(ipByDevice)) {\n      //     return this.getUrl(ipByDevice);\n      //   }\n      //   return this.getUrl(ipList[0]);\n      // }\n    },\n    watch: {\n      msg: function (msg, prevMsg) {\n        try {\n          //debounce 防抖\n          if (\n            prevMsg &&\n            prevMsg.interfaces &&\n            JSON.stringify(prevMsg.interfaces) ===\n              JSON.stringify(msg.interfaces)\n          ) {\n            console.log('🙈🙈 Same msg: Skip....')\n            return;\n          }\n        } catch (e) {\n          console.log(e);\n        }\n        this.scanning(msg);\n      }\n    },\n    methods: {\n      getUrl(ipAddress) {\n        return `http://${ipAddress}/#/system?disablelayout=1`;\n      },\n      scanning(msg) {\n        if (!(msg && msg.interfaces)) {\n          return;\n        }\n        this.ipByDevice = this.getIpByDevice(msg.interfaces);\n        this.scaningAddreses(msg.interfaces);\n      },\n      getIpByDevice: function (addresses) {\n        const ipAddress =\n          (this.deviceType === \"PC\"\n            ? addresses[\"usb\"] || addresses[\"wlan\"]\n            : addresses[\"wlan\"] || addresses[\"usb\"]) ||\n          addresses[\"eth\"] ||\n          addresses[\"en\"];\n        if (!ipAddress) {\n          return null;\n        }\n        return ipAddress;\n      },\n\n      scaningAddreses: function (addresses) {\n        if (!addresses || this.isScaning) {\n          return;\n        }\n        console.log(\"scanning addresses\");\n        const self = this;\n        let results = [];\n        var keys = Object.keys(addresses);\n        const len = keys.length;\n        self.isScaning = true;\n\n        let fn = (i) => {\n          if (\n            i >= len ||\n            (!self.checkAllIps && self.enabledIpList.length > 0)\n          ) {\n            self.isScaning = false;\n            self.enabledIpList = results;\n            console.log(\n              `%cScaning Finished ✅\\n✨Enabled Addresses: ${self.enabledIpList.join(\n                \",\"\n              )}`,\n              \"color:#87ba32\"\n            );\n\n            fn = () => {};\n            return;\n          }\n          let src = self.getUrl(addresses[keys[i]]);\n          const xhr = new XMLHttpRequest();\n          xhr.timeout = self.scanningTimeout;\n\n          const errorFn = () => {\n            fn(++i);\n          };\n\n          xhr.onload = function () {\n            if (xhr.status >= 200 && xhr.status < 300) {\n              results.push(addresses[keys[i]]);\n              console.log(\n                `%c✨(${i + 1}/${len})ping test Success: ${src}`,\n                \"color: #87ba32;\"\n              );\n              fn(++i);\n              return;\n            }\n            errorFn();\n          };\n\n          xhr.onerror = function () {\n            errorFn();\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test error: ${src}`,\n              \"color:red\"\n            );\n          };\n          // 定义超时回调\n          xhr.ontimeout = function () {\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test timeout: ${src}`,\n              \"color:red;\"\n            );\n            errorFn();\n          };\n\n          console.log(\n            `%c🚥(${i + 1}/${len}) start ping test: ${src}`,\n            \"color: #d8eeff;\"\n          );\n          xhr.open(\"GET\", src, true);\n          // 发送请求\n          xhr.send();\n        };\n        fn(0);\n      },\n\n      // 获取所有可用IP\n      getIpAddresses: function (interfaces) {\n        const reg = /^(wlan|usb|eth|en)/;\n        const addresses = {};\n        for (let iface in interfaces) {\n          for (let i = 0; i < interfaces[iface].length; i++) {\n            let address = interfaces[iface][i];\n            /* Ipv4 & 排除内部接口 & 匹配当前优先级的网口名称 */\n            var matches = iface.match(reg);\n            if (\n              matches &&\n              matches[1] &&\n              address.family === \"IPv4\" &&\n              !address.internal\n            ) {\n              addresses[matches[1]] = address.address;\n            }\n          }\n        }\n        return addresses;\n      }\n    },\n    mounted() {\n      this.scanning(this.msg);\n    }\n  };\n</script>\n<style>\n  body,\n  html {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n  }\n\n  #iframe_block {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    min-height: 500px;\n    z-index: 10000;\n    background-color: #eee;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n  }\n\n  #iframe_block iframe {\n    width: 100%;\n    height: 100%;\n    border: 0;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n  }\n\n  .skeleton_box {\n    width: 50%;\n    height: 50%;\n    background: #e0e0e0;\n    border-radius: 20px;\n    position: relative;\n    overflow: hidden;\n  }\n\n  .skeleton_box::after {\n    content: \"\";\n    position: absolute;\n    top: 0;\n    left: -100%;\n    width: 100%;\n    height: 100%;\n    background: linear-gradient(90deg,\n        rgba(255, 255, 255, 0) 0%,\n        rgba(255, 255, 255, 0.5) 50%,\n        rgba(255, 255, 255, 0) 100%);\n    animation: shimmer 1.5s infinite;\n  }\n\n  @keyframes shimmer {\n    0% {\n      left: -100%;\n    }\n\n    100% {\n      left: 100%;\n    }\n  }\n</style>",
         "storeOutMessages": true,
         "passthru": true,
         "resendOnRefresh": true,
@@ -1981,7 +2082,7 @@
         "width": "6",
         "height": "6",
         "head": "",
-        "format": "<template>\n  <div>\n    <div id=\"iframe_block\">\n      <div v-if=\"isScaning && !iframeUrl\" class=\"skeleton_box\"></div>\n      <iframe id=\"iframe_recamera\" v-else-if=\"iframeUrl\" :src=\"iframeUrl\"></iframe>\n      <div v-else>\n        No website found, please check your network connection and\n        <button @click=\"function(){location.reload()}\">Refresh</button>\n      </div>\n    </div>\n  </div>\n</template>\n\n<script>\n  export default {\n    data() {\n      console.log(12312);\n      function getDeviceType() {\n        const userAgent = navigator.userAgent.toLowerCase();\n        return;\n        /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(\n          userAgent\n        )\n          ? \"PC\"\n          : \"mobile\";\n      }\n      return {\n        ipByDevice: \"\",\n        enabledIpList: [],\n        checkAllIps: true,\n        isScaning: false,\n        scanningTimeout: 3000, // ms\n        deviceType: getDeviceType()\n      };\n    },\n    computed: {\n      iframeUrl: function () {\n        if (this.isScaning) {\n          return;\n        }\n        const ipByDevice = this.ipByDevice;\n        const ipList = this.enabledIpList;\n\n        // 无任何可用\n        if (!(ipList.length > 0)) {\n          return ipByDevice ? this.getUrl(ipByDevice) : null;\n        }\n\n        if (ipByDevice && ipList.includes(ipByDevice)) {\n          return this.getUrl(ipByDevice);\n        }\n\n        return this.getUrl(ipList[0]);\n      }\n    },\n    watch: {\n      msg: function (msg, prevMsg) {\n        try {\n          //debounce 防抖\n          if (\n            prevMsg &&\n            prevMsg.interfaces &&\n            JSON.stringify(prevMsg.interfaces) ===\n              JSON.stringify(msg.interfaces)\n          ) {\n            console.log('🙈🙈 Same msg: Skip....')\n            return;\n          }\n        } catch (e) {\n          console.log(e);\n        }\n        this.scanning(msg);\n      }\n    },\n    methods: {\n      getUrl(ipAddress) {\n        return `http://${ipAddress}/#/power`;\n      },\n      scanning(msg) {\n        if (!(msg && msg.interfaces)) {\n          return;\n        }\n        this.ipByDevice = this.getIpByDevice(msg.interfaces);\n        this.scaningAddreses(msg.interfaces);\n      },\n      getIpByDevice: function (addresses) {\n        const ipAddress =\n          (this.deviceType === \"PC\"\n            ? addresses[\"usb\"] || addresses[\"wlan\"]\n            : addresses[\"wlan\"] || addresses[\"usb\"]) ||\n          addresses[\"eth\"] ||\n          addresses[\"en\"];\n        if (!ipAddress) {\n          return null;\n        }\n        return ipAddress;\n      },\n\n      scaningAddreses: function (addresses) {\n        if (!addresses || this.isScaning) {\n          return;\n        }\n        console.log(\"scanning addresses\");\n        const self = this;\n        let results = [];\n        var keys = Object.keys(addresses);\n        const len = keys.length;\n        self.isScaning = true;\n\n        let fn = (i) => {\n          if (\n            i >= len ||\n            (!self.checkAllIps && self.enabledIpList.length > 0)\n          ) {\n            self.isScaning = false;\n            self.enabledIpList = results;\n            console.log(\n              `%cScaning Finished ✅\\n✨Enabled Addresses: ${self.enabledIpList.join(\n                \",\"\n              )}`,\n              \"color:#87ba32\"\n            );\n\n            fn = () => {};\n            return;\n          }\n          let src = self.getUrl(addresses[keys[i]]);\n          const xhr = new XMLHttpRequest();\n          xhr.timeout = self.scanningTimeout;\n\n          const errorFn = () => {\n            fn(++i);\n          };\n\n          xhr.onload = function () {\n            if (xhr.status >= 200 && xhr.status < 300) {\n              results.push(addresses[keys[i]]);\n              console.log(\n                `%c✨(${i + 1}/${len})ping test Success: ${src}`,\n                \"color: #87ba32;\"\n              );\n              fn(++i);\n              return;\n            }\n            errorFn();\n          };\n\n          xhr.onerror = function () {\n            errorFn();\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test error: ${src}`,\n              \"color:red\"\n            );\n          };\n          // 定义超时回调\n          xhr.ontimeout = function () {\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test timeout: ${src}`,\n              \"color:red;\"\n            );\n            errorFn();\n          };\n\n          console.log(\n            `%c🚥(${i + 1}/${len}) start ping test: ${src}`,\n            \"color: #d8eeff;\"\n          );\n          xhr.open(\"GET\", src, true);\n          // 发送请求\n          xhr.send();\n        };\n        fn(0);\n      },\n\n      // 获取所有可用IP\n      getIpAddresses: function (interfaces) {\n        const reg = /^(wlan|usb|eth|en)/;\n        const addresses = {};\n        for (let iface in interfaces) {\n          for (let i = 0; i < interfaces[iface].length; i++) {\n            let address = interfaces[iface][i];\n            /* Ipv4 & 排除内部接口 & 匹配当前优先级的网口名称 */\n            var matches = iface.match(reg);\n            if (\n              matches &&\n              matches[1] &&\n              address.family === \"IPv4\" &&\n              !address.internal\n            ) {\n              addresses[matches[1]] = address.address;\n            }\n          }\n        }\n        return addresses;\n      }\n    },\n    mounted() {\n      this.scanning(this.msg);\n    }\n  };\n</script>\n<style>\n  body,\n  html {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n  }\n\n  #iframe_block {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    min-height: 500px;\n    z-index: 10000;\n    background-color: #eee;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n  }\n\n  #iframe_block iframe {\n    width: 100%;\n    height: 100%;\n    border: 0;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n  }\n\n  .skeleton_box {\n    width: 50%;\n    height: 50%;\n    background: #e0e0e0;\n    border-radius: 20px;\n    position: relative;\n    overflow: hidden;\n  }\n\n  .skeleton_box::after {\n    content: \"\";\n    position: absolute;\n    top: 0;\n    left: -100%;\n    width: 100%;\n    height: 100%;\n    background: linear-gradient(90deg,\n        rgba(255, 255, 255, 0) 0%,\n        rgba(255, 255, 255, 0.5) 50%,\n        rgba(255, 255, 255, 0) 100%);\n    animation: shimmer 1.5s infinite;\n  }\n\n  @keyframes shimmer {\n    0% {\n      left: -100%;\n    }\n\n    100% {\n      left: 100%;\n    }\n  }\n</style>",
+        "format": "<template>\n  <div>\n    <div id=\"iframe_block\">\n      <!-- <div v-if=\"isScaning && !iframeUrl\" class=\"skeleton_box\"></div> -->\n      <iframe id=\"iframe_recamera\" :src=\"iframeUrl\"></iframe>\n      <!-- <div v-else>\n        No website found, please check your network connection and\n        <button @click=\"function(){location.reload()}\">Refresh</button>\n      </div> -->\n    </div>\n  </div>\n</template>\n\n<script>\n  export default {\n    data() {\n      console.log(12312);\n      function getDeviceType() {\n        const userAgent = navigator.userAgent.toLowerCase();\n        return;\n        /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(\n          userAgent\n        )\n          ? \"PC\"\n          : \"mobile\";\n      }\n      return {\n        ipByDevice: \"\",\n        enabledIpList: [],\n        checkAllIps: true,\n        isScaning: false,\n        scanningTimeout: 3000, // ms\n        deviceType: getDeviceType(),\n        iframeUrl: `http://${window.location.hostname}/#/power?disablelayout=1`\n      };\n    },\n    computed: {\n      // iframeUrl: function () {\n      //   if (this.isScaning) {\n      //     return;\n      //   }\n      //   const ipByDevice = this.ipByDevice;\n      //   const ipList = this.enabledIpList;\n\n      //   // 无任何可用\n      //   if (!(ipList.length > 0)) {\n      //     return ipByDevice ? this.getUrl(ipByDevice) : null;\n      //   }\n\n      //   if (ipByDevice && ipList.includes(ipByDevice)) {\n      //     return this.getUrl(ipByDevice);\n      //   }\n\n      //   return this.getUrl(ipList[0]);\n      // }\n    },\n    watch: {\n      msg: function (msg, prevMsg) {\n        try {\n          //debounce 防抖\n          if (\n            prevMsg &&\n            prevMsg.interfaces &&\n            JSON.stringify(prevMsg.interfaces) ===\n              JSON.stringify(msg.interfaces)\n          ) {\n            console.log('🙈🙈 Same msg: Skip....')\n            return;\n          }\n        } catch (e) {\n          console.log(e);\n        }\n        this.scanning(msg);\n      }\n    },\n    methods: {\n      getUrl(ipAddress) {\n        return `http://${ipAddress}/#/power?disablelayout=1`;\n      },\n      scanning(msg) {\n        if (!(msg && msg.interfaces)) {\n          return;\n        }\n        this.ipByDevice = this.getIpByDevice(msg.interfaces);\n        this.scaningAddreses(msg.interfaces);\n      },\n      getIpByDevice: function (addresses) {\n        const ipAddress =\n          (this.deviceType === \"PC\"\n            ? addresses[\"usb\"] || addresses[\"wlan\"]\n            : addresses[\"wlan\"] || addresses[\"usb\"]) ||\n          addresses[\"eth\"] ||\n          addresses[\"en\"];\n        if (!ipAddress) {\n          return null;\n        }\n        return ipAddress;\n      },\n\n      scaningAddreses: function (addresses) {\n        if (!addresses || this.isScaning) {\n          return;\n        }\n        console.log(\"scanning addresses\");\n        const self = this;\n        let results = [];\n        var keys = Object.keys(addresses);\n        const len = keys.length;\n        self.isScaning = true;\n\n        let fn = (i) => {\n          if (\n            i >= len ||\n            (!self.checkAllIps && self.enabledIpList.length > 0)\n          ) {\n            self.isScaning = false;\n            self.enabledIpList = results;\n            console.log(\n              `%cScaning Finished ✅\\n✨Enabled Addresses: ${self.enabledIpList.join(\n                \",\"\n              )}`,\n              \"color:#87ba32\"\n            );\n\n            fn = () => {};\n            return;\n          }\n          let src = self.getUrl(addresses[keys[i]]);\n          const xhr = new XMLHttpRequest();\n          xhr.timeout = self.scanningTimeout;\n\n          const errorFn = () => {\n            fn(++i);\n          };\n\n          xhr.onload = function () {\n            if (xhr.status >= 200 && xhr.status < 300) {\n              results.push(addresses[keys[i]]);\n              console.log(\n                `%c✨(${i + 1}/${len})ping test Success: ${src}`,\n                \"color: #87ba32;\"\n              );\n              fn(++i);\n              return;\n            }\n            errorFn();\n          };\n\n          xhr.onerror = function () {\n            errorFn();\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test error: ${src}`,\n              \"color:red\"\n            );\n          };\n          // 定义超时回调\n          xhr.ontimeout = function () {\n            console.log(\n              `%c🚥(${i + 1}/${len}) ping test timeout: ${src}`,\n              \"color:red;\"\n            );\n            errorFn();\n          };\n\n          console.log(\n            `%c🚥(${i + 1}/${len}) start ping test: ${src}`,\n            \"color: #d8eeff;\"\n          );\n          xhr.open(\"GET\", src, true);\n          // 发送请求\n          xhr.send();\n        };\n        fn(0);\n      },\n\n      // 获取所有可用IP\n      getIpAddresses: function (interfaces) {\n        const reg = /^(wlan|usb|eth|en)/;\n        const addresses = {};\n        for (let iface in interfaces) {\n          for (let i = 0; i < interfaces[iface].length; i++) {\n            let address = interfaces[iface][i];\n            /* Ipv4 & 排除内部接口 & 匹配当前优先级的网口名称 */\n            var matches = iface.match(reg);\n            if (\n              matches &&\n              matches[1] &&\n              address.family === \"IPv4\" &&\n              !address.internal\n            ) {\n              addresses[matches[1]] = address.address;\n            }\n          }\n        }\n        return addresses;\n      }\n    },\n    mounted() {\n      this.scanning(this.msg);\n    }\n  };\n</script>\n<style>\n  body,\n  html {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n  }\n\n  #iframe_block {\n    overflow: auto;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    min-height: 500px;\n    z-index: 10000;\n    background-color: #eee;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n  }\n\n  #iframe_block iframe {\n    width: 100%;\n    height: 100%;\n    border: 0;\n    margin: 0 0 0 0;\n    padding: 0 0 0 0;\n    box-sizing: border-box;\n  }\n\n  .skeleton_box {\n    width: 50%;\n    height: 50%;\n    background: #e0e0e0;\n    border-radius: 20px;\n    position: relative;\n    overflow: hidden;\n  }\n\n  .skeleton_box::after {\n    content: \"\";\n    position: absolute;\n    top: 0;\n    left: -100%;\n    width: 100%;\n    height: 100%;\n    background: linear-gradient(90deg,\n        rgba(255, 255, 255, 0) 0%,\n        rgba(255, 255, 255, 0.5) 50%,\n        rgba(255, 255, 255, 0) 100%);\n    animation: shimmer 1.5s infinite;\n  }\n\n  @keyframes shimmer {\n    0% {\n      left: -100%;\n    }\n\n    100% {\n      left: 100%;\n    }\n  }\n</style>",
         "storeOutMessages": true,
         "passthru": true,
         "resendOnRefresh": true,
