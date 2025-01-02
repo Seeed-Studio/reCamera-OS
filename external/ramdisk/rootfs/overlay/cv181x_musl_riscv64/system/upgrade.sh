@@ -540,6 +540,7 @@ start)
             write_upgrade_flag 1
             echo "Success: change to rootfs_b"
         fi
+        echo "Please restart to valid."
         ps_ctrl ok
     else
         echo "Failed: md5sum is mismatch($partition_md5)."

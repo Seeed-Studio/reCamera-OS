@@ -87,11 +87,11 @@ function usage() {
     echo "    direction: 0 ~ 1"
     echo "    angle: 0 ~ 36000"
     echo "    speed: 0 ~ 60000"
-    echo "gimbal cmd <id> <cmd> <data>"
+    echo "gimbal cmd <id> <cmd> \"<data>\""
     echo "example:"
-    echo "    gimbal cmd 1 \"8100000000000000\""
-    echo "    gimbal cmd 1 \"81 00 00 00 00 00 00 00\""
-    echo "    gimbal cmd 1 \"81.00.00.00.00.00.00.00\""
+    echo "    gimbal cmd 1 81 \"00000000000000\""
+    echo "    gimbal cmd 1 81 \"00 00 00 00 00 00 00\""
+    echo "    gimbal cmd 1 81 \"00.00.00.00.00.00.00\""
 }
 
 function send_frame() {

@@ -34,7 +34,7 @@ echo 3 > /proc/sys/vm/drop_caches
 dmesg -n 4
 
 if [ ! -e /dev/mmcblk1 ] && [ -x /usr/bin/gimbal ]; then
-    /usr/bin/gimbal init
+    /usr/bin/gimbal init > /dev/null
 fi
 
 #usb hub control
