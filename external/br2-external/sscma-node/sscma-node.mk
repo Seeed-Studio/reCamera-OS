@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-SSCMA_NODE_VERSION = eb82b7b56190a8e6118de98761a3995bd50c5670
+SSCMA_NODE_VERSION = 04cc7a346dd335bcaf55939e2b7ca64e1157c748
 SSCMA_NODE_SITE = https://github.com/Seeed-Studio/sscma-example-sg200x
 SSCMA_NODE_SITE_METHOD = git
 SSCMA_NODE_GIT_SUBMODULES = YES
