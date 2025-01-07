@@ -59,6 +59,13 @@ function preset_resources() {
    if [ -f $res ]; then
       unzip -oq $res -d /userdata/
    fi
+   
+   local source_flow="/mnt/system/resources/flows.json"
+   local dest_flow="/home/recamera/.node-red/flows.json"
+
+   if [ ! -f "$dest_flow" ] || [ ! -s "$dest_flow" ]; then
+      cp "$source_flow" "$DEST_FILE"
+   fi
 }
 
 function force_remove() {
