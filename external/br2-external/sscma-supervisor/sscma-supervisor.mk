@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-SSCMA_SUPERVISOR_VERSION = 0f551b93ca86c52a18edaab4fca5ceb9efaa4b9f
+SSCMA_SUPERVISOR_VERSION = 0.1.4
 SSCMA_SUPERVISOR_SITE = https://github.com/Seeed-Studio/sscma-example-sg200x
 SSCMA_SUPERVISOR_SITE_METHOD = git
 SSCMA_SUPERVISOR_GIT_SUBMODULES = YES
@@ -15,7 +15,7 @@ SSCMA_SUPERVISOR_DEPENDENCIES = libhv
 define SSCMA_SUPERVISOR_CONFIGURE_CMDS
 	mkdir -p $(@D)/solutions/supervisor/build && \
 	cd $(@D)/solutions/supervisor/build && \
-	$(BR2_CMAKE) -DSG200X_SDK_PATH=$(shell realpath $(BUILD_DIR)/../../../../) -DSYSROOT=${STAGING_DIR} -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(TARGET_DIR) ..
+	$(BR2_CMAKE) -DSG200X_SDK_PATH=$(shell realpath $(BUILD_DIR)/../../../../) -DWEB=ON -DSYSROOT=${STAGING_DIR} -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(TARGET_DIR) ..
 endef
 
 # Build step: compile the package using the Makefile in the build directory
