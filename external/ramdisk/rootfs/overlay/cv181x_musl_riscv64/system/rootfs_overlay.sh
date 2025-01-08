@@ -53,21 +53,6 @@ function rootfs_overlay() {
    mount -a
 }
 
-function preset_resources() {
-   local res="/mnt/system/resources/MODEL.zip"
-
-   if [ -f $res ]; then
-      unzip -oq $res -d /userdata/
-   fi
-   
-   local source_flow="/mnt/system/resources/flows.json"
-   local dest_flow="/home/recamera/.node-red/flows.json"
-
-   if [ ! -f "$dest_flow" ] || [ ! -s "$dest_flow" ]; then
-      cp "$source_flow" "$DEST_FILE"
-   fi
-}
-
 function force_remove() {
    local file="/userdata/.overlay_fs/etc/issue"
    if [ -f $file ]; then
@@ -138,7 +123,7 @@ if [ "$fs_type" != "" ]; then
       if [ $MKFS_FLAG == "Y" ]; then
          chown -R recamera:recamera $USERDATA_MOUNTPOINT
          rm -rf $USERDATA_MOUNTPOINT/*
-         preset_resources
+
       fi
       setup_swap
       force_remove
