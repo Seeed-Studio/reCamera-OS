@@ -3,8 +3,8 @@
 ### sg2002_recamera_emmc
 
 - New features:
-    - support fip and boot partition update (/mnt/system/upgrade.sh start --with-boot)
-    - support /mnt/system/upgrade.sh *ota.zip
+    - support fip and boot partition auto update
+    - support /mnt/system/upgrade.sh start *ota.zip
     - support gimbal (spi-can mcp2518fd)
     - add cvi_pinmux tool
     - use udev instead of mdev
