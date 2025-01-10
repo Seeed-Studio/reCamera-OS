@@ -214,6 +214,31 @@ function kill_ps() {
     fi
 }
 
+function write_boot() {
+    local src=$1
+    local dst=$2
+
+    size_bytes=$(unzip -l "$full_path" | grep "$src" | awk '{print $1}')
+    if [ ! -z "$size_bytes" ]; then
+        size_mb=$(($size_bytes/(1024*1024)))
+        let size_mb+=1
+
+        let step+=1
+        echo "Step$step: Write $src size=${size_bytes} bytes"
+        read_md5=$(unzip -p $full_path md5sum.txt | grep "$src" | awk '{print $1}')
+        calc_md5=$(unzip -p $full_path "$src" | md5sum | awk '{print $1}')
+        part_md5=$(dd if=$dst bs=1M count=$size_mb 2>/dev/null | head -c $size_bytes | md5sum | awk '{print $1}')
+        if [ "$read_md5" = "$calc_md5" ] && [ "$read_md5" != "$part_md5" ]; then
+            echo "boot: $read_md5 $part_md5"
+            echo 0 > /sys/block/mmcblk0boot0/force_ro
+            $(unzip -p $full_path "$src" | dd of=$dst bs=1M status=progress)
+            echo 1 > /sys/block/mmcblk0boot0/force_ro
+        else
+            echo "skip write $src"
+        fi
+    fi
+}
+
 case $1 in
 clean)
     rm -rf $CTRL_FILE*
@@ -426,23 +451,6 @@ start)
         exit 0
     fi
 
-    # Parse param
-    with_boot=0
-    zip=""
-    if [[ "$2" = "*ota.zip" ]]; then
-        zip="$2"
-        if [ "$3" = "--with-boot" ]; then with_boot=1; fi
-    elif [ "$2" = "--with-boot" ]; then
-        zip="$3"
-        with_boot=1
-    else
-        if [ ! -z "$2" ]; then echo "Usage: $0 $RUN_CASE [q|x|--with-boot] [*ota.zip]"; exit 1; fi
-    fi
-
-    if [[ "$zip" = "*ota.zip" && ! "$zip" =~ ^/ ]]; then
-        zip=$(realpath "$PWD/$zip")
-    fi
-
     # Enter
     ps_mutex
 
@@ -451,12 +459,14 @@ start)
     ps_ctrl run
     step=0
 
+    zip=$2
     if [ -z $zip ]; then
         # Mount recovery partition
         mount_recovery
-        zip=$(find $MOUNTPATH -maxdepth 1 -name "*ota.zip")
+        full_path=$(find $MOUNTPATH -maxdepth 1 -name "*ota.zip")
+    else
+        full_path=$(realpath "$zip")
     fi
-    full_path=$zip
     let step+=1
     echo "Step$step: Get $full_path"
     if [ ! -f $full_path ]; then
@@ -464,27 +474,13 @@ start)
         exit_upgrade 1
     fi
 
-    # Write boot partition
-    if [ $with_boot -eq 1 ]; then
-        let step+=1
-        echo "Step$step: Write fip partition"
-        read_md5=$(unzip -p $full_path md5sum.txt | grep "fip.bin" | awk '{print $1}')
-        calc_md5=$(unzip -p $full_path "fip.bin" | md5sum | awk '{print $1}')
-        if [ "$read_md5" = "$calc_md5" ]; then
-            echo "fip: $read_md5 $calc_md5"
-            echo 0 > /sys/block/mmcblk0boot0/force_ro
-            $(unzip -p $full_path "fip.bin" | dd of=/dev/mmcblk0boot0 bs=1M status=progress)
-            echo 1 > /sys/block/mmcblk0boot0/force_ro
-        fi
+    write_boot "fip.bin" /dev/mmcblk0boot0
+    write_boot "boot.emmc" /dev/mmcblk0p1
 
-        let step+=1
-        echo "Step$step: Write boot partition"
-        read_md5=$(unzip -p $full_path md5sum.txt | grep "boot.emmc" | awk '{print $1}')
-        calc_md5=$(unzip -p $full_path "boot.emmc" | md5sum | awk '{print $1}')
-        if [ "$read_md5" = "$calc_md5" ]; then
-            echo "boot: $read_md5 $calc_md5"
-            $(unzip -p $full_path "boot.emmc" | dd of=/dev/mmcblk0p1 bs=1M status=progress)
-        fi
+    if [[ "$zip" = "*boot_ota.zip" ]]; then
+        echo "Success: only write boot partition."
+        echo "Please reboot to valid."
+        exit_upgrade 0
     fi
 
     # Read md5sum
@@ -540,7 +536,7 @@ start)
             write_upgrade_flag 1
             echo "Success: change to rootfs_b"
         fi
-        echo "Please restart to valid."
+        echo "Please reboot to valid."
         ps_ctrl ok
     else
         echo "Failed: md5sum is mismatch($partition_md5)."

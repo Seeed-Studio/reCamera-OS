@@ -67,6 +67,16 @@ function force_remove() {
 
 USERDATA_PARTITION="/dev/mmcblk0p6"
 
+# force write boot
+BOOT_OTA="/mnt/system/resources/boot_ota.zip"
+if [ -f $BOOT_OTA ]; then
+   /mnt/system/upgrade.sh start $BOOT_OTA
+   rootfs_rw on
+   rm -rf $BOOT_OTA
+   rootfs_rw off
+   reboot
+fi
+
 # reset factory
 if [ ! -d /sys/class/gpio/gpio510 ]; then
    echo "510" > /sys/class/gpio/export
@@ -131,4 +141,3 @@ if [ "$fs_type" != "" ]; then
    fi
 fi
 fi
-

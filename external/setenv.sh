@@ -99,6 +99,7 @@ echo "INFO: Fixed CVI_TARGET_PACKAGES_LIBDIR & CVI_TARGET_PACKAGES_INCLUDE in cv
 # overide build_middleware function
 sed -i 's/function build_middleware()/function _build_middleware_()/g' $PROJECT_OUT/build/cvisetup.sh
 sed -i 's/function pack_cfg/function _pack_cfg_/g' $PROJECT_OUT/build/common_functions.sh
+sed -i 's/function pack_rootfs/function _pack_rootfs_/g' $PROJECT_OUT/build/common_functions.sh
 
 # build flatbuffers
 sed -i 's/cmake -G Ninja -DCMAKE_INSTALL_PREFIX=$FLATBUFFERS_HOST_PATH/cmake -G Ninja -DFLATBUFFERS_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=$FLATBUFFERS_HOST_PATH/g' $PROJECT_OUT/cviruntime/build_tpu_sdk.sh
@@ -143,4 +144,32 @@ function pack_cfg
 
     mkdir -p $BR_OVERLAY_DIR/mnt
     cp -arf $OUTPUT_DIR/rootfs/mnt/cfg $BR_OVERLAY_DIR/mnt/
+)}
+
+function gen_boot_zip()
+{
+    echo "Run ${FUNCNAME[0]}"
+
+    local targets="fip.bin boot.emmc"
+
+    pushd $OUTPUT_DIR/rawimages
+    rm -rfv ../*rawimages.zip
+    cp -fv ../fip.bin . || exit 1
+    md5sum $targets > md5sum.txt
+    zip -j rawimages.zip $targets md5sum.txt || exit 1
+    rm -rf fip.bin
+    mv -fv rawimages.zip ../${1}.zip
+    popd
+
+    echo "${FUNCNAME[0]} ok"
+}
+
+function pack_rootfs
+{(
+    print_notice "Run ${FUNCNAME[0]}() overided by $0"
+
+    gen_boot_zip boot_ota || exit 1
+    mv $OUTPUT_DIR/boot_ota.zip $RAMDISK_PATH/rootfs/overlay/cv181x_musl_riscv64/system/resources/
+
+    _pack_rootfs_ || return $?
 )}
