@@ -186,6 +186,11 @@ jobs:
           # Preparing files to upload
           OUTPUT=${{ steps.build.outputs.output_dir }}
 
+          # Temporay remove boot_ota.zip
+          if [ -f $OUTPUT/boot_ota.zip ]; then
+            rm $OUTPUT/boot_ota.zip
+          fi
+
           file_suffixes=("md5sum.txt" "emmc.zip" "ota.zip" "recovery.zip" "sd.zip" "emmc_sd_compat.zip" "swu.zip")
           for suffix in "${file_suffixes[@]}"; do
             file_path=$(find $OUTPUT/ -maxdepth 1 -name "*${suffix}")
