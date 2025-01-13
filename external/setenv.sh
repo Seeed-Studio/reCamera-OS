@@ -169,7 +169,8 @@ function pack_rootfs
     print_notice "Run ${FUNCNAME[0]}() overided by $0"
 
     gen_boot_zip boot_ota || exit 1
-    mv $OUTPUT_DIR/boot_ota.zip $RAMDISK_PATH/rootfs/overlay/cv181x_musl_riscv64/system/resources/
+    mkdir -p $SYSTEM_OUT_DIR/resources/
+    mv $OUTPUT_DIR/boot_ota.zip $SYSTEM_OUT_DIR/resources/
 
     _pack_rootfs_ || return $?
 )}
