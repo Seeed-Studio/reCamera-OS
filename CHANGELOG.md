@@ -1,3 +1,20 @@
+## 0.1.5 (2025-01-22)
+
+### sg2002_recamera_emmc
+
+- New Features:
+    - Added support for device discovery
+    - Added support for 63-byte WiFi passwords
+    - Added support for audio recording
+    - Added ability to enable/disable nodes in the SSCMA Node
+    - Introduced a more user-friendly interface for improved interaction
+
+- Bug Fixes:
+    - Resolved various bugs in the SSCMA Node
+    - Resolved various bugs in the SSCMA Supervisor
+  
+
+If you need any more modifications, feel free to ask!
 ## 0.1.4 (2024-12-23)
 
 ### sg2002_recamera_emmc
