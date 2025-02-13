@@ -35,6 +35,7 @@ dmesg -n 4
 
 if [ ! -e /dev/mmcblk1 ] && [ -x /usr/bin/gimbal ]; then
     /usr/bin/gimbal init > /dev/null
+    /usr/bin/gimbal cali > /dev/null&
 fi
 
 #usb hub control

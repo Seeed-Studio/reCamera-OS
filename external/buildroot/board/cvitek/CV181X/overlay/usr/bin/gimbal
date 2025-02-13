@@ -37,7 +37,7 @@ function bus_init() {
     local pinmux="/mnt/system/usr/bin/cvi_pinmux"
     if [ ! -x "$pinmux" ]; then
         echo "No pinmux tool found!"
-        return
+        exit 1
     fi
 
     # Configure pinmux settings
@@ -57,7 +57,7 @@ function bus_init() {
         echo "Init can0 ok!"
     else
         echo "Init can0 failed!"
-        return
+        exit 1
     fi
 
     ip link set can0 type can bitrate 1000000
@@ -82,9 +82,10 @@ function bus_deinit() {
 function usage() {
     echo "gimbal <init|deinit>"
     echo "gimbal <close|run|stop|zero> id"
-    echo "gimbal angle <id> <direction> <angle> [speed]"
+    echo "gimbal angle <id>"
     echo "    id: 1 ~ 2"
-    echo "    direction: 0 ~ 1"
+    echo "gimbal angle <id> <angle> [speed]"
+    echo "    id: 1 ~ 2"
     echo "    angle: 0 ~ 36000"
     echo "    speed: 0 ~ 60000"
     echo "gimbal cmd <id> <cmd> \"<data>\""
@@ -92,49 +93,66 @@ function usage() {
     echo "    gimbal cmd 1 81 \"00000000000000\""
     echo "    gimbal cmd 1 81 \"00 00 00 00 00 00 00\""
     echo "    gimbal cmd 1 81 \"00.00.00.00.00.00.00\""
+
+    exit 0
+}
+
+function get_ack() {
+    local id=$1
+
+    second_line=$(sed -n '2p' /tmp/gimbal)
+    hex=$(echo $second_line | awk '{for(i=4;i<=NF;i++) printf "%s", $i}')
+    id_hex=${hex:0:2}
+    if [ "${id_hex}x" != "${1}x" ]; then
+        echo ""
+    else
+        echo "$hex"
+    fi
 }
 
 function send_frame() {
     local id=$1
+
     if [ $id -lt 1 -o $id -gt 2 ]; then
         usage
-        return
     fi
-
     bus_init
-    cansend can0 14$1#$2$3
+
+    local attempt=0
+    hex=""
+    while [ "${hex}x" = "x" ] && [ $attempt -lt 5 ]; do
+        let attempt+=1
+        candump can0 > /tmp/gimbal & pid=$!
+        sleep 0.1
+        cansend can0 14$1#$2$3
+        kill -9 $pid
+        hex=$(get_ack "$2")
+    done
 }
 
 function set_pos() {
-    local id dir angle speed
+    local id=$1
+    local angle=$2
+    local speed=100
+    local direction=0
 
-    if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+    if [ -z "$1" ] || [ -z "$2" ]; then
         usage
-        return
-    fi
-
-    let id=$1
-    let direction=$2
-    let angle=$3
-
-    if [ $direction -lt 0 -o $direction -gt 1 ]; then
-        usage
-        return
     fi
 
     if [ $angle -lt 0 -o $angle -gt 36000 ]; then
         usage
-        return
+    fi
+    if [ ! -z "$3" ]; then
+        let speed=$3
+    fi
+    if [ $speed -lt 0 -o $speed -gt 60000 ]; then
+        usage
     fi
 
-    if [ ! -z "$4" ]; then
-        let speed=$4
-        if [ $speed -lt 0 -o $speed -gt 60000 ]; then
-            usage
-            return
-        fi
-    else
-        let speed=360
+    current_angle=$(read_angle $id);
+    if [ $angle -lt $current_angle ]; then
+        direction=1
     fi
 
     local dir=$(uint8_to_hex $direction)
@@ -144,9 +162,105 @@ function set_pos() {
     send_frame $id "A6" "$dir$spd$agl"
 }
 
+function set_zero() {
+    local id=$1
+
+    echo "WARNING: Executing 0x19 affects servo lifespan!!!"
+    send_frame $id "19" "00000000000000"
+}
+
+function read_current() { # current
+    local id=$1
+
+    send_frame $id "9C" "00000000000000"
+    hex=$(get_ack "9C")
+
+    curr_str=${hex:6:2}${hex:4:2}
+    curr=$((16#${curr_str}))
+    if [ $curr -gt 32768 ]; then
+        curr=$((0x10000-curr))
+    fi
+    let curr=curr*33/2048
+    echo "$curr"
+}
+
+function read_angle() { # angle
+    local id=$1
+
+    send_frame $id "94" "00000000000000"
+    hex=$(get_ack "94")
+
+    angle_str=${hex:14:2}${hex:12:2}${hex:10:2}${hex:8:2}
+    #echo "angle_str=$angle_str"
+    angle=$((16#${angle_str}))
+    if [ $id -eq 1 ]; then
+        if [ $angle -gt 34000 ]; then # angle < 0
+            angle=0
+        fi
+    fi
+    if [ $id -eq 2 ]; then
+        if [ $angle -gt 19000 ]; then # angle < 0
+            angle=0
+        fi
+    fi
+    echo "$angle"
+}
+
+function check_current() {
+    local id=$1
+
+    while [ true ]; do
+        current=$(read_current $id)
+        if [ $current -gt 5 ]; then
+            break;
+        fi
+    done
+}
+
+function check_zero() {
+    local id=$1
+
+    angle=$(read_angle $id);
+    if [ $angle -gt 500 ]; then
+        echo "set_zero"
+        set_zero $id
+        return 1
+    fi
+    angle=$(read_angle $id);
+    return 0
+}
+
+function calibration() {
+    local id=$1
+
+    # seek min
+    send_frame $id "88" "00000000000000"
+    send_frame $id "A8" "0064006073FFFF" # speed=100
+    sleep 0.1
+    check_current $id
+    check_zero $id
+
+    # seek max
+    send_frame $id "88" "00000000000000"
+    send_frame $id "A8" "006400A08C0000" # speed=100
+    sleep 0.1
+    check_current $id
+    angle=$(read_angle $id);
+
+    local mid=$((angle/2))
+    send_frame $id "88" "00000000000000"
+    set_pos $id $mid
+}
+
+ID=$2
 case $1 in
     init)
         bus_init
+        ;;
+
+    cali)
+        calibration 1
+        calibration 2
         ;;
 
     deinit)
@@ -154,32 +268,36 @@ case $1 in
         ;;
 
     close)
-        send_frame $2 "80" "00000000000000"
+        send_frame $ID "80" "00000000000000"
         ;;
 
     run)
-        send_frame $2 "88" "00000000000000"
+        send_frame $ID "88" "00000000000000"
         ;;
     
     stop)
-        send_frame $2 "81" "00000000000000"
+        send_frame $ID "81" "00000000000000"
         ;;
 
     angle)
-        set_pos $2 $3 $4
+        if [ "$3" = "" ]; then
+            echo "$(read_angle $ID)"
+            return
+        fi
+
+        set_pos $ID $3 $4
         ;;
 
     zero)
-        send_frame $2 "19" "00000000000000"
+        set_zero $ID
         ;;
 
     cmd)
         if [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
             usage
-            return
         fi
 
-        send_frame $2 $3 $(echo "$4" | tr -cd '0-9a-fA-F')
+        send_frame $ID $3 $(echo "$4" | tr -cd '0-9a-fA-F')
         ;;
 
     *)
