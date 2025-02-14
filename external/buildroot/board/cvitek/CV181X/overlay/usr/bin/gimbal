@@ -1,5 +1,16 @@
 #!/bin/sh
 
+TMP_GIMBAL=/tmp/gimbal
+mkdir -p $TMP_GIMBAL
+
+# function debug() {
+#     dbg_file=$TMP_GIMBAL/dbg
+#     if [ ! -e $dbg_file ]; then
+#         echo "" > $dbg_file
+#     fi
+#     echo "$1" >> $dbg_file
+# }
+
 function uint8_to_hex() {
     echo "$(printf "%02X" "$1")"
 }
@@ -94,63 +105,73 @@ function usage() {
     echo "    gimbal cmd 1 81 \"00 00 00 00 00 00 00\""
     echo "    gimbal cmd 1 81 \"00.00.00.00.00.00.00\""
 
-    exit 0
-}
-
-function get_ack() {
-    local id=$1
-
-    second_line=$(sed -n '2p' /tmp/gimbal)
-    hex=$(echo $second_line | awk '{for(i=4;i<=NF;i++) printf "%s", $i}')
-    id_hex=${hex:0:2}
-    if [ "${id_hex}x" != "${1}x" ]; then
-        echo ""
-    else
-        echo "$hex"
-    fi
+    exit 1
 }
 
 function send_frame() {
     local id=$1
+    local cmd=$2
+    local data=$3
 
+    if [ -z "$id" ] || [ -z "$cmd" ] || [ -z "$data" ]; then
+        usage
+    fi
     if [ $id -lt 1 -o $id -gt 2 ]; then
         usage
     fi
     bus_init
 
+    local tmp_file="$TMP_GIMBAL/ack${id}"
     local attempt=0
-    hex=""
+    local hex=""
     while [ "${hex}x" = "x" ] && [ $attempt -lt 5 ]; do
         let attempt+=1
-        candump can0 > /tmp/gimbal & pid=$!
+        candump can0 > $tmp_file & pid=$!
         sleep 0.1
-        cansend can0 14$1#$2$3
+        cansend can0 14$id#$cmd$data
         kill -9 $pid
-        hex=$(get_ack "$2")
+
+        ack_line=$(cat ${tmp_file} | grep 14${id} | awk 'NR==2')
+        hex=$(echo $ack_line | awk '{for(i=4;i<=NF;i++) printf "%s", $i}')
+        ack_cmd=${hex:0:2}
+        if [ "$ack_cmd" != "$cmd" ]; then
+            hex=""
+        fi
     done
+
+    if [ ! -t 1 ]; then
+        echo $hex
+    fi
 }
 
-function set_pos() {
+function set_angle() {
     local id=$1
     local angle=$2
-    local speed=100
+    local speed=$3
     local direction=0
 
-    if [ -z "$1" ] || [ -z "$2" ]; then
-        usage
+    if [ -z "$speed" ]; then
+        speed=100
     fi
 
-    if [ $angle -lt 0 -o $angle -gt 36000 ]; then
+    if [ -z "$id" ] || [ -z "$angle" ]; then
         usage
     fi
-    if [ ! -z "$3" ]; then
-        let speed=$3
+    if [ $angle -lt 0 -o $angle -gt 36000 ]; then
+        usage
     fi
     if [ $speed -lt 0 -o $speed -gt 60000 ]; then
         usage
     fi
 
-    current_angle=$(read_angle $id);
+    if [ -e "$TMP_GIMBAL/max${id}" ]; then
+        max=$(cat $TMP_GIMBAL/max${id})
+        if [ $angle -gt $max ]; then
+            let angle=max*99/100
+        fi
+    fi
+
+    current_angle=$(get_angle $id);
     if [ $angle -lt $current_angle ]; then
         direction=1
     fi
@@ -169,29 +190,11 @@ function set_zero() {
     send_frame $id "19" "00000000000000"
 }
 
-function read_current() { # current
+function get_angle() { # angle
     local id=$1
-
-    send_frame $id "9C" "00000000000000"
-    hex=$(get_ack "9C")
-
-    curr_str=${hex:6:2}${hex:4:2}
-    curr=$((16#${curr_str}))
-    if [ $curr -gt 32768 ]; then
-        curr=$((0x10000-curr))
-    fi
-    let curr=curr*33/2048
-    echo "$curr"
-}
-
-function read_angle() { # angle
-    local id=$1
-
-    send_frame $id "94" "00000000000000"
-    hex=$(get_ack "94")
+    local hex=$(send_frame $id "94" "00000000000000")
 
     angle_str=${hex:14:2}${hex:12:2}${hex:10:2}${hex:8:2}
-    #echo "angle_str=$angle_str"
     angle=$((16#${angle_str}))
     if [ $id -eq 1 ]; then
         if [ $angle -gt 34000 ]; then # angle < 0
@@ -206,11 +209,24 @@ function read_angle() { # angle
     echo "$angle"
 }
 
+function get_current() { # current
+    local id=$1
+    local hex=$(send_frame $id "9C" "00000000000000")
+
+    curr_str=${hex:6:2}${hex:4:2}
+    curr=$((16#${curr_str}))
+    if [ $curr -gt 32768 ]; then
+        curr=$((0x10000-curr))
+    fi
+    let curr=curr*33/2048
+    echo "$curr"
+}
+
 function check_current() {
     local id=$1
 
     while [ true ]; do
-        current=$(read_current $id)
+        current=$(get_current $id)
         if [ $current -gt 5 ]; then
             break;
         fi
@@ -220,13 +236,11 @@ function check_current() {
 function check_zero() {
     local id=$1
 
-    angle=$(read_angle $id);
+    angle=$(get_angle $id);
     if [ $angle -gt 500 ]; then
-        echo "set_zero"
         set_zero $id
         return 1
     fi
-    angle=$(read_angle $id);
     return 0
 }
 
@@ -245,14 +259,14 @@ function calibration() {
     send_frame $id "A8" "006400A08C0000" # speed=100
     sleep 0.1
     check_current $id
-    angle=$(read_angle $id);
+    angle=$(get_angle $id);
+    echo $angle > $TMP_GIMBAL/max${id}
 
     local mid=$((angle/2))
     send_frame $id "88" "00000000000000"
-    set_pos $id $mid
+    set_angle $id $mid
 }
 
-ID=$2
 case $1 in
     init)
         bus_init
@@ -268,36 +282,32 @@ case $1 in
         ;;
 
     close)
-        send_frame $ID "80" "00000000000000"
+        send_frame $2 "80" "00000000000000"
         ;;
 
     run)
-        send_frame $ID "88" "00000000000000"
+        send_frame $2 "88" "00000000000000"
         ;;
     
     stop)
-        send_frame $ID "81" "00000000000000"
+        send_frame $2 "81" "00000000000000"
         ;;
 
     angle)
         if [ "$3" = "" ]; then
-            echo "$(read_angle $ID)"
+            echo "$(get_angle $2)"
             return
         fi
 
-        set_pos $ID $3 $4
+        set_angle $2 $3 $4
         ;;
 
     zero)
-        set_zero $ID
+        set_zero $2
         ;;
 
     cmd)
-        if [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
-            usage
-        fi
-
-        send_frame $ID $3 $(echo "$4" | tr -cd '0-9a-fA-F')
+        send_frame $2 $3 $(echo "$4" | tr -cd '0-9a-fA-F')
         ;;
 
     *)
