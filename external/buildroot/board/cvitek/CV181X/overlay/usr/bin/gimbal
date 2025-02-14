@@ -11,19 +11,11 @@ mkdir -p $TMP_GIMBAL
 #     echo "$1" >> $dbg_file
 # }
 
-function uint8_to_hex() {
-    echo "$(printf "%02X" "$1")"
-}
-
-function uint16_to_hex() {
-    local num=$1
-    local hex=$(printf "%04X" "$num")
-    echo "${hex:2:2}${hex:0:2}"
-}
-
-function uint32_to_hex() {
-    local num=$1
-    local hex=$(printf "%08X" "$num")
+function int_to_hex() {
+    local nbytes=$1
+    local hex=$(printf "%08X" "$2")
+    let nchars=nbytes*2
+    hex=${hex: -$nchars}
     echo "${hex:6:2}${hex:4:2}${hex:2:2}${hex:0:2}"
 }
 
@@ -144,6 +136,25 @@ function send_frame() {
     fi
 }
 
+function close() {
+    send_frame $1 "80" "00000000000000"
+}
+
+function run() {
+    send_frame $1 "88" "00000000000000"
+}
+
+function stop() {
+    send_frame $1 "81" "00000000000000"
+}
+
+function set_zero() {
+    local id=$1
+
+    echo "WARNING: Executing 0x19 affects servo lifespan!!!"
+    send_frame $id "19" "00000000000000"
+}
+
 function set_angle() {
     local id=$1
     local angle=$2
@@ -176,18 +187,19 @@ function set_angle() {
         direction=1
     fi
 
-    local dir=$(uint8_to_hex $direction)
-    local spd=$(uint16_to_hex $speed)
-    local agl=$(uint32_to_hex $angle)
+    local dir=$(int_to_hex 1 $direction)
+    local spd=$(int_to_hex 2 $speed)
+    local agl=$(int_to_hex 4 $angle)
 
     send_frame $id "A6" "$dir$spd$agl"
 }
 
-function set_zero() {
+function set_angle_abs() {
     local id=$1
+    local angle=$2
+    local speed=100
 
-    echo "WARNING: Executing 0x19 affects servo lifespan!!!"
-    send_frame $id "19" "00000000000000"
+    send_frame $id "A8" "00""$(int_to_hex 2 $speed)""$(int_to_hex 4 $angle)"
 }
 
 function get_angle() { # angle
@@ -197,12 +209,12 @@ function get_angle() { # angle
     angle_str=${hex:14:2}${hex:12:2}${hex:10:2}${hex:8:2}
     angle=$((16#${angle_str}))
     if [ $id -eq 1 ]; then
-        if [ $angle -gt 34000 ]; then # angle < 0
+        if [ $angle -gt 35000 ]; then # angle < 0
             angle=0
         fi
     fi
     if [ $id -eq 2 ]; then
-        if [ $angle -gt 19000 ]; then # angle < 0
+        if [ $angle -gt 20000 ]; then # angle < 0
             angle=0
         fi
     fi
@@ -248,23 +260,28 @@ function calibration() {
     local id=$1
 
     # seek min
-    send_frame $id "88" "00000000000000"
-    send_frame $id "A8" "0064006073FFFF" # speed=100
+    close $id
+    run $id
+    set_angle_abs $id -36000
     sleep 0.1
     check_current $id
     check_zero $id
 
     # seek max
-    send_frame $id "88" "00000000000000"
-    send_frame $id "A8" "006400A08C0000" # speed=100
+    close $id
+    run $id
+    set_angle_abs $id 36000
     sleep 0.1
     check_current $id
     angle=$(get_angle $id);
+    if [ $angle -eq 0 ]; then
+        angle=$(get_angle $id);
+    fi
     echo $angle > $TMP_GIMBAL/max${id}
 
-    local mid=$((angle/2))
-    send_frame $id "88" "00000000000000"
-    set_angle $id $mid
+    close $id
+    run $id
+    set_angle $id $((angle/2))
 }
 
 case $1 in
@@ -282,15 +299,15 @@ case $1 in
         ;;
 
     close)
-        send_frame $2 "80" "00000000000000"
+        close $2
         ;;
 
     run)
-        send_frame $2 "88" "00000000000000"
+        run $2
         ;;
     
     stop)
-        send_frame $2 "81" "00000000000000"
+        stop $2
         ;;
 
     angle)
