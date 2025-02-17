@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-SSCMA_NODE_VERSION = 0.1.5
+SSCMA_NODE_VERSION = 0.1.6
 SSCMA_NODE_SITE = https://github.com/Seeed-Studio/sscma-example-sg200x
 SSCMA_NODE_SITE_METHOD = git
 SSCMA_NODE_GIT_SUBMODULES = YES
@@ -32,6 +32,8 @@ define SSCMA_NODE_INSTALL_TARGET_CMDS
 	# Install npm packages
 	$(NPM) install --no-audit --no-update-notifier --no-fund --save --save-prefix=~ --production --engine-strict --prefix $(TARGET_DIR)/home/recamera/.node-red node-red-contrib-sscma
 	$(NPM) install --no-audit --no-update-notifier --no-fund --save --save-prefix=~ --production --engine-strict --prefix $(TARGET_DIR)/home/recamera/.node-red node-red-contrib-os
+	$(NPM) install --no-audit --no-update-notifier --no-fund --save --save-prefix=~ --production --engine-strict --prefix $(TARGET_DIR)/home/recamera/.node-red node-red-contrib-seeed-canbus
+	$(NPM) install --no-audit --no-update-notifier --no-fund --save --save-prefix=~ --production --engine-strict --prefix $(TARGET_DIR)/home/recamera/.node-red node-red-contrib-seeed-recamera
 	$(NPM) install --no-audit --no-update-notifier --no-fund --save --save-prefix=~ --production --engine-strict --prefix $(TARGET_DIR)/home/recamera/.node-red @flowfuse/node-red-dashboard
 
 	# Install the executable file
