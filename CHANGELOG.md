@@ -1,3 +1,13 @@
+## 0.1.6 (2025-02-19)
+
+### sg2002_recamera_emmc
+
+- New Features:
+    - Add gimbal automatic calibration
+
+- Bug Fixes:
+    - Resolved various bugs in the SSCMA
+
 ## 0.1.5 (2025-01-22)
 
 ### sg2002_recamera_emmc
@@ -12,7 +22,6 @@
 - Bug Fixes:
     - Resolved various bugs in the SSCMA Node
     - Resolved various bugs in the SSCMA Supervisor
-  
 
 If you need any more modifications, feel free to ask!
 ## 0.1.4 (2024-12-23)
