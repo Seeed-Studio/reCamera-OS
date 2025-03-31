@@ -1,21 +1,26 @@
 #!/bin/sh
 
+ANGLE_GAP=300
+SPEED_DEFAULT=150
+SPEED_MAX=720
+
+GIMBAL_PID=/home/recamera/.gimbal_pid
 PINMUX="/mnt/system/usr/bin/cvi_pinmux"
 DRV_NAME="mcp251xfd"
 DRV_KO="/mnt/system/ko/$DRV_NAME.ko"
 TMP_GIMBAL=/tmp/gimbal
 mkdir -p "$TMP_GIMBAL"
 
-# function debug() {
-#     dbg_file="$TMP_GIMBAL/dbg"
-#     [ ! -f "$dbg_file" ] && echo "" > "$dbg_file"
-#     echo "$1" >> "$dbg_file"
-# }
+function debug() {
+    dbg_file="$TMP_GIMBAL/dbg"
+    [ ! -f "$dbg_file" ] && echo "" > "$dbg_file"
+    echo "$1" >> "$dbg_file"
+}
 
 function int_to_hex() {
     local nbytes=$1
     local num=$2
-    local hex=$(printf "%08X" "$num")
+    local hex=$(printf "%08X" $((num)))
     local nchars=$((nbytes * 2))
     hex=${hex: -$nchars}
     echo "${hex:6:2}${hex:4:2}${hex:2:2}${hex:0:2}"
@@ -24,9 +29,8 @@ function int_to_hex() {
 function check_bus_ready() {
     if ifconfig can0 2>/dev/null | grep -q "HWaddr"; then
         return 1
-    else
-        return 0
     fi
+    return 0
 }
 
 function bus_init() {
@@ -51,7 +55,7 @@ function bus_init() {
 
     # Load the kernel module
     if [ -f $DRV_KO ]; then
-        insmod $DRV_KO
+        insmod $DRV_KO 2>/dev/null
     fi
 
     # Check if the bus is ready again
@@ -87,13 +91,26 @@ function usage() {
 Usage:
   gimbal <options> <id> [params]
 
-Gimbal control cmds.
-  id: 1 ~ 2, angle: -36000 ~ 36000, speed: 0 ~ 60000
+Gimbal control cmds. Value limits:
+  id: 1 ~ 2
+  speed: 0 ~ 720 (default $SPEED_DEFAULT)
+  absolute angle: id1 0 ~ 36000
+                  id2 0 ~ 18000
+  relative angle: id1 -36000 ~ 36000
+                  id2 -18000 ~ 18000
+  a: angle pid
+  s: speed pid
+  Kp: Proportional gain 0~2000, ^-Retain
+  Ki: Integral gain     0~2000, ^-Retain
+  Kd: Derivative gain   0~2000, ^-Retain
 
 Options:
   init   - Init can bus.
   deinit - Deinit can bus.
   cali   - Calibration servo1 & servo2, and write zero point.
+  close  - Close servo, needs 'run' to restart.
+  run    - Run servo.
+  stop   - Stop servo.
   zero   - Set zero point.
 
   status <id>             - Query servo status.
@@ -101,11 +118,14 @@ Options:
     example:
       gimbal cmd 1 81 "00000000000000"
       gimbal cmd 1 81 "00 00 00 00 00 00 00"
-      gimbal cmd 1 81 "00.00.00.00.00.00.00"
 
-  angle <id>                 - Query servo angle.
-  angle <id> <angle> [speed] - Set servo angle, angle: 0 ~ 36000, default speed=100
-  rel <id> <angle> [speed]   - Set relative angle, angle: -36000 ~ 36000, default speed=100
+  abs|angle <id>                 - Query servo absolute angle.
+  abs|angle <id> <angle> [speed] - Set servo absolute angle.
+  rel <id> <angle> [speed]       - Set relative angle.
+
+  pid <id> <a|s>                 - Get servo pid.
+  pid <id> <a|s> <Kp> [Ki] [Kd]  - Set servo pid.
+
 
 
 EOF
@@ -118,38 +138,32 @@ function send_frame() {
     local data=$3
 
     local tmp_file="$TMP_GIMBAL/ack${id}"
-    local attempts=0
+    local attempt=0
     local hex=""
-
-    while [ -z "$hex" ] && [ $attempts -lt 5 ]; do
-        attempts=$((attempts + 1))
-        candump can0 > "$tmp_file" & pid=$!
-        sleep 0.005
+    while [ $attempt -lt 5 ]; do
+        let attempt+=1
+        timeout 0.1 candump can0 2>/dev/null > $tmp_file&
+        sleep 0.05
         cansend can0 14$id#$cmd$data
-        sleep 0.005
-        kill -9 $pid
+        sleep 0.05
 
-        if [ ! -s "$tmp_file" ]; then
-            break;
-        fi
-
-        ack_line=$(grep 14${id} "$tmp_file" | sed -n '2p')
-        hex=$(echo "$ack_line" | awk '{for(i=4;i<=NF;i++) printf "%s", $i}')
-        if [ "$(echo "$hex" | tr -d ' ')" = "$cmd$data" ]; then
-            ack_line=$(grep 14${id} "$tmp_file" | sed -n '1p')
-            hex=$(echo "$ack_line" | awk '{for(i=4;i<=NF;i++) printf "%s", $i}')
+        ack_line=$(cat ${tmp_file} | grep 14${id} | awk 'NR==2')
+        hex=$(echo $ack_line | awk '{for(i=4;i<=NF;i++) printf "%s", $i}')
+        if [ "$(echo "$hex" | tr -d ' ')" = $cmd$data ]; then
+            ack_line=$(cat ${tmp_file} | grep 14${id} | awk 'NR==1')
+            hex=$(echo $ack_line | awk '{for(i=4;i<=NF;i++) printf "%s", $i}')
         fi
         ack_cmd=${hex:0:2}
-        if [ "$ack_cmd" != "$cmd" ]; then
-            hex=""
+        if [ "$ack_cmd" == "$cmd" ]; then
+            break
         fi
     done
 
     if [ ! -t 1 ]; then
-        echo "$hex"
+        echo $hex
     fi
 
-    return 1
+    return 0
 }
 
 function close() {
@@ -164,64 +178,33 @@ function stop() {
     send_frame $1 "81" "00000000000000"
 }
 
-function set_zero() {
+function zero() {
     local id=$1
 
     echo "WARNING: Executing 0x19 affects servo(id=$id) lifespan!!!"
     send_frame $id "19" "00000000000000"
 }
 
-function angle_limit() {
-    local angle=$1
-    local max=$(cat "$TMP_GIMBAL/max${id}" 2>/dev/null)
+function zero_ram() {
+    local id=$1
 
-    if [ -n "$max" ] && [ "$max" -gt 300 ]; then
-        max=$((max - 300))
-        if [ "$angle" -gt "$max" ]; then
-            angle=$max
-        fi
-    fi
-
-    if [ "$angle" -lt 300 ]; then
-        angle=300
-    fi
-
-    echo $angle
+    send_frame $id "95" "00000000000000"
 }
 
 function set_angle() {
     local id=$1
-    local angle=$2
-    local speed=$3
-    local direction=0
+    local angle=$(int_to_hex 4 $2)
+    local speed=$(int_to_hex 2 $3)
 
-    if [ -z $speed ] || [ $speed -eq 0 ]; then
-        speed=100
-    fi
-
-    angle=$(angle_limit $angle)
-    current_angle=$(get_angle $id 1)
-    if [ "$angle" -lt "$current_angle" ]; then
-        direction=1
-    fi
-
-    local dir=$(int_to_hex 1 $direction)
-    local spd=$(int_to_hex 2 $speed)
-    local agl=$(int_to_hex 4 $angle)
-
-    send_frame $id "A6" "$dir$spd$agl"
+    send_frame $id "A4" "00$speed$angle"
 }
 
 function set_angle_rel() { # relatively
     local id=$1
-    local angle=$2
-    local speed=$3
+    local angle=$(int_to_hex 4 $2)
+    local speed=$(int_to_hex 2 $3)
 
-    if [ -z $speed ] || [ $speed -eq 0 ]; then
-        speed=100
-    fi
-
-    send_frame $id "A8" "00$(int_to_hex 2 $speed)$(int_to_hex 4 $angle)"
+    send_frame $id "A8" "00$speed$angle"
 }
 
 function get_angle() { # angle
@@ -231,19 +214,19 @@ function get_angle() { # angle
 
     angle_str=${hex:14:2}${hex:12:2}${hex:10:2}${hex:8:2}
     angle=$((16#${angle_str}))
-    if [ -n "$limit" ] && [ "$angle" -gt 35600 ]; then
+    if [ -n "$limit" ] && [ $((angle)) -gt 35600 ]; then
         angle=0
     fi
     echo "$angle"
 }
 
-function get_current() { # current
+function status() { # current
     local id=$1
     local hex=$(send_frame $id "9C" "00000000000000")
 
     curr_str=${hex:6:2}${hex:4:2}
     curr=$((16#${curr_str}))
-    if [ "$curr" -gt 32768 ]; then
+    if [ $((curr)) -gt 32768 ]; then
         curr=$((0x10000 - curr))
     fi
     curr=$((curr * 33 * 1000 / 2048))
@@ -254,11 +237,11 @@ function check_angle() {
     local id=$1
     local last=72000
     local attempts=0
-    while [ $attempts -lt 15 ]; do
+    while [ $((attempts)) -lt 15 ]; do
         attempts=$((attempts + 1))
         angle=$(get_angle $id)
         diff=$((angle - last))
-        if [ "$diff" -ge -100 ] && [ "$diff" -le 100 ]; then
+        if [ $((diff)) -ge -100 ] && [ $((diff)) -le 100 ]; then
             break
         fi
         last=$angle
@@ -268,21 +251,35 @@ function check_angle() {
 
 function check_zero() {
     local id=$1
-    angle=$(get_angle $id 1)
-    if [ "$angle" -gt 500 ]; then
-        set_zero $id
-        return 1
+    # angle=$(get_angle $id 1)
+    # if [ $((angle)) -gt 500 ]; then
+        zero_ram $id
+        # return 1
+    # fi
+
+    # return 0
+}
+
+function write_limit() {
+    local id=$1
+    local low=$2
+    local high=$3
+
+    if [ $((high)) -gt $((low)) ]; then
+        send_frame $id "C1" "220000$(int_to_hex 4 $high)"
+        send_frame $id "C1" "230000$(int_to_hex 4 $low)"
     fi
-    return 0
 }
 
 function calibration() {
     local id=$1
 
+    write_limit $id -72000 72000
+
     # seek min
     close $id
     run $id
-    set_angle_rel $id -36000
+    set_angle_rel $id -36000 $SPEED_DEFAULT
     sleep 0.01
     check_angle $id
     check_zero $id
@@ -290,138 +287,165 @@ function calibration() {
     # seek max
     close $id
     run $id
-    set_angle_rel $id 36000
+    set_angle_rel $id 36000 $SPEED_DEFAULT
     sleep 0.01
     check_angle $id
     echo "$angle" > "$TMP_GIMBAL/max${id}"
+    write_limit $id $ANGLE_GAP $((angle-ANGLE_GAP))
 
     close $id
     run $id
-    set_angle $id $((angle/2))
+    set_angle $id $((angle/2)) $SPEED_DEFAULT
 }
 
-function check_id() {
+function pid() {
     local id=$1
-    if [ -z "$id" ] || [ "$id" -lt 1 ] || [ "$id" -gt 2 ]; then
-        usage
+    local ty=$2
+    local kp=$(int_to_hex 2 $3)
+    local ki=$(int_to_hex 2 $4)
+    local kd=$(int_to_hex 2 $5)
+
+    send_frame $id "C1" "$ty$kp$ki$kd"
+}
+
+function write_pid() {
+    pid 1 0A 50 0 0
+    pid 1 0B 260 20 0
+    pid 2 0A 50 0 0
+    pid 2 0B 100 20 0
+    if [ -s "$GIMBAL_PID" ]; then
+        while IFS= read -r line; do
+            if [[ "${line:0:1}" == "#" ]]; then
+                continue
+            fi
+            pid $line
+        done < "$GIMBAL_PID"
     fi
 }
 
-if [ "$1" != "init" ] && [ "$1" != "deinit" ]; then
-    check_bus_ready; ret=$?
-    if [ $ret -eq 0 ]; then
-        echo "Warning: Can bus is not ready."
-        exit 1
-    fi
+if [ "$1" = "init" ] || [ "$1" = "deinit" ]; then
+    bus_${1}
+    mkdir -p $TMP_GIMBAL
+    > $TMP_GIMBAL/ack1
+    > $TMP_GIMBAL/ack2
+    > $TMP_GIMBAL/dbg
+    > $TMP_GIMBAL/max1
+    > $TMP_GIMBAL/max2
+    chown -R recamera:recamera $TMP_GIMBAL
+    return
+fi
+if [ "$1" = "cali" ]; then
+    # fix servo bug
+    close 1
+    close 2
+    set_angle_rel 1 0 $SPEED_DEFAULT
+    set_angle_rel 2 0 $SPEED_DEFAULT
+
+    write_pid
+    calibration 1
+    calibration 2
+    return
+fi
+
+# check params
+ID=$2
+if [ $((ID)) -lt 1 ] || [ $((ID)) -gt 2 ]; then
+    usage
 fi
 
 case $1 in
-    init)
-        bus_init
-        # Create tmp files
-        mkdir -p $TMP_GIMBAL
-        echo "" > $TMP_GIMBAL/dbg
-        echo "" > $TMP_GIMBAL/ack1
-        echo "" > $TMP_GIMBAL/ack2
-        echo "" > $TMP_GIMBAL/max1
-        echo "" > $TMP_GIMBAL/max2
-        chown -R recamera:recamera $TMP_GIMBAL
-        ;;
+    close|run|stop|zero|status)
+        $1 $ID
+    return
+    ;;
 
-    deinit)
-        bus_deinit
-        ;;
+    pid)
+        ty=$3
+        kp=$4
+        ki=$5
+        kd=$6
 
-    cali)
-        calibration 1
-        calibration 2
-        ;;
+        [ "$ty" = "a" ] && type="0A"
+        [ "$ty" = "s" ] && type="0B"
+        [ -z "$type" ] && usage
 
-    close)
-        id=$2
-        check_id $id
-        close $id
-        ;;
+        # read pid
+        hex=$(send_frame $ID "C0" "${type}000000000000")
 
-    run)
-        id=$2
-        check_id $id
-        run $id
-        ;;
-    
-    stop)
-        id=$2
-        check_id $id
-        stop $id
-        ;;
+        kp_s=${hex:6:2}${hex:4:2}
+        kp_r=$((16#${kp_s}))
+        ki_s=${hex:10:2}${hex:8:2}
+        ki_r=$((16#${ki_s}))
+        kd_s=${hex:14:2}${hex:12:2}
+        kd_r=$((16#${kd_s}))
 
-    status)
-        id=$2
-        check_id $id
-        echo "$(get_current $id)"
-        ;;
-
-    abs|angle)
-        id=$2
-        angle=$3
-        speed=$4
-        check_id $id
-
-        # query
-        if [ -z "$angle" ]; then
-            echo "$(get_angle $id)"
+        if [ -z "$kp" ]; then
+            if [ $type = "0A" ]; then
+                echo "Position Loop PID:"
+                echo "Kp=$kp_r Ki=$ki_r Kd=$kd_r"
+            else
+                echo "Speed Loop PID:"
+                echo "Kp=$kp_r Ki=$ki_r Kd=$kd_r"
+            fi
             return
         fi
 
-        # set
-        if [ "$angle" -lt 0 ] || [ "$angle" -gt 36000 ]; then
-            usage
-        fi
-        speed=$((speed))
-        if [ "$speed" -lt 0 ] || [ "$speed" -gt 60000 ]; then
-            usage
-        fi
+        [ "$kp" = "^" ] && kp=$((kp_r))
+        [ -z "$ki" ] && [ "$ki" = "^" ] && ki=$((ki_r))
+        [ -z "$kd" ] && [ "$kd" = "^" ] && kd=$((kd_r))
 
-        set_angle $id $angle $speed
-        ;;
+        [ $((kp)) -lt 0 ] && [ $((kp)) -gt 2000 ] && usage;
+        [ $((ki)) -lt 0 ] && [ $((ki)) -gt 2000 ] && usage;
+        [ $((kd)) -lt 0 ] && [ $((kd)) -gt 2000 ] && usage;
 
-    rel)
-        id=$2
-        angle=$3
-        speed=$4
-        check_id $id
-
-        if [ -z $angle ] || [ "$angle" -lt -36000 ] || [ "$angle" -gt 36000 ]; then
-            usage
-        fi
-        speed=$((speed))
-        if [ "$speed" -lt 0 ] || [ "$speed" -gt 60000 ]; then
-            usage
-        fi
-
-        current_angle=$(get_angle $id 1)
-        angle=$((current_angle+angle))
-        angle=$(angle_limit $angle)
-
-        set_angle $id $angle $speed
-        ;;
-
-    zero)
-        id=$2
-        check_id $id
-        set_zero $2
-        ;;
+        pid $ID $type $kp $ki $kd
+    return
+    ;;
 
     cmd)
-        id=$2
         cmd=$3
         data=$4
-        check_id $id
         if [ -z $cmd ] || [ -z $data ]; then
             usage
         fi
 
-        echo "$(send_frame $id $cmd $(echo "$data" | tr -cd '0-9a-fA-F'))"
+        send_frame $ID $cmd $(echo "$data" | tr -cd '0-9a-fA-F')
+    return
+    ;;
+esac
+
+ANGLE=$3
+if [ $((ANGLE)) -lt -36000 ] || [ $((ANGLE)) -gt 36000 ]; then
+    usage
+fi
+
+SPEED=$4
+if [ $((SPEED)) -le 0 ]; then
+    SPEED=$SPEED_DEFAULT
+fi
+if [ $((SPEED)) -gt $((SPEED_MAX)) ]; then
+    usage
+fi
+
+case $1 in
+    abs|angle)
+        # query
+        if [ -z "$ANGLE" ]; then
+            echo "$(get_angle $ID)"
+            return
+        fi
+
+        set_angle $ID $ANGLE $SPEED
+        ;;
+
+    rel)
+        # query
+        if [ -z "$ANGLE" ]; then
+            echo "$(get_angle $ID)"
+            return
+        fi
+
+        set_angle_rel $ID $ANGLE $SPEED
         ;;
 
     *)
