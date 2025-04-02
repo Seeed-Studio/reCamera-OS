@@ -336,10 +336,8 @@ if [ "$1" = "init" ] || [ "$1" = "deinit" ]; then
 fi
 if [ "$1" = "cali" ]; then
     # fix servo bug
-    close 1
-    close 2
-    set_angle_rel 1 0 $SPEED_DEFAULT
-    set_angle_rel 2 0 $SPEED_DEFAULT
+    set_angle_rel 1 0 $SPEED_MAX
+    set_angle_rel 2 0 $SPEED_MAX
 
     write_pid
     calibration 1
