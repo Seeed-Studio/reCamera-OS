@@ -152,7 +152,6 @@ wget_file() {
     wget -T 10 -t 3 --no-check-certificate --spider "$url" -o "$tmpfile"
     size="$(grep -i 'Length' "$tmpfile" | awk '{print $2}')"
     rm -f "$tmpfile"
-
     [ -z "$size" ] && exit_upgrade "get size $(basename $file)"
     echo "$file" >"$ResultFile.file"
     echo "$size" >"$ResultFile.size"
@@ -170,7 +169,7 @@ zip_write_part() {
     echo "$size" >"$ResultFile.$file.size"
 
     local tmpfile=$(mktemp)
-    unzip -p "$zip" "$file" 2>/dev/null | tee >(md5sum >"$tmpfile") | dd of="$part" bs=1M status=progress 2>&1 | tee "$ResultFile.$file.prog"
+    unzip -p "$zip" "$file" 2>/dev/null | tee >(md5sum >"$tmpfile") | dd of="$part" bs=1M status=progress 2>&1 | tee -a "$ResultFile.$file.prog"
     local ret=$?
     calc_md5=$(cat $tmpfile | awk '{print $1}')
     rm -rf $tmpfile
@@ -334,9 +333,9 @@ start_cmd() {
             cat "$ResultFile"
             exit 0
         }
+
         local total=$(cat "$ResultFile.rootfs_ext4.emmc.size" 2>/dev/null)
-        local size=$(cat "$ResultFile.rootfs_ext4.emmc.prog" 2>/dev/null | awk '{print $1}')
-        >"$ResultFile.rootfs_ext4.emmc.prog"
+        local size=$(tr '\r' '\n' < "$ResultFile.rootfs_ext4.emmc.prog" | awk 'END {print $1}')
         echo "$((size)) $((total))"
         exit 0
     }
