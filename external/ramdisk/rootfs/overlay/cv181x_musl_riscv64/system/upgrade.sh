@@ -303,7 +303,7 @@ download() {
         }
     }
     ([ -s "$md5_path_tmp" ] && [ -s "$url_path_tmp" ]) || {
-        exit_upgrade "skip with no latest files, please run 'upgrade.sh latest [url]' first"
+        exit_upgrade "no latest files, please run 'upgrade.sh latest [url]' first"
     }
 
     local filename md5 url
