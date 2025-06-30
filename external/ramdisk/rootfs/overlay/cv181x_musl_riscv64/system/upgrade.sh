@@ -170,7 +170,7 @@ zip_write_part() {
     echo "$size" >"$ResultFile.$file.size"
 
     local tmpfile=$(mktemp)
-    unzip -p "$zip" "$file" 2>/dev/null | tee >(md5sum >"$tmpfile") | dd of="$part" bs=1M status=progress 2>&1 | tee "$ResultFile.$file.status"
+    unzip -p "$zip" "$file" 2>/dev/null | tee >(md5sum >"$tmpfile") | dd of="$part" bs=1M status=progress 2>&1 | tee "$ResultFile.$file.prog"
     local ret=$?
     calc_md5=$(cat $tmpfile | awk '{print $1}')
     rm -rf $tmpfile
@@ -266,7 +266,7 @@ download_cmd() {
         }
         local total=$(cat "$ResultFile.size" 2>/dev/null)
         local file=$(cat "$ResultFile.file" 2>/dev/null)
-        local size=$(stat -c %s "$file")
+        local size=$(stat -c %s "$file" 2>/dev/null)
         echo "$((size)) $((total))"
         exit 0
     }
@@ -335,8 +335,8 @@ start_cmd() {
             exit 0
         }
         local total=$(cat "$ResultFile.rootfs_ext4.emmc.size" 2>/dev/null)
-        local size=$(cat "$ResultFile.rootfs_ext4.emmc.status" 2>/dev/null | awk '{print $1}')
-        >"$ResultFile.rootfs_ext4.emmc.status"
+        local size=$(cat "$ResultFile.rootfs_ext4.emmc.prog" 2>/dev/null | awk '{print $1}')
+        >"$ResultFile.rootfs_ext4.emmc.prog"
         echo "$((size)) $((total))"
         exit 0
     }
