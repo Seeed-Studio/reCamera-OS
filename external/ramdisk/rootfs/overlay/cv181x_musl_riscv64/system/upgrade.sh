@@ -35,7 +35,7 @@ cleanup() {
     }
     rm -rf "$UPGRADE_FILES/$RunCase.mutex" 2>/dev/null
 }
-trap cleanup SIGINT SIGTERM EXIT
+trap cleanup SIGINT SIGTERM
 
 exit_upgrade() {
     cleanup
@@ -69,6 +69,7 @@ kill_ps() {
 ps_stop() {
     kill_ps "dd of=$ROOTFS bs=1M status=progress"
     kill_ps "dd of=$ROOTFS_B bs=1M status=progress"
+    kill_ps "wget -T 10 -t 3 --no-check-certificate"
     killall "$(basename $0)"
     echo "stopped"
     exit 0
@@ -145,16 +146,19 @@ get_upgrade_url() {
 }
 
 wget_file() {
-    local url=$1 file=$2 size
+    local url="$1" file="$2" size
     step_log "Download $url"
+    local tmpfile=$(mktemp)
+    wget -T 10 -t 3 --no-check-certificate --spider "$url" -o "$tmpfile"
+    size="$(grep -i 'Length' "$tmpfile" | awk '{print $2}')"
+    rm -f "$tmpfile"
 
-    size="$(wget --no-check-certificate --spider "$1" 2>&1 | grep 'Length' | awk '{print $2}')"
-    [ -z "$size" ] && exit_upgrade "get size $url"
+    [ -z "$size" ] && exit_upgrade "get size $(basename $file)"
     echo "$file" >"$ResultFile.file"
     echo "$size" >"$ResultFile.size"
 
-    wget -q -c -T 10 -t 3 --no-check-certificate --show-progress "$url" -O "$file" || exit_upgrade "download $url"
-    [ ! -s "$file" ] && exit_upgrade "download $file is empty"
+    wget -T 10 -t 3 --no-check-certificate -q -c --show-progress "$url" -O "$file" -o /dev/null || exit_upgrade "download $url"
+    [ ! -s "$file" ] && exit_upgrade "download $(basename $file) is empty"
 }
 
 zip_write_part() {
@@ -330,8 +334,9 @@ start_cmd() {
             cat "$ResultFile"
             exit 0
         }
-        local size=$(tail "$ResultFile.rootfs_ext4.emmc.status" 2>/dev/null | awk '{print $1}')
         local total=$(cat "$ResultFile.rootfs_ext4.emmc.size" 2>/dev/null)
+        local size=$(cat "$ResultFile.rootfs_ext4.emmc.status" 2>/dev/null | awk '{print $1}')
+        >"$ResultFile.rootfs_ext4.emmc.status"
         echo "$((size)) $((total))"
         exit 0
     }
