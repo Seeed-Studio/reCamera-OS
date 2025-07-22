@@ -134,12 +134,14 @@ function pack_cfg
 
     # isp parameter
     cp -v $TOPDIR/isp_tuning/copyBin.sh $ISP_TUNING_PATH
+    
+    SRC_DIR=${CHIP_ARCH,,}/src
+    DST_DIR="$OUTPUT_DIR/rootfs/mnt/cfg/param"
 
-    _dir="$OUTPUT_DIR/rootfs/mnt/cfg/param"
-    mkdir -p $_dir
+    mkdir -p $DST_DIR
 
     pushd $ISP_TUNING_PATH
-    ./copyBin.sh $_dir $SENSOR_TUNING_PARAM
+    find "$SRC_DIR" -type f -name "*.bin" -exec cp {} "$DST_DIR" \;
     popd
 
     mkdir -p $BR_OVERLAY_DIR/mnt
