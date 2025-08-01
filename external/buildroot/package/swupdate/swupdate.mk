@@ -279,7 +279,7 @@ endef
 define SWUPDATE_INSTALL_INIT_SYSV
 	$(SWUPDATE_INSTALL_COMMON)
 	$(INSTALL) -D -m 755 $(SWUPDATE_PKGDIR)/S80swupdate \
-		$(TARGET_DIR)/etc/init.d/S80swupdate
+		$(TARGET_DIR)/etc/init.d/disabled/S80swupdate
 	$(INSTALL) -D -m 644 $(SWUPDATE_PKGDIR)/90-start-progress \
 		$(TARGET_DIR)/usr/lib/swupdate/conf.d/90-start-progress
 endef

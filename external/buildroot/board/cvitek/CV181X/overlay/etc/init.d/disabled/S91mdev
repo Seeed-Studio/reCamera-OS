@@ -4,8 +4,6 @@ ${CVI_SHOPTS}
 # Start firmware
 #
 
-exit 0
-
 case "$1" in
   start)
     echo "Starting mdev..."

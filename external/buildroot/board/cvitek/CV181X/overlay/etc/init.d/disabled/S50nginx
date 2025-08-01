@@ -2,7 +2,6 @@
 #
 # Start/stop nginx
 #
-exit 0
 NGINX=/usr/sbin/nginx
 PIDFILE=/var/run/nginx.pid
 
