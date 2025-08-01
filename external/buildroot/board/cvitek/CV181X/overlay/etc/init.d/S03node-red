@@ -10,13 +10,17 @@
 # Description:       Start Node-RED service.
 ### END INIT INFO
 
+# USER=recamera  # Target user to switch to when running as root
+USER=$(cat /etc/passwd | grep /bin/sh | grep -v root | awk -F':' '{print $1}')
+
 DAEMON="/usr/bin/node-red-pi"
 DAEMON_OPTS="--max-old-space-size=64 --expose-gc"
 NAME=node-red
 DESC="Node-RED service"
-VARDIR=/userdata/.var
-PIDFILE=$VARDIR/$NAME.pid
-USER=recamera  # Target user to switch to when running as root
+
+TMP_DIR="/tmp/$NAME"
+PIDFILE="$TMP_DIR/pid"
+[ ! -d "$TMP_DIR" ] && mkdir -p "$TMP_DIR" && chown -R $USER:$USER "$TMP_DIR"
 
 start() {
     if [ -f $PIDFILE ]; then
@@ -38,10 +42,8 @@ start() {
         rm -f $PIDFILE
     fi
 
+    local cmd="start-stop-daemon -S -q -m -b -p $PIDFILE --exec $DAEMON -- $DAEMON_OPTS"
     echo "Starting $DESC: $NAME"
-    # USER=$(awk -F: 'BEGIN {f=0} $1!="root" && $2!="*" && !f {print $1; f=1; exit}' /etc/shadow)
-    USER=$(cat /etc/passwd | grep /bin/sh | grep -v root | awk -F':' '{print $1}')
-
     # Check if the current user is root
     if [ $(id -u) -eq 0 ]; then
         # If root and the specified user exists, switch to that user
@@ -53,16 +55,14 @@ start() {
             DAEMON_USER=root
             echo "User $USER does not exist. Running as root."
         fi
+        su $DAEMON_USER -c "$cmd"
     else
         # If not root, use the current user to run the service
         DAEMON_USER=$(whoami)
         DAEMON_OPTS="$DAEMON_OPTS --userDir /home/$DAEMON_USER/.node-red"
         echo "Running as user: $DAEMON_USER"
+        $cmd
     fi
-   
-    su $DAEMON_USER -c "mkdir -p $VARDIR"
-    su $DAEMON_USER -c "start-stop-daemon -S -q -m -b -p $PIDFILE --exec $DAEMON -- $DAEMON_OPTS"
-
     [ $? = 0 ] && echo "OK" || echo "FAIL"
 }
 
