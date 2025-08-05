@@ -1,0 +1,7 @@
+config BR2_PACKAGE_BT_INIT
+    bool "bt-init"
+    default y
+    select BR2_PACKAGE_BLUEZ5_UTILS
+    help
+      This is the help text for the bt-init package.
+      It will be displayed in the Buildroot configuration menu.
