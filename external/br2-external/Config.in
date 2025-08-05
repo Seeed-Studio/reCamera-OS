@@ -5,3 +5,5 @@ source "$BR2_EXTERNAL_BR2EXT_PATH/sscma-node/Config.in"
 source "$BR2_EXTERNAL_BR2EXT_PATH/sscma-supervisor/Config.in"
 source "$BR2_EXTERNAL_BR2EXT_PATH/opencv4/Config.in"
 source "$BR2_EXTERNAL_BR2EXT_PATH/opencv4-contrib/Config.in"
+source "$BR2_EXTERNAL_BR2EXT_PATH/bt-init/Config.in"
+
