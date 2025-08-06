@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+    <remote name="origin" fetch="git@github.com:sophgo/" review="git@github.com:sophgo/"/>
+    <default revision="cv18xx-v4.2.x" remote="origin" sync-j="4"/>
+
+    <project name="host-tools" revision="master"/>
+    <project name="build" path="build"/>
+    <project name="fsbl" path="fsbl"/>
+    <project name="opensbi" path="opensbi"/>
+    <project name="u-boot-2021.10" path="u-boot-2021.10"/>
+    <project name="linux_5.10" path="linux_5.10"/>
+    <project name="osdrv" path="osdrv"/>
+    <project name="ramdisk" path="ramdisk"/>
+    <project name="oss" path="oss" sync-s="true" revision="master"/>
+    <project name="cvi_mpi" path="cvi_mpi"/>
+    <project name="isp_tuning" path="isp_tuning"/>
+    <project name="cvi_alios_open" path="cvi_alios"/>
+    <project name="cvi_rtsp" path="cvi_rtsp"/>
+    <project name="ive" path="ive"/>
+    <project name="tdl_sdk" path="tdl_sdk" revision="v1"/>
+    <project name="cvibuilder" path="cvibuilder" revision="master"/>
+    <project name="cvikernel" path="cvikernel" revision="master"/>
+    <project name="cviruntime" path="cviruntime" revision="master"/>
+    <project name="cvimath" path="cvimath" revision="master"/>
+    <project name="flatbuffers" path="flatbuffers" revision="master"/>
+    <project name="cnpy" path="cnpy" revision="tpu"/>
+</manifest>

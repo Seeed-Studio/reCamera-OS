@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+    <remote name="origin" fetch="git@github.com:sophgo/" review="git@github.com:sophgo/"/>
+    <default revision="cv184x-v6.x" remote="origin" sync-j="4"/>
+
+    <project name="host-tools" revision="master"/>
+    <project name="build"/>
+    <project name="fsbl"/>
+    <project name="u-boot-2021.10"/>
+    <project name="linux_5.10"/>
+    <project name="osdrv"/>
+    <project name="ramdisk"/>
+    <project name="oss" revision="master"/>
+    <project name="cvi_mpi"/>
+    <project name="SensorSupportList" path="build/media/SensorSupportList"/>
+    <project name="isp_tuning"/>
+    <project name="ive"/>
+    <project name="tdl_sdk" revision="master"/>
+    <project name="cvi_rtsp"/>
+    <project name="isp-tool-daemon"/>
+    <project name="cvi_alios_open" path="cvi_alios"/>
+    <project name="libsophon"/>
+    <project name="freertos"/>
+    <project name="osal"/>
+</manifest>
+

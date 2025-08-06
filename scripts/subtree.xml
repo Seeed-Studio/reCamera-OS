@@ -15,7 +15,7 @@
     <project name="osdrv"/>
     <project name="ramdisk"/>
     <project name="oss" revision="master"/>
-    <project name="cvi_rtsp" revision="master"/>
+    <project name="cvi_rtsp">
     <project name="cvi_mpi"/>
     <project name="isp_tuning"/>
     <project name="SensorSupportList" path="cvi_mpi/component/isp"/>
@@ -26,6 +26,6 @@
     <project name="flatbuffers" path="flatbuffers" revision="master"/>
     <project name="cnpy" path="cnpy" revision="tpu"/>
     <project name="buildroot-2021.05"/>
-    <project name="tdl_sdk" revision="master"/>
-    <project name="ive" revision="master"/>
+    <project name="tdl_sdk" path="tdl_sdk" revision="master"/>
+    <project name="ive"/>
 </manifest>
