@@ -101,14 +101,23 @@ sed -i 's/function build_middleware()/function _build_middleware_()/g' $PROJECT_
 sed -i 's/function pack_cfg/function _pack_cfg_/g' $PROJECT_OUT/build/common_functions.sh
 sed -i 's/function pack_rootfs/function _pack_rootfs_/g' $PROJECT_OUT/build/common_functions.sh
 
+
 # build flatbuffers
 sed -i 's/cmake -G Ninja -DCMAKE_INSTALL_PREFIX=$FLATBUFFERS_HOST_PATH/cmake -G Ninja -DFLATBUFFERS_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=$FLATBUFFERS_HOST_PATH/g' $PROJECT_OUT/cviruntime/build_tpu_sdk.sh
 
 # patch cvi_mpi
 sed -i '/LOCAL_CFLAGS = $(DEFS) $(INCS)/i LIBS += -ltinyalsa' $PROJECT_OUT/cvi_mpi/modules/isp/cv181x/isp-tool-daemon/isp_daemon_tool/Makefile
 
-# move libcvi_rtsp.so to /mnt/system/lib
-echo 'install(FILES ${CVI_RTSP_LIBPATH} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)' >> $PROJECT_OUT/tdl_sdk/cmake/cvi_rtsp.cmake
+# override build_cvi_rtsp function
+sed -i 's/function build_cvi_rtsp()/function _build_cvi_rtsp_()/g' $PROJECT_OUT/build/envsetup_soc.sh
+function build_cvi_rtsp()
+{(
+    cd "$CVI_RTSP_PATH" || return
+    BUILD_SERVICE=1 MW_DIR=${MW_PATH} ./build.sh
+    BUILD_SERVICE=1 make install DESTDIR="$(pwd)/install" || return "$?"
+    make package DESTDIR="$(pwd)/install" || return "$?"
+    BUILD_SERVICE=1 make install DESTDIR="${SYSTEM_OUT_DIR}/usr" || return "$?"
+)}
 
 # source envsetup_soc.sh
 TPU_REL=1
