@@ -85,19 +85,19 @@ sed -i '/EXTRA_LDFLAGS = $(LIBS).*/aEXTRA_LDFLAGS += -latomic' \
     $PROJECT_OUT/cvi_mpi/sample/venc/Makefile
 
 ###################################
-# modify cvisetup.sh
+# modify envsetup_soc.sh
 ###################################
-sed -i 's/^TOP_DIR=$(.*)/TOP_DIR=$PROJECT_OUT/' $PROJECT_OUT/build/cvisetup.sh
-echo "INFO: Change TOP_DIR to \"$PROJECT_OUT in cvisetup.sh"\"
+sed -i 's/^TOP_DIR=$(.*)/TOP_DIR=$PROJECT_OUT/' $PROJECT_OUT/build/envsetup_soc.sh
+echo "INFO: Change TOP_DIR to \"$PROJECT_OUT in envsetup_soc.sh"\"
 
 sed -i 's/CVI_TARGET_PACKAGES_LIBDIR=.*/CVI_TARGET_PACKAGES_LIBDIR=$(make --no-print-directory print-target-packages-libdir)/' \
-    $PROJECT_OUT/build/cvisetup.sh
+    $PROJECT_OUT/build/envsetup_soc.sh
 sed -i 's/CVI_TARGET_PACKAGES_INCLUDE=.*/CVI_TARGET_PACKAGES_INCLUDE=$(make --no-print-directory print-target-packages-include)/' \
-    $PROJECT_OUT/build/cvisetup.sh
-echo "INFO: Fixed CVI_TARGET_PACKAGES_LIBDIR & CVI_TARGET_PACKAGES_INCLUDE in cvisetup.sh"\"
+    $PROJECT_OUT/build/envsetup_soc.sh
+echo "INFO: Fixed CVI_TARGET_PACKAGES_LIBDIR & CVI_TARGET_PACKAGES_INCLUDE in envsetup_soc.sh"\"
 
 # overide build_middleware function
-sed -i 's/function build_middleware()/function _build_middleware_()/g' $PROJECT_OUT/build/cvisetup.sh
+sed -i 's/function build_middleware()/function _build_middleware_()/g' $PROJECT_OUT/build/envsetup_soc.sh
 sed -i 's/function pack_cfg/function _pack_cfg_/g' $PROJECT_OUT/build/common_functions.sh
 sed -i 's/function pack_rootfs/function _pack_rootfs_/g' $PROJECT_OUT/build/common_functions.sh
 
@@ -107,12 +107,12 @@ sed -i 's/cmake -G Ninja -DCMAKE_INSTALL_PREFIX=$FLATBUFFERS_HOST_PATH/cmake -G 
 # move libcvi_rtsp.so to /mnt/system/lib
 echo 'install(FILES ${CVI_RTSP_LIBPATH} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)' >> $PROJECT_OUT/tdl_sdk/cmake/cvi_rtsp.cmake
 
-# source cvisetup.sh
+# source envsetup_soc.sh
 TPU_REL=1
-source $PROJECT_OUT/build/cvisetup.sh
+source $PROJECT_OUT/build/envsetup_soc.sh
 
 ###################################
-# overwrite cvisetup.sh functions
+# overwrite envsetup_soc.sh functions
 ###################################
 function build_middleware()
 {(
