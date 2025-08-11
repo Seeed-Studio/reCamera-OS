@@ -49,6 +49,24 @@ rsync_dir $EXTERNAL/u-boot/ $UBOOT_DIR/
 # driver: sg200x is soft link to cv182x
 rsync -av $EXTERNAL/SensorSupportList/ $PROJECT_OUT/cvi_mpi/component/isp/
 
+# patch linux kernel
+# Apply all patches from the external patches directory
+pushd $PROJECT_OUT/$LINUX_DIR
+for patch in "$EXTERNAL/linux/patches"/*.patch "$EXTERNAL/linux/patches"/*.diff; do
+    # Skip if no patch files match
+    [ -f "$patch" ] || continue
+
+    echo "Applying patch: $(basename "$patch")"
+    # Apply patch with -p1, reading from stdin
+    patch -p1 < "$patch" || {
+        echo "Error: Failed to apply $patch"
+        exit 1
+    }
+done
+popd
+
+echo "All patches applied successfully."
+
 # patch buildroot packages
 for subdir in $EXTERNAL/buildroot/package/*; do
     if [ -d $subdir ]; then
@@ -77,39 +95,40 @@ fi
 # modify build/Makefile
 ###################################
 sed -i 's/${Q}$(MAKE) -C $(BR_DIR).*/${Q}$(MAKE) -C $(BR_DIR) $(BR_DEFCONFIG) BR2_TOOLCHAIN_EXTERNAL_PATH=$(CROSS_COMPILE_PATH) O=$(TARGET_OUTPUT_DIR)/' \
-    $PROJECT_OUT/build/Makefile
+    $PROJECT_OUT/build/Makefile || exit 1
 sed -i 's/${Q}$(MAKE) -j${NPROC} -C $(BR_DIR).*/${Q}$(MAKE) -j${NPROC} -C $(BR_DIR) O=$(TARGET_OUTPUT_DIR)/' \
-    $PROJECT_OUT/build/Makefile
+    $PROJECT_OUT/build/Makefile || exit 1
 
 sed -i '/EXTRA_LDFLAGS = $(LIBS).*/aEXTRA_LDFLAGS += -latomic' \
-    $PROJECT_OUT/cvi_mpi/sample/venc/Makefile
+    $PROJECT_OUT/cvi_mpi/sample/venc/Makefile || exit 1
 
 ###################################
 # modify envsetup_soc.sh
 ###################################
-sed -i 's/^TOP_DIR=$(.*)/TOP_DIR=$PROJECT_OUT/' $PROJECT_OUT/build/envsetup_soc.sh
+sed -i 's/^TOP_DIR=$(.*)/TOP_DIR=$PROJECT_OUT/' $PROJECT_OUT/build/envsetup_soc.sh || exit 1
 echo "INFO: Change TOP_DIR to \"$PROJECT_OUT in envsetup_soc.sh"\"
 
 sed -i 's/CVI_TARGET_PACKAGES_LIBDIR=.*/CVI_TARGET_PACKAGES_LIBDIR=$(make --no-print-directory print-target-packages-libdir)/' \
-    $PROJECT_OUT/build/envsetup_soc.sh
+    $PROJECT_OUT/build/envsetup_soc.sh || exit 1
 sed -i 's/CVI_TARGET_PACKAGES_INCLUDE=.*/CVI_TARGET_PACKAGES_INCLUDE=$(make --no-print-directory print-target-packages-include)/' \
-    $PROJECT_OUT/build/envsetup_soc.sh
+    $PROJECT_OUT/build/envsetup_soc.sh || exit 1
 echo "INFO: Fixed CVI_TARGET_PACKAGES_LIBDIR & CVI_TARGET_PACKAGES_INCLUDE in envsetup_soc.sh"\"
 
 # overide build_middleware function
-sed -i 's/function build_middleware()/function _build_middleware_()/g' $PROJECT_OUT/build/envsetup_soc.sh
-sed -i 's/function pack_cfg/function _pack_cfg_/g' $PROJECT_OUT/build/common_functions.sh
-sed -i 's/function pack_rootfs/function _pack_rootfs_/g' $PROJECT_OUT/build/common_functions.sh
+sed -i 's/function build_middleware()/function _build_middleware_()/g' $PROJECT_OUT/build/envsetup_soc.sh || exit 1
+sed -i 's/function pack_cfg/function _pack_cfg_/g' $PROJECT_OUT/build/common_functions.sh || exit 1
+sed -i 's/function pack_rootfs/function _pack_rootfs_/g' $PROJECT_OUT/build/common_functions.sh || exit 1
 
 
 # build flatbuffers
-sed -i 's/cmake -G Ninja -DCMAKE_INSTALL_PREFIX=$FLATBUFFERS_HOST_PATH/cmake -G Ninja -DFLATBUFFERS_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=$FLATBUFFERS_HOST_PATH/g' $PROJECT_OUT/cviruntime/build_tpu_sdk.sh
+sed -i 's/cmake -G Ninja -DCMAKE_INSTALL_PREFIX=$FLATBUFFERS_HOST_PATH/cmake -G Ninja -DFLATBUFFERS_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=$FLATBUFFERS_HOST_PATH/g' \
+    $PROJECT_OUT/cviruntime/build_tpu_sdk.sh || exit 1
 
 # patch cvi_mpi
-sed -i '/LOCAL_CFLAGS = $(DEFS) $(INCS)/i LIBS += -ltinyalsa' $PROJECT_OUT/cvi_mpi/modules/isp/cv181x/isp-tool-daemon/isp_daemon_tool/Makefile
+sed -i '/LOCAL_CFLAGS = $(DEFS) $(INCS)/i LIBS += -ltinyalsa' $PROJECT_OUT/cvi_mpi/modules/isp/cv181x/isp-tool-daemon/isp_daemon_tool/Makefile || exit 1
 
 # override build_cvi_rtsp function
-sed -i 's/function build_cvi_rtsp()/function _build_cvi_rtsp_()/g' $PROJECT_OUT/build/envsetup_soc.sh
+sed -i 's/function build_cvi_rtsp()/function _build_cvi_rtsp_()/g' $PROJECT_OUT/build/envsetup_soc.sh || exit 1
 function build_cvi_rtsp()
 {(
     cd "$CVI_RTSP_PATH" || return
@@ -121,7 +140,7 @@ function build_cvi_rtsp()
 
 # source envsetup_soc.sh
 TPU_REL=1
-source $PROJECT_OUT/build/envsetup_soc.sh
+source $PROJECT_OUT/build/envsetup_soc.sh || exit 1
 
 ###################################
 # overwrite envsetup_soc.sh functions
