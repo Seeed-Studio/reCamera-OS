@@ -10,7 +10,7 @@ export LINUX_DIR=$(basename $(realpath $TOPDIR/linux*))
 
 CHANGELOG=$TOPDIR/CHANGELOG.md
 
-source $EXTERNAL/setenv.sh
+source $EXTERNAL/setenv.sh || exit 1
 defconfig $1
 
 # copy project rootfs to buildroot overlay
