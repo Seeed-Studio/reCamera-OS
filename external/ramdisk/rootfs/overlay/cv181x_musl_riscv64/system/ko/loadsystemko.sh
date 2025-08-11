@@ -33,9 +33,20 @@ insmod /mnt/system/ko/brcmfmac.ko
 echo 3 > /proc/sys/vm/drop_caches
 dmesg -n 4
 
+# gimbal
 if [ ! -e /dev/mmcblk1 ] && [ -x /usr/bin/gimbal ]; then
     /usr/bin/gimbal init > /dev/null
     /usr/bin/gimbal cali > /dev/null&
+fi
+
+# PoE
+if [ -z "$(ifconfig can0 2>/dev/null)" ]; then
+    $PINMUX -w SD0_CLK/XGPIOA_7 # 487
+    $PINMUX -w SD0_CMD/XGPIOA_8 # 488
+    $PINMUX -w SD0_D0/UART3_TX #XGPIOA_9 489
+    $PINMUX -w SD0_D1/XGPIOA_10 #UART1_TX 490
+    $PINMUX -w SD0_D2/XGPIOA_11 #UART1_RX 491
+    $PINMUX -w SD0_D3/UART3_RX #XGPIOA_12 492
 fi
 
 #usb hub control
