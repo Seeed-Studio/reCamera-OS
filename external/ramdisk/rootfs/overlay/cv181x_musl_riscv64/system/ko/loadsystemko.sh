@@ -43,6 +43,8 @@ dmesg -n 4
 
     # PoE
     [ -z "$(ifconfig can0 2>/dev/null)" ] && {
+        PINMUX="/mnt/system/usr/bin/cvi_pinmux"
+
         $PINMUX -w SD0_CLK/XGPIOA_7 # 487
         $PINMUX -w SD0_CMD/XGPIOA_8 # 488
         $PINMUX -w SD0_D0/UART3_TX #XGPIOA_9 489
