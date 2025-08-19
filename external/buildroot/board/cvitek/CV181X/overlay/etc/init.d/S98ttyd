@@ -1,0 +1,152 @@
+#!/bin/sh
+#
+# ttyd - ttyd terminal server
+#
+# A lightweight web-based terminal emulator
+# Author: System Administrator
+#
+
+DAEMON="ttyd"
+DESC="ttyd terminal server"
+TTYD_BIN="/usr/bin/ttyd"
+PID_FILE="/var/run/ttyd.pid"
+CONFIG_FILE="/etc/ttyd.conf"
+LOG_FILE="/var/log/ttyd.log"
+
+# Default configuration (can be overridden by config file)
+TTYD_USER="recamera"
+TTYD_PORT="${TTYD_PORT:-9090}"
+TTYD_CMD="${TTYD_CMD:-/bin/login}"
+TTYD_CREDENTIAL="${TTYD_CREDENTIAL:-}"
+TTYD_READONLY="${TTYD_READONLY:-false}"
+TTYD_MAX_CLIENTS="${TTYD_MAX_CLIENTS:-3}"
+TTYD_DEBUG="${TTYD_DEBUG:-false}"
+
+# Load configuration file if exists
+if [ -f "$CONFIG_FILE" ]; then
+    . "$CONFIG_FILE"
+fi
+
+# Check if ttyd binary exists
+if [ ! -x "$TTYD_BIN" ]; then
+    echo "ERROR: $TTYD_BIN not found or not executable"
+    exit 1
+fi
+
+# Create log directory if not exists
+LOG_DIR=$(dirname "$LOG_FILE")
+[ ! -d "$LOG_DIR" ] && mkdir -p "$LOG_DIR"
+
+# Helper functions
+is_running() {
+    [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null
+}
+
+wait_for_pid() {
+    timeout=10
+    while [ $timeout -gt 0 ]; do
+        if is_running; then
+            return 0
+        fi
+        sleep 1
+        timeout=$((timeout - 1))
+    done
+    return 1
+}
+
+start_ttyd() {
+    if is_running; then
+        echo "$DESC is already running (PID: $(cat "$PID_FILE"))"
+        return 0
+    fi
+
+    echo -n "Starting $DESC: "
+    
+    # 使用 set -- 安全拼接参数
+    set -- --max-clients "$TTYD_MAX_CLIENTS" -p "$TTYD_PORT" -u "$TTYD_USER"
+    [ "$TTYD_READONLY" = "true" ] && set -- "$@" --readonly
+    [ -n "$TTYD_CREDENTIAL" ] && set -- "$@" -c "$TTYD_CREDENTIAL"
+    if [ "$TTYD_DEBUG" = "true" ]; then
+        set -- "$@" -d 7
+    else
+        set -- "$@" -d 1
+    fi
+    
+    # Start daemon
+    start-stop-daemon -S -q -b -m -p "$PID_FILE" \
+        --exec "$TTYD_BIN" -- "$@" "$TTYD_CMD" >> "$LOG_FILE" 2>&1
+    
+    if wait_for_pid; then
+        echo "OK"
+        echo "$(date): $DESC started on $TTYD_PORT" >> "$LOG_FILE"
+        return 0
+    else
+        echo "FAILED"
+        [ -f "$PID_FILE" ] && rm -f "$PID_FILE"
+        return 1
+    fi
+}
+
+stop_ttyd() {
+    if ! is_running; then
+        echo "$DESC is not running"
+        return 0
+    fi
+
+    echo -n "Stopping $DESC: "
+    start-stop-daemon -K -q -p "$PID_FILE" -s TERM
+    
+    # Wait for graceful shutdown
+    timeout=10
+    while [ $timeout -gt 0 ] && is_running; do
+        sleep 1
+        timeout=$((timeout - 1))
+    done
+    
+    # Force kill if still running
+    if is_running; then
+        echo -n "(force) "
+        start-stop-daemon -K -q -p "$PID_FILE" -s KILL
+        sleep 1
+    fi
+    
+    rm -f "$PID_FILE"
+    echo "OK"
+    echo "$(date): $DESC stopped" >> "$LOG_FILE"
+    return 0
+}
+
+status_ttyd() {
+    if is_running; then
+        PID=$(cat "$PID_FILE")
+        echo "$DESC is running (PID: $PID)"
+        echo "Listening on: $TTYD_PORT"
+        return 0
+    else
+        echo "$DESC is not running"
+        return 1
+    fi
+}
+
+case "$1" in
+    start)
+        start_ttyd
+        ;;
+    stop)
+        stop_ttyd
+        ;;
+    restart|force-reload)
+        stop_ttyd
+        sleep 1
+        start_ttyd
+        ;;
+    status)
+        status_ttyd
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|force-reload|status}"
+        exit 1
+        ;;
+esac
+
+exit $?
