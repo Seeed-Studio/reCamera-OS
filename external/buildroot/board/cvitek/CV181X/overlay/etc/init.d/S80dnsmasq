@@ -1,10 +1,12 @@
 #!/bin/sh
 
+_ip() { ifconfig "$1" 2>/dev/null | awk '/inet addr:/ {print $2}' | awk -F':' '{print $2}'; }
+
 CONF_FILE="/etc/dnsmasq/default.conf"
 if [ "$(cat /sys/devices/platform/4340000.usb/udc/4340000.usb/state)" = "configured" ]; then
 	CONF_FILE="/etc/dnsmasq/usb_wlan1.conf"
 fi
-if [ -z "$(ifconfig wlan1 2>/dev/null)" ]; then
+if [ -z "$(_ip wlan1)" ]; then
 	CONF_FILE="/etc/dnsmasq/usb_only.conf"
 fi
 
