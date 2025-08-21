@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-SSCMA_SUPERVISOR_VERSION = 4d519a24e7c7ebbfd5cd2fff1521f980e770b7bf
+SSCMA_SUPERVISOR_VERSION = 30c49701b169dca432e8a4496eec96706b64d70e
 SSCMA_SUPERVISOR_SITE = https://github.com/Seeed-Studio/sscma-example-sg200x
 SSCMA_SUPERVISOR_SITE_METHOD = git
 SSCMA_SUPERVISOR_GIT_SUBMODULES = YES
