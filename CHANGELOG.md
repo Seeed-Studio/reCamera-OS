@@ -1,4 +1,16 @@
-## 0.2.1 (2025-08-05)
+## 0.2.1 (2025-08-21)
+
+### sg2002_recamera_emmc
+
+- New Features:
+    - File browser
+    - SSH on/off
+    - Optimize network connection
+    - Upgrade node-red to 4.1.0
+    - Add CDC support
+
+- Bug Fixes:
+    - Resolved some other bugs
 
 ## 0.2.0 (2025-03-31)
 
