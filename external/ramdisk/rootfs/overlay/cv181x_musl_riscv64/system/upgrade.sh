@@ -1,6 +1,8 @@
 #!/bin/bash
 
 OFFICIAL_URL="https://github.com/Seeed-Studio/reCamera-OS/releases/latest"
+OFFICIAL_URL2="https://files.seeedstudio.com/reCamera"
+
 MD5_FILE=sg2002_recamera_emmc_md5sum.txt
 URL_FILE=url.txt
 
@@ -33,32 +35,31 @@ cleanup() {
         umount "$MountPath" 2>/dev/null
         ! mount | grep -qw "$MountPath" && rm -rf "$MountPath"
     }
-    rm -rf "$UPGRADE_FILES/$RunCase.mutex" 2>/dev/null
+    rm -f "$ResultFile.mutex" 2>/dev/null
 }
 trap cleanup SIGINT SIGTERM
 
 exit_upgrade() {
-    cleanup
-    [ -n "$RunCase" ] || ResultFile="$UPGRADE_FILES/result"
     [ -z "$1" ] && {
         [ -f "$ResultFile" ] || echo "Success" >"$ResultFile"
         echo "Success"
+        cleanup
         exit 0
     }
     echo "Failed: $1" | tee "$ResultFile"
+    cleanup
     exit 1
 }
 
 # ps
 ps_mutex() {
-    local file="$UPGRADE_FILES/$RunCase"
-    [ -f "$file.mutex" ] && {
+    [ -f "$ResultFile.mutex" ] && {
         echo "./upgrade.sh $RunCase is running."
         exit 1
     }
     Step=0
-    rm -f ${file}*
-    echo $$ >"$file.mutex"
+    rm -f ${ResultFile}*
+    echo $$ >"$ResultFile.mutex"
 }
 
 kill_ps() {
@@ -67,10 +68,10 @@ kill_ps() {
 }
 
 ps_stop() {
-    kill_ps "dd of=$ROOTFS bs=1M status=progress"
-    kill_ps "dd of=$ROOTFS_B bs=1M status=progress"
+    kill_ps "dd"
+    kill_ps "unzip -p"
     kill_ps "wget -T 10 -t 3 --no-check-certificate"
-    killall "$(basename $0)"
+    killall $(basename "$0")
     echo "stopped"
     exit 0
 }
@@ -130,7 +131,7 @@ switch_partition() {
     set_bootenv use_part_b $part_b
     set_bootenv boot_cnt 0
     set_bootenv boot_failed_limits 5
-    set_bootenv boot_rollback 1
+    set_bootenv boot_rollback
     step_log "Please reboot to take effect."
 }
 
@@ -225,22 +226,43 @@ ota_boot() { # fip.bin boot.emmc
 #####
 latest_cmd() {
     local cmd=$2
+    [ "$cmd" = "x" ] && ps_stop
     [ "$cmd" = "q" ] && {
-        [ -f $ResultFile ] && cat $ResultFile
+        [ -f $ResultFile ] && {
+            cat $ResultFile
+            exit 0
+        }
+        [ ! -f "$ResultFile.mutex" ] && {
+            echo "Stopped"
+            exit 0
+        }
         exit 0
     }
-    [ "$cmd" = "x" ] && ps_stop
 }
 
 latest() {
     latest_cmd $@
     ps_mutex
-    local url="$2"
-    [ -z "$url" ] && url="$OFFICIAL_URL"
-    step_log "Parse $url"
-    local md5_url md5_path
-    md5_url=$(get_upgrade_url "$url") || exit_upgrade "parse $url"
-    step_result "$md5_url"
+    local url="$2" md5_url=""
+    if [ -z "$url" ]; then
+        url="$OFFICIAL_URL"
+        step_log "Parse $url"
+        md5_url=$(get_upgrade_url "$url")
+        [ -z "$md5_url" ] && {
+            step_result "Failed parse $url"
+            url="$OFFICIAL_URL2/latest"
+            step_log "Parse $url"
+            local ver=$(curl -sk "$url" --connect-timeout 30 --max-time 60)
+            [ -z "$ver" ] && exit_upgrade "parse $url"
+            md5_url="$OFFICIAL_URL2/"$ver"/$MD5_FILE"
+        }
+        step_result "$md5_url"
+    else
+        step_log "Parse $url"
+        local md5_url md5_path
+        md5_url=$(get_upgrade_url "$url") || exit_upgrade "parse $url"
+        step_result "$md5_url"
+    fi
 
     md5_path="$UPGRADE_FILES/$MD5_FILE"
     rm -f "$md5_path"
@@ -250,7 +272,7 @@ latest() {
     local os_name version
     os_name=$(parse_md5 os "$md5_path") || exit_upgrade "parse os $md5_path"
     version=$(parse_md5 version "$md5_path") || exit_upgrade "parse version $md5_path"
-    echo "$os_name $version" >$ResultFile
+    echo "Success: $os_name $version" >$ResultFile
     echo "$(echo ${md5_url%/*})" >"$UPGRADE_FILES/$URL_FILE"
     step_result "$os_name@$version"
     exit_upgrade
@@ -258,18 +280,23 @@ latest() {
 
 download_cmd() {
     local cmd=$2
+    [ "$cmd" = "x" ] && ps_stop
     [ "$cmd" = "q" ] && {
         [ -f $ResultFile ] && {
             cat $ResultFile
             exit 0
         }
+        [ ! -f "$ResultFile.mutex" ] && {
+            echo "Stopped"
+            exit 0
+        }
+
         local total=$(cat "$ResultFile.size" 2>/dev/null)
         local file=$(cat "$ResultFile.file" 2>/dev/null)
         local size=$(stat -c %s "$file" 2>/dev/null)
-        echo "$((size)) $((total))"
+        echo "Progress: $((size)) $((total))"
         exit 0
     }
-    [ "$cmd" = "x" ] && ps_stop
     [ ! -z "$cmd" ] && {
         echo "Usage: $0 $RunCase [q]"
         exit 1
@@ -333,10 +360,14 @@ start_cmd() {
             cat "$ResultFile"
             exit 0
         }
+        [ ! -f "$ResultFile.mutex" ] && {
+            echo "Stopped"
+            exit 0
+        }
 
         local total=$(cat "$ResultFile.rootfs_ext4.emmc.size" 2>/dev/null)
-        local size=$(tr '\r' '\n' < "$ResultFile.rootfs_ext4.emmc.prog" | awk 'END {print $1}')
-        echo "$((size)) $((total))"
+        local size=$(tr '\r' '\n' <"$ResultFile.rootfs_ext4.emmc.prog" | awk 'END {print $1}')
+        echo "Progress: $((size)) $((total))"
         exit 0
     }
 }
@@ -366,11 +397,6 @@ start() {
     exit_upgrade
 }
 
-rollback() {
-    switch_partition
-    exit_upgrade
-}
-
 recovery() {
     step_log "Set recovery flag"
     set_bootenv factory_reset 1
@@ -389,9 +415,9 @@ RunCase=$1
 ResultFile="$UPGRADE_FILES/$RunCase"
 FUNCS=(latest download start rollback recovery clean)
 for func in ${FUNCS[@]}; do
-    [ "$RunCase" == "$func" ] && {
+    [ "$RunCase" = "$func" ] && {
         $func $@
         exit 0
     }
 done
-echo "Not found $RunCase"
+echo "Usage: $0 {clean|latest|download|start|rollback|recovery}"
