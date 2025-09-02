@@ -15,6 +15,7 @@
 
 - Recommended OS: Ubuntu 20.04 LTS
 - Recommended C/C++: GCC/G++ >= 11.4.0
+- Recommended cmake: 3.31.2
 - Recommended minimum free space: 30 GB
 - Install dependencies
 
@@ -22,14 +23,25 @@
     sudo add-apt-repository ppa:ubuntu-toolchain-r/test
     sudo apt update
     sudo apt-get install -y pkg-config build-essential ninja-build automake autoconf libtool wget curl git libssl-dev bc squashfs-tools android-sdk-libsparse-utils \
-        jq cmake tclsh scons parallel ssh-client tree python3-dev python3-pip device-tree-compiler libssl-dev ssh cpio \
+        jq tclsh scons parallel ssh-client tree python3-dev python3-pip device-tree-compiler libssl-dev ssh cpio \
         squashfs-tools fakeroot flex bison mtools gcc-11 g++-11 libbz2-dev \
-        android-sdk-ext4-utils python3-distutils slib libncurses5
+        android-sdk-ext4-utils python3-distutils slib libncurses5 rsync
+    sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60
     sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 60
     pip install cmake jinja2
     ```
+ - Check evironment
 
-    Note: The minimum required cmake version is 3.16.5
+    ```bash
+    $ cmake --version
+    cmake version 3.31.2
+
+    $ gcc --version
+    gcc (Ubuntu 11.4.0-2ubuntu1~20.04) 11.4.0
+
+    $ g++ --version
+    g++ (Ubuntu 11.4.0-2ubuntu1~20.04) 11.4.0
+    ```
 
 ### 2.2 Checkout code
 
