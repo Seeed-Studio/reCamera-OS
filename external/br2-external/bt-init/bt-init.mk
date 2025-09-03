@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-BT_INIT_VERSION = 4d519a24e7c7ebbfd5cd2fff1521f980e770b7bf
+BT_INIT_VERSION = 0.2.1
 BT_INIT_SITE = https://github.com/Seeed-Studio/sscma-example-sg200x
 BT_INIT_SITE_METHOD = git
 BT_INIT_GIT_SUBMODULES = YES
