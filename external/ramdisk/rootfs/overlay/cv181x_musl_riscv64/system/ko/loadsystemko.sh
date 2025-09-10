@@ -13,7 +13,7 @@ insmod /mnt/system/ko/cv181x_vi.ko vi_log_lv=1
 insmod /mnt/system/ko/cv181x_vpss.ko vpss_log_lv=1
 insmod /mnt/system/ko/cv181x_dwa.ko
 insmod /mnt/system/ko/cv181x_vo.ko vo_log_lv=1
-insmod /mnt/system/ko/cv181x_mipi_tx.ko
+#insmod /mnt/system/ko/cv181x_mipi_tx.ko
 insmod /mnt/system/ko/cv181x_rgn.ko
 
 #insmod /mnt/system/ko/cv181x_wdt.ko
