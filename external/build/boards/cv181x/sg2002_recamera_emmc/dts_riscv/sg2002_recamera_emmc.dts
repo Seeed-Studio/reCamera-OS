@@ -142,3 +142,10 @@
 		clock-frequency = <40000000>;
 	};
 };
+
+/* Override CV181X cooling configuration for maximum performance */
+&cv181x_cooling {
+	dev-freqs = <850000000 700000000>,     /* CPU 850MHz, TPU 700MHz - Max Performance Test */
+		    <500000000 500000000>,     /* CPU 500MHz, TPU 500MHz - High Performance */
+		    <425000000 400000000>;     /* CPU 425MHz, TPU 400MHz - Medium Performance */
+};
