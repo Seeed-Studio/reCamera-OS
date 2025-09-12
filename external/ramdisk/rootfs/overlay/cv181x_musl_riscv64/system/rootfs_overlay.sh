@@ -44,9 +44,11 @@ function rootfs_overlay() {
    # mount overlay directories
    mount_dir /bin
    mount_dir /etc
-   mount_dir /lib
    mount_dir /home
+   mount_dir /lib
+   mount_dir /opt
    mount_dir /root
+   mount_dir /sbin
    mount_dir /usr
    mount_dir /var
 
