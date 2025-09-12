@@ -1,4 +1,4 @@
-## 0.2.1 (2025-08-21)
+## 0.2.1 (2025-09-12)
 
 ### sg2002_recamera_emmc
 
@@ -8,8 +8,12 @@
     - Optimize network connection
     - Upgrade node-red to 4.1.0
     - Add CDC support
+    - Specified node-reddash@1.26.0
+    - Increase ION size to 60M
+    - Set TPU max to 700MHz
 
 - Bug Fixes:
+    - Resolved 'isp err chk:7271(): CSIBDG A fifo overflow'
     - Resolved some other bugs
 
 ## 0.2.0 (2025-03-31)
