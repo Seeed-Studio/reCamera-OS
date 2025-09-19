@@ -1,0 +1,47 @@
+# .dockerignore
+
+# 忽略 Git 历史记录
+.git
+
+# 忽略 GitHub Actions 工作流配置
+.github
+
+# 忽略 VS Code 开发容器配置
+.devcontainer
+
+# 忽略所有编译产物
+output/
+
+# 忽略所有源代码和工具链目录，因为它们在 Dockerfile 中没有被用到
+build/
+buildroot-2021.05/
+cnpy/
+cvi_mpi/
+cvi_rtsp/
+cvibuilder/
+cvikernel/
+cvimath/
+cviruntime/
+external/
+flatbuffers/
+freertos/
+FreeRTOS-Kernel/
+fsbl/
+host-tools/
+isp_tuning/
+ive/
+Lab-Project-FreeRTOS-POSIX/
+linux_5.10/
+opensbi/
+osdrv/
+oss/
+ramdisk/
+scripts/
+SensorSupportList/
+tdl_sdk/
+u-boot-2021.10/
+
+# 忽略其他项目文件
+*.md
+Makefile
+docker_build.sh

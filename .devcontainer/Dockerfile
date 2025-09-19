@@ -58,4 +58,12 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     gnupg \
     sudo \
     ca-certificates \
-    nodejs
+    nodejs \
+    rsync \
+    python-is-python3 \
+    python3-jinja2 \
+    python3-yaml \
+    pkg-config \
+    xxd \
+    zip \
+ && ln -sf /usr/bin/python3 /usr/local/bin/python || true
