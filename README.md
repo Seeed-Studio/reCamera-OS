@@ -1,8 +1,11 @@
 - [1. Official reference](#1-official-reference)
 - [2. How to start](#2-how-to-start)
-  - [2.1. Preparation](#21-preparation)
-  - [2.2 Checkout code](#22-checkout-code)
-  - [2.3 Build](#23-build)
+  - [2.1 Build in Docker](#21-build-in-docker)
+  - [2.2 Build in Dev Containers](#22-build-in-dev-containers)
+  - [2.3 Build in Host](#23-build-in-host)
+    - [2.3.1 Install Dependencies](#231-install-dependencies)
+    - [2.3.2 Checkout code](#232-checkout-code)
+    - [2.3.3 Build](#233-build)
   - [2.4 Flashing](#24-flashing)
 
 ## 1. Official reference
@@ -11,7 +14,19 @@
 
 ## 2. How to start
 
-### 2.1. Preparation
+### 2.1 Build in Docker
+
+```bash
+sudo ./docker_build.sh sg2002_recamera_emmc
+```
+
+### 2.2 Build in Dev Containers
+
+Please refer to [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) for more details.
+
+### 2.3 Build in Host
+
+#### 2.3.1 Install Dependencies
 
 - Recommended OS: Ubuntu 20.04 LTS
 - Recommended C/C++: GCC/G++ >= 11.4.0
@@ -43,7 +58,7 @@
     g++ (Ubuntu 11.4.0-2ubuntu1~20.04) 11.4.0
     ```
 
-### 2.2 Checkout code
+#### 2.3.2 Checkout code
 
 - Clone the Repository
 
@@ -60,7 +75,7 @@
     ./scripts/repo_clone.sh --gitpull external/subtree.xml
     ```
 
-### 2.3 Build
+#### 2.3.3 Build
 
 - Location of the ${project}_defconfig
   
