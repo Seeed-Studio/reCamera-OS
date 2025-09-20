@@ -191,14 +191,20 @@ jobs:
             rm $OUTPUT/boot_ota.zip
           fi
 
-          file_suffixes=("md5sum.txt" "emmc.zip" "ota.zip" "recovery.zip" "sd.zip" "emmc_sd_compat.zip" "swu.zip" "sdk.zip")
+          file_suffixes=("md5sum.txt" "emmc.zip" "ota.zip" "recovery.zip" "sd.zip" "emmc_sd_compat.zip" "swu.zip" "sdk.tar.gz")
           for suffix in "${file_suffixes[@]}"; do
             file_path=$(find $OUTPUT/ -maxdepth 1 -name "*${suffix}")
             if [ -n "$file_path" ]; then
                 file_name=$(basename "$file_path")
-                variable_name="${suffix%.*}_path"
+                # Derive base key: strip .tar.gz as a unit, else strip only last extension
+                if [[ "$suffix" == *.tar.gz ]]; then
+                  base="${suffix%.tar.gz}"
+                else
+                  base="${suffix%.*}"
+                fi
+                variable_name="${base}_path"
                 echo "${variable_name}=${file_path}" >> "$GITHUB_OUTPUT"
-                variable_name="${suffix%.*}_name"
+                variable_name="${base}_name"
                 echo "${variable_name}=${file_name}" >> "$GITHUB_OUTPUT"
             else
                 echo "No ${suffix} file found in $OUTPUT"
@@ -295,4 +301,4 @@ jobs:
           upload_url: ${{ steps.uploader.outputs.upload_url }}
           asset_path: ${{ steps.uploader.outputs.sdk_path }}
           asset_name: ${{ steps.uploader.outputs.sdk_name }}
-          asset_content_type: application/zip
+          asset_content_type: application/gzip
