@@ -20,6 +20,33 @@
 sudo ./docker_build.sh sg2002_recamera_emmc
 ```
 
+If you want to run the build script without sudo (recommended for convenience):
+
+1. Ensure Docker is installed and the daemon is running.
+2. Add your user to the docker group:
+    ```bash
+    sudo usermod -aG docker "$USER"
+    # re-login OR run:
+    newgrp docker
+    docker info | grep -i 'server version'
+    ```
+3. Then run without sudo:
+    ```bash
+    ./docker_build.sh sg2002_recamera_emmc
+    ```
+
+Temporary (not persistent) alternative if you cannot modify groups:
+```bash
+sudo setfacl -m user:$(id -un):rw /var/run/docker.sock
+```
+
+Rootless Docker (optional): follow official guide https://docs.docker.com/engine/security/rootless/ then run the same script (no sudo needed).
+
+Troubleshooting:
+- Permission denied: ensure group change took effect (new shell) and `groups` shows `docker`.
+- Cannot connect to the Docker daemon: start service (`sudo systemctl start docker`) or rootless service (`systemctl --user start docker`).
+
+
 ### 2.2 Build in Dev Containers
 
 Please refer to [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) for more details.
