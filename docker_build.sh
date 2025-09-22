@@ -83,7 +83,9 @@ echo '>>> 0. Configure Git safe.directory...'
 git config --global --add safe.directory /work
 find output -maxdepth 4 -type d -name .git 2>/dev/null | while read g; do
     repo_dir=$(dirname "$g"); git config --global --add safe.directory /work/$repo_dir || true; done
-echo '>>> 1. Start building target: ${TARGET}...'
+echo '>>> 1. Git submodule update...'
+git submodule update --init --recursive --depth 1
+echo '>>> 2. Start building target: ${TARGET}...'
 make ${TARGET}
 echo '>>> Build finished. Artifacts at output/${TARGET}.'
 EOF_INNER
