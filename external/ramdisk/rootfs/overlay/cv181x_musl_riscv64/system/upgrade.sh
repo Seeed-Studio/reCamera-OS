@@ -219,7 +219,10 @@ ota_boot() { # fip.bin boot.emmc
     }
 
     [ "$part" = "$FIP_PART" ] && echo 0 >"/sys/block/mmcblk0boot0/force_ro" 2>/dev/null
-    zip_write_part $zip $part $file
+    # zip_write_part $zip $part $file
+    unzip -p "$zip" "$file" 2>/dev/null | dd of="$part" bs=1M status=progress || exit_upgrade "write $part with $file"
+    calc_md5=$(dd if="$part" bs=1M count=$(( (size + 1048575) / 1048576 )) | head -c $size | md5sum | awk '{print $1}')
+    [ "$calc_md5" != "$read_md5" ] && exit_upgrade "check md5sum $part"
     [ "$part" = "$FIP_PART" ] && echo 1 >"/sys/block/mmcblk0boot0/force_ro" 2>/dev/null
 }
 
@@ -389,11 +392,13 @@ start() {
     ota_boot "$zip" "$FIP_PART" "fip.bin"
     ota_boot "$zip" "$BOOT_PART" "boot.emmc"
 
-    local target="$ROOTFS_B"
-    is_rootfs_b || target="$ROOTFS"
-    zip_write_part "$zip" "$target" "rootfs_ext4.emmc"
-
-    switch_partition
+    local rootfs_size=$(zip_get_size "$zip" "rootfs_ext4.emmc")
+    [[ -n "$rootfs_size" && $((rootfs_size)) -ne 0 ]] && {
+        local target="$ROOTFS_B"
+        is_rootfs_b || target="$ROOTFS"
+        zip_write_part "$zip" "$target" "rootfs_ext4.emmc"
+        switch_partition
+    }
     exit_upgrade
 }
 
