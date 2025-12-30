@@ -1,5 +1,17 @@
 #!/bin/sh
 ${CVI_SHOPTS}
+
+function init_sd_pin() {
+    PINMUX="/mnt/system/usr/bin/cvi_pinmux"
+    $PINMUX -w SD0_CLK/SDIO0_CLK
+    $PINMUX -w SD0_CMD/SDIO0_CMD
+    $PINMUX -w SD0_D0/SDIO0_D_0
+    $PINMUX -w SD0_D1/SDIO0_D_1
+    $PINMUX -w SD0_D2/SDIO0_D_2
+    $PINMUX -w SD0_D3/SDIO0_D_3
+    $PINMUX -w SD0_PWR_EN/XGPIOA_14
+}
+
 #
 # Start to insert kernel modules
 #
@@ -30,11 +42,23 @@ insmod /mnt/system/ko/cfg80211.ko
 insmod /mnt/system/ko/brcmutil.ko
 insmod /mnt/system/ko/brcmfmac.ko
 
+insmod /mnt/system/ko/ctr.ko
+insmod /mnt/system/ko/ccm.ko
+insmod /mnt/system/ko/gcm.ko
+insmod /mnt/system/ko/crc7.ko
+
+insmod /mnt/system/ko/dot11ah.ko
+insmod /mnt/system/ko/libarc4.ko
+insmod /mnt/system/ko/mac80211.ko
+init_sd_pin
+sleep 1
+insmod /mnt/system/ko/morse.ko country=US
+
 echo 3 > /proc/sys/vm/drop_caches
 dmesg -n 4
 
 # Shared GPIOs with TF card
-[ ! -e /dev/mmcblk1 ] && {
+[ ! -e /dev/morse_io ] && [ ! -e /dev/mmcblk1 ] && {
     # gimbal
     [ -x /usr/bin/gimbal ] && {
         /usr/bin/gimbal init > /dev/null

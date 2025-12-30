@@ -6,7 +6,21 @@
 
 &sd {
 	no-1-8-v;
+    non-removable;
 	max-frequency = <50000000>;
+
+    /delete-property/ no-sdio;
+    /delete-property/ cvi-cd-gpios;
+
+    /delete-property/ cap-sd-highspeed;
+    /delete-property/ sd-uhs-sdr104;
+
+	mm610x_sdio: mm610x-sdio {
+		compatible = "morse,mm610x";
+        power-gpios = <&porta 14 GPIO_ACTIVE_LOW>;
+		reg = <2>;
+		status = "okay";
+	};
 };
 
 &emmc {
