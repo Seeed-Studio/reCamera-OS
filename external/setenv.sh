@@ -45,6 +45,7 @@ rsync_dir $EXTERNAL/buildroot/ $BUILDROOT_DIR/
 rsync_dir $EXTERNAL/isp_tuning .
 rsync_dir $EXTERNAL/ramdisk/ ramdisk/
 rsync_dir $EXTERNAL/u-boot/ $UBOOT_DIR/
+rsync_dir $EXTERNAL/linux/drivers/fgh100m/ linux_5.10/drivers/net/wireless/fgh100m/
 
 # driver: sg200x is soft link to cv182x
 rsync -av $EXTERNAL/SensorSupportList/ $PROJECT_OUT/cvi_mpi/component/isp/

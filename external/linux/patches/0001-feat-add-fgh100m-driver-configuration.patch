@@ -1,0 +1,37 @@
+From acaccca715c88d57420c570177368eca224311f9 Mon Sep 17 00:00:00 2001
+From: Lesords <lesords168@gmail.com>
+Date: Tue, 23 Dec 2025 07:13:04 +0000
+Subject: [PATCH] feat: add fgh100m driver configuration
+
+---
+ drivers/net/wireless/Kconfig  | 1 +
+ drivers/net/wireless/Makefile | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/drivers/net/wireless/Kconfig b/drivers/net/wireless/Kconfig
+index e9369b138..42130b3e8 100644
+--- a/drivers/net/wireless/Kconfig
++++ b/drivers/net/wireless/Kconfig
+@@ -50,6 +50,7 @@ source "drivers/net/wireless/st/Kconfig"
+ source "drivers/net/wireless/ti/Kconfig"
+ source "drivers/net/wireless/quantenna/Kconfig"
+ source "drivers/net/wireless/zydas/Kconfig"
++source "drivers/net/wireless/fgh100m/Kconfig"
+ 
+ config PCMCIA_RAYCS
+ 	tristate "Aviator/Raytheon 2.4GHz wireless support"
+diff --git a/drivers/net/wireless/Makefile b/drivers/net/wireless/Makefile
+index 87f7f229f..e70135c92 100644
+--- a/drivers/net/wireless/Makefile
++++ b/drivers/net/wireless/Makefile
+@@ -22,6 +22,7 @@ obj-$(CONFIG_WLAN_VENDOR_ZYDAS) += zydas/
+ obj-$(CONFIG_WLAN_VENDOR_QUANTENNA) += quantenna/
+ obj-$(CONFIG_WLAN_VENDOR_ICOMMSEMI) += icommsemi/
+ obj-$(CONFIG_WLAN_VENDOR_BOUFFALOLAB) += bouffalolab/
++obj-$(CONFIG_WLAN_VENDOR_MORSE) += fgh100m/
+ 
+ # 16-bit wireless PCMCIA client drivers
+ obj-$(CONFIG_PCMCIA_RAYCS)	+= ray_cs.o
+-- 
+2.43.0
+
