@@ -1,0 +1,8 @@
+config BR2_PACKAGE_WPA_SUPPLICANT_S1G
+    bool "wpa_supplicant_s1g"
+    select BR2_PACKAGE_LIBNL
+    select BR2_PACKAGE_OPENSSL
+    default y
+    help
+      This is the help text for the wpa_supplicant_s1g package.
+      It will be displayed in the Buildroot configuration menu.
