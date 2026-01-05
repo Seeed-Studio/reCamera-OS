@@ -1,0 +1,6 @@
+config BR2_PACKAGE_MORSE_CLI
+    bool "morse_cli"
+    default y
+    help
+      This is the help text for the morse_cli package.
+      It will be displayed in the Buildroot configuration menu.
