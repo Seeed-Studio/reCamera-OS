@@ -15,9 +15,10 @@
     /delete-property/ cap-sd-highspeed;
     /delete-property/ sd-uhs-sdr104;
 
+    mmc-pwrseq = <&wifi_pwrseq>;
+
 	mm610x_sdio: mm610x-sdio {
 		compatible = "morse,mm610x";
-        power-gpios = <&porta 14 GPIO_ACTIVE_LOW>;
 		reg = <2>;
 		status = "okay";
 	};
@@ -155,6 +156,11 @@
 		compatible = "fixed-clock";
 		clock-frequency = <40000000>;
 	};
+
+    wifi_pwrseq: wifi-pwrseq {
+        compatible = "mmc-pwrseq-simple";
+        reset-gpios = <&porta 14 GPIO_ACTIVE_HIGH>;
+    };
 };
 
 /* Override CV181X cooling configuration for maximum performance */

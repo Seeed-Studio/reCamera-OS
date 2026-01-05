@@ -24,6 +24,22 @@ function sensor_power()
   fi
 }
 
+function setup_halow0()
+{
+  if [ ! -e /dev/morse_io ]; then
+    return
+  fi
+  if [ -z "$(ifconfig wlan1 2>/dev/null)" ]; then
+    ip link set wlan0 down
+    ip link set wlan0 name halow0
+    ip link set halow0 up
+    return
+  fi
+  ip link set wlan1 down
+  ip link set wlan1 name halow0
+  ip link set halow0 up
+}
+
 function setup_wlan1()
 {
   if [ -z "$(ifconfig wlan0 2>/dev/null)" ]; then
@@ -59,6 +75,7 @@ case "$1" in
 
     sleep 0.5
 
+    setup_halow0
     setup_wlan1
     config_ip wlan1 192.168.16.1
     config_ip usb0 192.168.42.1
