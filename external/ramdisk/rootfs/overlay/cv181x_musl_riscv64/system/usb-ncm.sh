@@ -1,7 +1,7 @@
 #!/bin/sh
 
 /etc/uhubon.sh device >> /tmp/ncm.log 2>&1
-/etc/run_usb.sh probe acm >> /tmp/ncm.log 2>&1
+#/etc/run_usb.sh probe acm >> /tmp/ncm.log 2>&1
 /etc/run_usb.sh probe ncm >> /tmp/ncm.log 2>&1
 /etc/run_usb.sh start ncm >> /tmp/ncm.log 2>&1
 
