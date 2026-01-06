@@ -1,3 +1,16 @@
+## 0.2.2 (2026-01-06)
+
+### sg2002_recamera_emmc
+
+- New Features:
+    - Add model conversion feature
+    - Enable SSH server by default
+
+- Bug Fixes:
+    - Disable cdc-acm mode to resolve the issue of being unable to access devices via USB on Linux
+    - Solve the problem of incomplete user password input
+    - Solve the problem of model upload failure
+
 ## 0.2.1 (2025-09-12)
 
 ### sg2002_recamera_emmc
