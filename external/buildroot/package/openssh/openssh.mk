@@ -116,7 +116,7 @@ endef
 
 define OPENSSH_INSTALL_INIT_SYSV
 	$(INSTALL) -D -m 755 package/openssh/S50sshd \
-		$(TARGET_DIR)/etc/init.d/disabled/S50sshd
+		$(TARGET_DIR)/etc/init.d/S50sshd
 endef
 endif
 
