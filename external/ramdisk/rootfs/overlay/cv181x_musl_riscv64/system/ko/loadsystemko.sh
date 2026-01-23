@@ -1,6 +1,11 @@
 #!/bin/sh
 ${CVI_SHOPTS}
 
+readonly CONF_COUNTRY="/etc/recamera.conf/halow_country"
+
+[ ! -f $CONF_COUNTRY ] && echo "US" > $CONF_COUNTRY
+COUNTRY=$(cat $CONF_COUNTRY 2>/dev/null)
+
 function init_sd_pin() {
     PINMUX="/mnt/system/usr/bin/cvi_pinmux"
     $PINMUX -w SD0_CLK/SDIO0_CLK
@@ -52,7 +57,7 @@ insmod /mnt/system/ko/libarc4.ko
 insmod /mnt/system/ko/mac80211.ko
 init_sd_pin
 sleep 1
-insmod /mnt/system/ko/morse.ko country=US
+insmod /mnt/system/ko/morse.ko country=$COUNTRY
 
 echo 3 > /proc/sys/vm/drop_caches
 dmesg -n 4
