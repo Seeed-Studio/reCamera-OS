@@ -171,8 +171,8 @@ int morse_hw_reset(int reset_pin)
 		return ret;
 	}
 
-	pr_info("Resetting Morse Chip\n");
-	gpio_direction_output(reset_pin, 0);
+	pr_info("Resetting Morse Chip (GPIO: %d)\n", reset_pin);
+	gpio_direction_output(reset_pin, 1);
 	mdelay(20);
 	/* setting gpio as float to avoid forcing 3.3V High */
 	gpio_direction_input(reset_pin);
