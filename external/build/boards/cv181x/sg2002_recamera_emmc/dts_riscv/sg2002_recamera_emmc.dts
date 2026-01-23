@@ -6,20 +6,16 @@
 
 &sd {
 	no-1-8-v;
-    non-removable;
 	max-frequency = <50000000>;
 
     /delete-property/ no-sdio;
-    /delete-property/ cvi-cd-gpios;
-
     /delete-property/ cap-sd-highspeed;
     /delete-property/ sd-uhs-sdr104;
-
-    mmc-pwrseq = <&wifi_pwrseq>;
 
 	mm610x_sdio: mm610x-sdio {
 		compatible = "morse,mm610x";
 		reg = <2>;
+        reset-gpios = <&portc 12 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 };
@@ -156,11 +152,6 @@
 		compatible = "fixed-clock";
 		clock-frequency = <40000000>;
 	};
-
-    wifi_pwrseq: wifi-pwrseq {
-        compatible = "mmc-pwrseq-simple";
-        reset-gpios = <&porta 14 GPIO_ACTIVE_HIGH>;
-    };
 };
 
 /* Override CV181X cooling configuration for maximum performance */

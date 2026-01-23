@@ -39,7 +39,7 @@ int morse_of_probe(struct device *dev, struct morse_hw_cfg *cfg,
 			if (gpio_pin < 0) {
 				dev_err(dev, "%s: Required property reset-gpios not found in device tree\n",
 					__func__);
-				// return -ENOENT;
+				return -ENOENT;
 			}
 			cfg->mm_reset_gpio = gpio_pin;
 
