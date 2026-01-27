@@ -1,3 +1,25 @@
+## 0.2.3 (2026-01-27)
+
+### sg2002_recamera_emmc
+
+- New Features:
+    - `action=train` flow: fetch model info via train API v2, download model, upload to device, create cloud app, deploy dashboard flow, auto‑navigate to dashboard when ready.
+    - Default dashboard flow moved to `src/utils/flowDefaults.ts` and re‑exported via `src/utils/index.ts`.
+    - Train flow enhancements: device type guard, dashboard readiness polling, upload progress, slow‑upload warning, cancel upload (abort).
+    - `action=model` flow selection: use `DefaultFlowDataWithDashboard` when `task=classify` and `model_format=cvimodel`, otherwise use default flow; update `model` node fields before deploy.
+    - App list UI fixes: overflow handling and tooltip for long names.
+    - One‑click deploy script `scripts/deploy.sh`.
+    - Train API v2 model info wrappers and types.
+    - `action=train` now creates a cloud app (name `classify_<model>`), deploys flow, and redirects in‑tab to dashboard after readiness check.
+    - `action=model` logs applyModel response and conditionally auto‑opens dashboard.
+    - Redirect handling improved: `redirect_url` encoded; session action cached/cleaned to avoid accidental re‑runs.
+    - `sensecraftRequest` refresh now retries on `code=401`.
+
+- Bug Fixes:
+    - App name overflow no longer hides edit/delete buttons.
+    - Upload flow provides progress, warning, and cancel option.
+    - Dashboard jump uses current tab with readiness gating.
+
 ## 0.2.2 (2026-01-06)
 
 ### sg2002_recamera_emmc
