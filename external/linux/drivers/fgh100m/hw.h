@@ -4,13 +4,9 @@
 /*
  * Copyright 2017-2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include "chip_if.h"
-#include "morse_commands.h"
-#include "led.h"
 
 /* To be moved to sdio.c */
 #define MORSE_REG_ADDRESS_BASE		0x10000
@@ -79,10 +75,6 @@
 					((mors)->cfg->regs->aon_latch_mask)
 #define MORSE_REG_AON_USB_RESET(mors) \
 					((mors)->cfg->regs->aon_reset_usb_value)
-#define MORSE_REG_MTIME_UPPER(mors)	((mors)->cfg->regs->mtime_upper)
-#define MORSE_REG_MTIME_LOWER(mors)	((mors)->cfg->regs->mtime_lower)
-
-/** Bit 15 for MORSE_PAGER_BYPASS_TX_STATUS_IRQ_NUM (Chip to host) */
 
 /** Bit 17 to 24 reserved for the beacon VIF 0 to 7 interrupts */
 #define MORSE_INT_BEACON_VIF_MASK_ALL		(GENMASK(24, 17))
@@ -95,24 +87,6 @@
 /** Bit 27 Chip to Host stop notify */
 #define MORSE_INT_HW_STOP_NOTIFICATION_NUM	(27)
 #define MORSE_INT_HW_STOP_NOTIFICATION		BIT(MORSE_INT_HW_STOP_NOTIFICATION_NUM)
-
-/** Bit 28 Chip to Host attach done notify */
-#define MORSE_HW_ATTACH_DONE_NUM	(28)
-#define MORSE_HW_ATTACH_DONE		BIT(MORSE_HW_ATTACH_DONE_NUM)
-
-/** Bit 29 for MORSE_PAGER_BYPASS_CMD_RESP_IRQ_NUM (Chip to host) */
-
-#ifdef CONFIG_MORSE_ENABLE_TEST_MODES
-/** Bit 30 for bus irq self test ('Chip' to host, in reality it is host to host) */
-#define MORSE_INT_BUS_IRQ_SELF_TEST_NUM		(30)
-#define MORSE_INT_BUS_IRQ_SELF_TEST		BIT(MORSE_INT_BUS_IRQ_SELF_TEST_NUM)
-#endif
-
-/** Bit 28 and 29 Host to Chip detach and attach interrupts */
-#define MORSE_HW_DETACH_TRGR_SET(_m)		MORSE_REG_TRGR1_SET(_m)
-#define MORSE_HW_DETACH_IRQ_BIT			BIT(28)
-#define MORSE_HW_ATTACH_TRGR_SET(_m)		MORSE_REG_TRGR1_SET(_m)
-#define MORSE_HW_ATTACH_IRQ_BIT			BIT(29)
 
 /* OTP Bootrom XTAL wait bits[89:86] for MM610x */
 #define MM610X_OTP_DATA2_XTAL_WAIT_POS	GENMASK(25, 22)
@@ -162,6 +136,9 @@
 #define FW_ROM_LINKED_STRING "-rl"
 #define FW_ROM_ALL_STRING "-ro"
 
+/* Last element to declare in valid_chip_ids[] */
+#define CHIP_ID_END		0xFFFFFFFF
+
 enum morse_coredump_method;
 
 enum host_table_firmware_flags {
@@ -175,10 +152,6 @@ enum host_table_firmware_flags {
 	MORSE_FW_FLAGS_SUPPORT_HW_SCAN = BIT(3),
 	/** Supports hostsync chip halting */
 	MORSE_FW_FLAGS_SUPPORT_CHIP_HALT_IRQ = BIT(4),
-	/** FW will toggle busy pin upon wake up from wake pin */
-	MORSE_FW_FLAGS_TOGGLES_BUSY_PIN_ON_WAKE_PIN = BIT(8),
-	/** Supports HW reattach */
-	MORSE_FW_FLAGS_SUPPORT_HW_REATTACH = BIT(9),
 };
 
 struct host_table {
@@ -228,17 +201,6 @@ struct morse_hw_regs {
 	u32 aon_reset_usb_value;
 	u32 aon;
 	u8 aon_count;
-	u32 mtime_upper;
-	u32 mtime_lower;
-};
-
-struct morse_hw_clock {
-	/* Value returned by the ops->read_clock() operation (microseconds) */
-	u64 val;
-	/* Kernel system time of when the hw clock was read (nanosecond accuracy) */
-	ktime_t reference;
-	/* Used for freeing the data on update */
-	struct rcu_head rcu;
 };
 
 struct morse_hw_cfg {
@@ -310,13 +272,6 @@ struct morse_hw_cfg {
 	int (*get_encoded_country)(struct morse *mors);
 
 	/**
-	 * Set the slow clock source selection mode
-	 *
-	 * @return error code
-	 */
-	int (*set_slow_clock_mode)(struct morse *mors, enum morse_cmd_slow_clock_mode mode);
-
-	/**
 	 * Invoke prior to initiating a coredump to prepare the chip
 	 *
 	 * @return error code
@@ -331,41 +286,12 @@ struct morse_hw_cfg {
 	int (*post_coredump_hook)(struct morse *mors, enum morse_coredump_method method);
 
 	/**
-	 * Invoke prior to performing non-destructive-reset of the chip.
-	 *
-	 */
-	void (*pre_firmware_ndr)(struct morse *mors);
-
-	/**
-	 * Invoke after performing non-destructive-reset of the chip.
-	 *
-	 */
-	void (*post_firmware_ndr)(struct morse *mors);
-
-	/**
 	 * enable_ext_xtal_delay: Enable external XTAL wait delays during bus transfers.
 	 *
 	 * @param mors: Morse context object
 	 * @param enable: true if delay is required
 	 */
 	void (*enable_ext_xtal_delay)(struct morse *mors, bool enable);
-
-	/**
-	 * Initialise gpio for output
-	 *
-	 * @return error code
-	 */
-	int (*gpio_enable_output)(struct morse *mors, int pin_num, bool enable);
-
-	/**
-	 * Set or clear gpio output
-	 */
-	void (*gpio_write_output)(struct morse *mors, int pin_num, bool value);
-
-	/**
-	 * @led_group: Contains information pertaining to gpio-attached LEDs
-	 */
-	struct morse_led_group led_group;
 
 	/**
 	 * @bus_double_read: Decide if the bus workaround is required to recover
@@ -397,6 +323,7 @@ struct morse_hw_cfg {
 	u32 mm_wake_gpio;
 	u32 mm_ps_async_gpio;
 	u32 mm_spi_irq_gpio;
+	u32 valid_chip_ids[];
 };
 
 struct morse_chip_series {
@@ -410,7 +337,6 @@ struct morse_chip_series {
 int morse_hw_irq_enable(struct morse *mors, u32 irq, bool enable);
 int morse_hw_irq_handle(struct morse *mors);
 int morse_hw_irq_clear(struct morse *mors);
-int morse_hw_toggle_aon_latch(struct morse *mors);
 
 enum sdio_burst_mode {
 	SDIO_WORD_BURST_DISABLE = 0,	/* Intentionally duplicate to make it clear it's disabled */
@@ -428,6 +354,7 @@ extern struct morse_hw_cfg mm6108_cfg;
 /* MM8108 */
 extern struct morse_chip_series mm81xx_chip_series;
 extern struct morse_hw_cfg mm8108_cfg;
+extern const struct morse_hw_regs mm8108_regs;
 
 /**
  * morse_hw_reset - performs a hardware reset on the chip by toggling
@@ -446,6 +373,30 @@ int morse_hw_reset(int reset_pin);
  *  false if any step fails
  */
 bool is_otp_xtal_wait_supported(struct morse *mors);
+
+/**
+ * morse_hw_is_valid_chip_id - Check valid chip id that support driver by
+ * iterating over valid_chip_ids[] until it hits CHIP_ID_END
+ *
+ * @chip_id: Chip ID code received from the chip
+ * @vaild_chip_ids: An array containing valid chip id that support driver
+ * with CHIP_ID_END as the last element
+ *
+ * Return: true if the registered chip id is in the array
+ *	   false if not found
+ */
+bool morse_hw_is_valid_chip_id(u32 chip_id, u32 *valid_chip_ids);
+
+/**
+ * morse_hw_regs_attach - Attach a valid reg map to the hw config
+ * structure.
+ *
+ * @chip_id: Chip ID code received from the chip
+ * @cfg: the hw config pointer where the reg map resides.
+ *
+ * Return: int return code.
+ */
+int morse_hw_regs_attach(struct morse_hw_cfg *cfg, u32 chip_id);
 
 /**
  * morse_hw_enable_stop_notifications - Enable/Disable chip->host notification on stop.
@@ -484,89 +435,5 @@ int morse_chip_cfg_detect_and_init(struct morse *mors, struct morse_chip_series 
  * Return: int error code. Returns 0 if successful.
  */
 int morse_chip_cfg_init(struct morse *mors, u32 chip_id);
-
-/**
- * morse_hw_clock_update - Read internal HW clock and capture local kernel time as a reference.
- *                         Note; Should be called by chip_if work only.
- *
- * @mors: morse struct
- *
- * @return 0 if success else error code
- */
-int morse_hw_clock_update(struct morse *mors);
-
-/**
- * morse_hw_clock_trigger_update - Trigger a update/read operation on the internal HW clock.
- *
- * @mors: morse struct
- * @wait: true if operation should wait until completion
- *
- * @return 0 if success else error code
- */
-int morse_hw_clock_trigger_update(struct morse *mors, bool wait);
-
-/**
- * morse_hw_clock_now - Current interpolated value of the HW's clock (microseconds).
- *                      Note; Requires the HW clock to have been read at least once.
- *
- * @mors: mors struct
- * @now: Field in which to store the current (interpolated) value of the HW clock.
- *
- * @return 0 if success else error code
- */
-int morse_hw_clock_now(const struct morse *mors, u64 *now);
-
-/**
- * morse_hw_is_already_loaded - Check if the hardware is already loaded
- *
- * @mors: mors struct
- *
- * @return true if hardware is already loaded else false
- */
-bool morse_hw_is_already_loaded(struct morse *mors);
-
-/**
- * morse_hw_attach_done_irq_enable - Enable or disable 'HW attach done' interrupt
- *
- * @mors: mors struct
- * @enable: enable or disable the interrupt
- *
- * @return 0 on success, else an error code
- */
-int morse_hw_attach_done_irq_enable(struct morse *mors, bool enable);
-
-/**
- * morse_hw_attach - Attach to running hardware
- *
- * @mors: mors struct
- *
- * @return 0 on success, else an error code
- */
-int morse_hw_attach(struct morse *mors);
-
-/**
- * morse_hw_detach - Detach from hardware
- *
- * @mors: mors struct
- *
- * @return 0 on success, else an error code
- */
-int morse_hw_detach(struct morse *mors);
-
-/**
- * morse_hw_is_stopped - Check if the hardware is stopped
- *
- * @morse: morse struct
- *
- * @return true if hardware is stopped else false
- */
-bool morse_hw_is_stopped(struct morse *mors);
-
-/**
- * morse_hw_should_reattach - Check if reattaching to hardware
- *
- * @return true if reattaching to hardware else false
- */
-bool morse_hw_should_reattach(void);
 
 #endif /* !_MORSE_HW_H_ */

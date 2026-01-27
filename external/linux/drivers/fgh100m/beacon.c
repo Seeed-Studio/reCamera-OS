@@ -1,8 +1,6 @@
 /*
  * Copyright 2017-2023 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 #include <linux/interrupt.h>
 
@@ -51,19 +49,18 @@ bool morse_mac_is_s1g_long_beacon(struct morse *mors, struct sk_buff *skb)
 	const u8 *s1g_ies = s1g_beacon->u.s1g_beacon.variable;
 	u32 s1g_header_length = s1g_ies - skb->data;
 	u32 s1g_ies_len = frame_len - s1g_header_length;
-	u16 fc = le16_to_cpu(s1g_beacon->frame_control);
 
-	if (fc & IEEE80211_FC_NEXT_TBTT) {
+	if (s1g_beacon->frame_control & IEEE80211_FC_NEXT_TBTT)	{
 		s1g_ies += 3;
 		s1g_ies_len -= 3;
 	}
 
-	if (fc & IEEE80211_FC_COMPRESS_SSID) {
+	if (s1g_beacon->frame_control & IEEE80211_FC_COMPRESS_SSID)	{
 		s1g_ies += 4;
 		s1g_ies_len -= 4;
 	}
 
-	if (fc & IEEE80211_FC_ANO) {
+	if (s1g_beacon->frame_control & IEEE80211_FC_ANO) {
 		s1g_ies += 1;
 		s1g_ies_len -= 1;
 	}

@@ -1,7 +1,5 @@
 /*
  * Copyright 2020 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #include <linux/types.h>
@@ -37,7 +35,7 @@ static void morse_dot11ah_insert_s1g_aid_request(struct dot11ah_ies_mask *ies_ma
 				     s1g_aid_request, sizeof(s1g_aid_request));
 }
 
-static void morse_dot11ah_insert_s1g_aid_response(struct dot11ah_ies_mask *ies_mask, __le16 aid)
+static void morse_dot11ah_insert_s1g_aid_response(struct dot11ah_ies_mask *ies_mask, u16 aid)
 {
 	struct ie_element *element;
 	u8 s1g_aid_response[] = {
@@ -51,8 +49,8 @@ static void morse_dot11ah_insert_s1g_aid_response(struct dot11ah_ies_mask *ies_m
 		return;
 
 	/* The 1st and 2nd octet are the AID */
-	*element->ptr = le16_to_cpu(aid) & 0xFF;
-	*(element->ptr + 1) = (le16_to_cpu(aid) >> 8) & 0xFF;
+	*element->ptr = cpu_to_le16(aid) & 0xFF;
+	*(element->ptr + 1) = (cpu_to_le16(aid) >> 8) & 0xFF;
 }
 
 static int morse_dot11ah_insert_s1g_compatibility(struct dot11ah_ies_mask *ies_mask,
@@ -316,7 +314,7 @@ static void morse_dot11ah_assoc_resp_to_s1g(struct ieee80211_vif *vif,
 	struct morse_dot11ah_s1g_assoc_resp *s1g_assoc_resp;
 	const struct ieee80211_ht_cap *ht_cap;
 	u8 *s1g_ies = NULL;
-	__le16 aid = assoc_resp->u.assoc_resp.aid & cpu_to_le16(0x3FFF);
+	__le16 aid = assoc_resp->u.assoc_resp.aid & 0x3FFF;
 
 	struct s1g_operation_parameters s1g_oper_params = {
 		.chan_centre_freq_num =
@@ -489,7 +487,7 @@ static void morse_dot11ah_convert_ecsa_info_to_s1g(struct morse_vif *mors_vif,
 	 * Maintaining two conditions:
 	 * 1: S1G frequency as input to initiate chan_switch
 	 * When S1G frequency is used hostapd sets S1G data to driver
-	 * with MORSE_CMD_ID_SET_ECSA_S1G_INFO.
+	 * with MORSE_COMMAND_SET_ECSA_S1G_INFO.
 	 *
 	 * 2: HT frequency as input to initiate chan_switch
 	 * When ht frequecny is used no valid S1G data sets to driver
@@ -600,7 +598,7 @@ static void morse_dot11ah_probe_resp_to_s1g(struct ieee80211_vif *vif,
 	 * Short slot time is relevant to 80211g (2.4GHz). We should set that to 0
 	 * so that in future we can repurpose the bit for some other 802.11ah use.
 	 */
-	probe_resp->u.probe_resp.capab_info &= ~cpu_to_le16(WLAN_CAPABILITY_SHORT_SLOT_TIME);
+	probe_resp->u.probe_resp.capab_info &= ~(WLAN_CAPABILITY_SHORT_SLOT_TIME);
 
 	ht_cap = (const struct ieee80211_ht_cap *)ies_mask->ies[WLAN_EID_HT_CAPABILITY].ptr;
 
@@ -830,7 +828,7 @@ static void morse_dot11ah_beacon_to_s1g(struct ieee80211_vif *vif,
 	u8 *s1g_beacon_opt_fields = NULL;
 	u8 *rsn_ie;
 	u8 rsn_ie_len;
-	u16 frame_control = IEEE80211_FTYPE_EXT | IEEE80211_STYPE_S1G_BEACON;
+	__le16 frame_control = IEEE80211_FTYPE_EXT | IEEE80211_STYPE_S1G_BEACON;
 	struct s1g_operation_parameters s1g_oper_params = {
 		.chan_centre_freq_num = morse_dot11ah_freq_khz_bw_mhz_to_chan(HZ_TO_KHZ
 				(mors_vif->custom_configs->channel_info.op_chan_freq_hz),
@@ -925,9 +923,9 @@ static void morse_dot11ah_beacon_to_s1g(struct ieee80211_vif *vif,
 		u64 now_usecs = jiffies_to_usecs((get_jiffies_64() - mors_vif->epoch));
 
 		morse_dot11ah_insert_s1g_compatibility(ies_mask,
-						       le16_to_cpu(beacon->u.beacon.beacon_int) *
+						       beacon->u.beacon.beacon_int *
 						       vif->bss_conf.dtim_period,
-						       le16_to_cpu(beacon->u.beacon.capab_info),
+						       beacon->u.beacon.capab_info,
 						       UPPER_32_BITS(now_usecs));
 
 		morse_dot11ah_insert_s1g_capability(vif,
@@ -937,7 +935,7 @@ static void morse_dot11ah_beacon_to_s1g(struct ieee80211_vif *vif,
 
 		morse_dot11ah_insert_s1g_operation(ies_mask, &s1g_oper_params);
 		morse_dot11ah_insert_s1g_short_beacon_interval(ies_mask,
-							  le16_to_cpu(beacon->u.beacon.beacon_int));
+							       beacon->u.beacon.beacon_int);
 
 		if (ies_mask->ies[WLAN_EID_EXT_CHANSWITCH_ANN].ptr) {
 			morse_dot11ah_convert_ecsa_info_to_s1g(mors_vif, ies_mask);
@@ -997,14 +995,14 @@ static int morse_dot11_get_rsn_caps(const u8 *rsn_ie, u16 *rsn_caps)
 	rsn_ie_len -= RSN_SELECTOR_LEN;
 
 	/* verify and skip pairwise count(2 bytes) and cipher len*/
-	count = le16_to_cpu(*(__le16 *)(rsn_ie));
+	count = le16_to_cpu(*(u16 *)(rsn_ie));
 	if (rsn_ie_len < (count * RSN_SELECTOR_LEN))
 		return 0;
 	rsn_ie += (2 + count * RSN_SELECTOR_LEN);
 	rsn_ie_len -= (2 + count * RSN_SELECTOR_LEN);
 
 	/* verify and skip akm count(2 byte) and akm len*/
-	count = le16_to_cpu(*(__le16 *)(rsn_ie));
+	count = le16_to_cpu(*(u16 *)(rsn_ie));
 	if (rsn_ie_len < (count * RSN_SELECTOR_LEN))
 		return 0;
 	rsn_ie += (2 + count * RSN_SELECTOR_LEN);
@@ -1014,7 +1012,7 @@ static int morse_dot11_get_rsn_caps(const u8 *rsn_ie, u16 *rsn_caps)
 	if (rsn_ie_len < 2)
 		return 0;
 
-	*rsn_caps = le16_to_cpu(*((__le16 *)rsn_ie));
+	*rsn_caps = le16_to_cpu(*((u16 *)rsn_ie));
 
 	return 0;
 }
@@ -1025,7 +1023,7 @@ int morse_dot11_get_mpm_ampe_len(struct sk_buff *skb)
 	u16 cap_info;
 	int ampe_len = 0;
 
-	cap_info = le16_to_cpu(*(__le16 *)mgmt->u.action.u.self_prot.variable);
+	cap_info = le16_to_cpu(*mgmt->u.action.u.self_prot.variable);
 
 	if (cap_info & WLAN_CAPABILITY_PRIVACY) {
 		if (mgmt->u.action.u.self_prot.action_code == WLAN_SP_MESH_PEERING_OPEN) {

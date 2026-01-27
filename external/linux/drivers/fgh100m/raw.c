@@ -1,7 +1,5 @@
 /*
  * Copyright 2017-2023 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #include "debug.h"
 #include "raw.h"
@@ -244,7 +242,7 @@ struct morse_raw_periodic_t {
  * @return: allocated AID list
  */
 static struct morse_aid_list *morse_generate_aid_list(unsigned long *aid_bitmap, int num_aids,
-	int max_aid, gfp_t gfp)
+	int max_aid, int gfp)
 {
 	int aid;
 	int idx = 0;
@@ -359,7 +357,7 @@ u8 morse_raw_get_rps_ie_size(struct morse_vif *mors_vif)
 {
 	struct morse_ap *ap = mors_vif->ap;
 
-	if (!ap || !ap->raw.rps_ie || !morse_raw_is_enabled(mors_vif))
+	if (!ap || !ap->raw.rps_ie)
 		return 0;
 
 	return ap->raw.rps_ie_len;
@@ -519,10 +517,6 @@ static u8 *morse_raw_generate_assignment(struct morse_vif *mors_vif,
 		/* Calculate how many STAs in each RAW. */
 		num_stas = config->end_aid_idx - config->start_aid_idx + 1;
 
-		MORSE_RAW_DBG(mors, "num_stas: %d, nspb:%d max_spread:%d\n",
-			      num_stas, config->beacon_spreading.nominal_sta_per_beacon,
-				  config->beacon_spreading.max_spread);
-
 		/* Increase the number of stations per RAW to avoid spreading over
 		 * too many beacons if necessary.
 		 */
@@ -540,7 +534,6 @@ static u8 *morse_raw_generate_assignment(struct morse_vif *mors_vif,
 
 			sta_per_beacon = num_stas / beacon_count;
 			sta_per_beacon_mod = num_stas % beacon_count;
-			MORSE_RAW_DBG(mors, "beacon_cnt:%d\n", beacon_count);
 		}
 
 		MORSE_RAW_DBG(mors, "sta_per_beacon, mod: %u, %u\n",
@@ -761,7 +754,7 @@ static void morse_raw_update_praw_after_bcn(struct morse_raw *raw)
 				kick_tx = true;
 			else
 				/* PRAW has expired */
-				morse_raw_deactivate_config(raw, cfg);
+				morse_raw_deactivate_config(cfg);
 		}
 	}
 
@@ -852,7 +845,7 @@ static void morse_raw_refresh_aids(struct morse_ap *ap, struct morse_raw *raw)
 
 	raw->aid_list = aid_list;
 
-	WARN_ON(aid_list->num_aids > 0 && !(u16 *)aid_list->aids);
+	WARN_ON(aid_list->num_aids > 0 && !aid_list->aids);
 
 	list_for_each_entry(config_ptr, &raw->active_raws, active_list) {
 		/* only care about AID indexes for active beacon spreading RAWs */
@@ -864,50 +857,6 @@ static void morse_raw_refresh_aids(struct morse_ap *ap, struct morse_raw *raw)
 			raw_update_aid_indexes(config_ptr, aid_list);
 		}
 	}
-}
-
-int morse_raw_process_rx_mgmt(struct morse *mors, struct ieee80211_vif *vif,
-			struct ieee80211_sta *sta, const struct sk_buff *skb,
-			struct dot11ah_ies_mask *ies_mask)
-{
-	struct ieee80211_mgmt *mgmt;
-	struct morse_vif *mors_vif;
-	struct morse_sta *msta;
-	const u8 *qos_tc_ie;
-	size_t qos_tc_len;
-	u8 raw_priority;
-	bool is_assoc_req;
-
-	if (!mors || !vif || !sta)
-		return -EINVAL;
-
-	mors_vif = ieee80211_vif_to_morse_vif(vif);
-
-	if (!morse_raw_is_enabled(mors_vif))
-		return 0;
-
-	mgmt = (struct ieee80211_mgmt *)skb->data;
-	is_assoc_req = (ieee80211_is_assoc_req(mgmt->frame_control) ||
-					ieee80211_is_reassoc_req(mgmt->frame_control));
-
-	if (is_assoc_req && ies_mask->ies[WLAN_EID_QOS_TRAFFIC_CAPA].ptr) {
-		qos_tc_ie = ies_mask->ies[WLAN_EID_QOS_TRAFFIC_CAPA].ptr;
-		qos_tc_len = ies_mask->ies[WLAN_EID_QOS_TRAFFIC_CAPA].len;
-
-		if (qos_tc_len == 0) {
-			raw_priority = 0;
-			MORSE_RAW_ERR(mors, "No QoS Traffic Cap UP using default: %u",
-				raw_priority);
-		} else {
-			raw_priority =
-				(*qos_tc_ie & QOS_TRAFFIC_UP_MASK) >> QOS_TRAFFIC_UP_SHIFT;
-		}
-
-		msta = (struct morse_sta *)sta->drv_priv;
-		msta->raw_priority = raw_priority;
-	}
-
-	return 0;
 }
 
 /**
@@ -944,32 +893,18 @@ static void morse_raw_do_update(struct morse_vif *mors_vif)
 		morse_raw_start_praw_transmission(raw, false);
 	}
 
-	/* A beacon has been sent.
-	 * 1. Update PRAWs (if any). If a PRAW is about to expire, we must
-	 *    also include all active PRAWs
-	 * 2. Update dynamic beacon count and reset if the dynamic RAW cycle is
-	 *    completed, ie. all beacons has been sent with dynamic configs.
+	/* A beacon has been sent, update PRAWs (if any). If a PRAW is about to expire, we must
+	 * also include all active PRAWs
 	 */
 	if (test_and_clear_bit(RAW_STATE_BEACON_SENT, &raw->flags)) {
-		if (morse_raw_has_dynamic_config(raw)) {
-			raw->dynamic.current_num++;
-			if (raw->dynamic.current_num >= raw->dynamic.num_beacons) {
-				/* Done sending the configured RAWs. Reset the flag to skip updating
-				 * next beacons with RPS IEs.
-				 */
-				raw->dynamic.current_num = -1;
-				clear_bit(RAW_STATE_UPDATE_EACH_BEACON, &raw->flags);
-			}
-		}
-		if (morse_raw_has_static_config(raw)) {
-			morse_raw_update_praw_after_bcn(raw);
-			/* Always include PRAWs if we are still transmitting them after an update
-			 * (to make sure all STAs see them)
-			 */
-			if (raw->praw_tx_count) {
-				include_praws = true;
-				raw->praw_tx_count--;
-			}
+		morse_raw_update_praw_after_bcn(raw);
+
+		/* Always include PRAWs if we are still transmitting them after an update
+		 * (to make sure all STAs see them)
+		 */
+		if (raw->praw_tx_count) {
+			include_praws = true;
+			raw->praw_tx_count--;
 		}
 	}
 
@@ -988,11 +923,7 @@ static void morse_raw_do_update(struct morse_vif *mors_vif)
 			continue;
 		}
 
-		if ((morse_raw_has_dynamic_config(raw) &&
-		     config_ptr->dynamic.insert_at_idx == raw->dynamic.current_num) ||
-		    (morse_raw_has_static_config(raw) && !morse_raw_cfg_has_bcn_idx(config_ptr)))
-			configs_list[count++] = config_ptr;
-
+		configs_list[count++] = config_ptr;
 		/* If including regular RAWs, must include PRAWs too */
 		include_praws = true;
 	}
@@ -1050,52 +981,52 @@ static bool morse_raw_is_config_valid(struct morse_raw_config *cfg)
 /**
  * morse_raw_cmd_to_config() - Convert a RAW command into a RAW configuration
  *
- * @head:		Pointer to the config TLV head
- * @len:		Length of the current TLV
+ * @cmd:		A pointer to a RAW command sent by morsectrl
  * @cfg:		A pointer to the configuration to populate
  * Returns:		True if config is valid, otherwise false
  */
-static bool morse_raw_cmd_to_config(u8 *head, int len, struct morse_raw_config *cfg)
+static bool morse_raw_cmd_to_config(struct morse_cmd_raw_cfg *cmd, struct morse_raw_config *cfg)
 {
 	union morse_cmd_raw_tlvs *tlv;
+	u8 *head;
 	u8 *tail;
 
-	WARN_ON(!cfg);
+	WARN_ON(!cmd || !cfg);
 
 	/* only support generic RAWs at the moment */
 	cfg->type = IEEE80211_S1G_RPS_RAW_TYPE_GENERIC;
 
-	tail = head + len;
+	head = cmd->variable;
+	tail = ((uint8_t *)cmd) + le16_to_cpu(cmd->hdr.len) + sizeof(cmd->hdr);
 
 	while (head < tail) {
 		tlv = (union morse_cmd_raw_tlvs *)head;
 
 		switch (tlv->tag) {
-		case MORSE_CMD_RAW_TLV_TAG_SLOT_DEF:
+		case MORSE_RAW_CMD_TAG_SLOT_DEF:
 			cfg->slot_definition.num_slots = tlv->slot_def.num_slots;
 			cfg->slot_definition.slot_duration_us =
-				le32_to_cpu(tlv->slot_def.raw_duration_us) /
-						tlv->slot_def.num_slots;
+				tlv->slot_def.raw_duration_us / tlv->slot_def.num_slots;
 			cfg->slot_definition.cross_slot_boundary =
 				!!tlv->slot_def.cross_slot_bleed;
 
 			head += sizeof(tlv->slot_def);
 			break;
 
-		case MORSE_CMD_RAW_TLV_TAG_GROUP:
-			cfg->start_aid = le16_to_cpu(tlv->group.aid_start);
-			cfg->end_aid = le16_to_cpu(tlv->group.aid_end);
+		case MORSE_RAW_CMD_TAG_GROUP:
+			cfg->start_aid = tlv->group.aid_start;
+			cfg->end_aid = tlv->group.aid_end;
 
 			head += sizeof(tlv->group);
 			break;
 
-		case MORSE_CMD_RAW_TLV_TAG_START_TIME:
-			cfg->start_time_us = le32_to_cpu(tlv->start_time.start_time_us);
+		case MORSE_RAW_CMD_TAG_START_TIME:
+			cfg->start_time_us = tlv->start_time.start_time_us;
 
 			head += sizeof(tlv->start_time);
 			break;
 
-		case MORSE_CMD_RAW_TLV_TAG_PRAW:
+		case MORSE_RAW_CMD_TAG_PRAW:
 			cfg->periodic.periodicity = tlv->praw.periodicity;
 			cfg->periodic.validity = tlv->praw.validity;
 			cfg->periodic.start_offset = tlv->praw.start_offset;
@@ -1108,10 +1039,10 @@ static bool morse_raw_cmd_to_config(u8 *head, int len, struct morse_raw_config *
 			head += sizeof(tlv->praw);
 			break;
 
-		case MORSE_CMD_RAW_TLV_TAG_BCN_SPREAD:
-			cfg->beacon_spreading.max_spread = le16_to_cpu(tlv->bcn_spread.max_spread);
+		case MORSE_RAW_CMD_TAG_BCN_SPREAD:
+			cfg->beacon_spreading.max_spread = tlv->bcn_spread.max_spread;
 			cfg->beacon_spreading.nominal_sta_per_beacon =
-					le16_to_cpu(tlv->bcn_spread.nominal_sta_per_bcn);
+					tlv->bcn_spread.nominal_sta_per_bcn;
 			cfg->beacon_spreading.last_aid = 0;
 
 			head += sizeof(tlv->bcn_spread);
@@ -1193,36 +1124,9 @@ struct morse_raw_config *morse_raw_create_or_find_by_id(struct morse_raw *raw, u
 	return config;
 }
 
-/**
- * morse_dump_raw_config() - Dump RAW config
- *
- * @mors: Morse chip struct
- * @cfg: The RAW config to print
- */
-static void morse_dump_raw_config(struct morse *mors, struct morse_raw_config *cfg)
+static void morse_raw_delete_config(struct morse_raw_config *config)
 {
-	MORSE_RAW_DBG(mors, "New RAW Config: bcn_sprd:%d sta_per_bcn:%d start_time:%d",
-		cfg->beacon_spreading.max_spread,
-		cfg->beacon_spreading.nominal_sta_per_beacon,
-		cfg->start_time_us);
-	MORSE_RAW_DBG(mors, "start_aid:%d end_aid:%d num_slots:%d slot_dur:%d\n",
-		cfg->start_aid,
-		cfg->end_aid,
-		cfg->slot_definition.num_slots,
-		cfg->slot_definition.slot_duration_us);
-}
-
-/**
- * morse_raw_delete_config() - Delete a RAW config
- *
- * @raw: The global RAW context
- * @cfg: The RAW config to delete
- */
-static void morse_raw_delete_config(struct morse_raw *raw, struct morse_raw_config *config)
-{
-	if (morse_raw_is_config_active(config))
-		morse_raw_deactivate_config(raw, config);
-
+	morse_raw_deactivate_config(config);
 	list_del(&config->list);
 	kfree(config);
 }
@@ -1261,23 +1165,10 @@ void morse_raw_activate_config(struct morse_raw *raw, struct morse_raw_config *c
 		morse_raw_list_add_sorted(&raw->active_praws, cfg);
 	else
 		morse_raw_list_add_sorted(&raw->active_raws, cfg);
-
-	if (morse_raw_cfg_has_bcn_idx(cfg))
-		raw->configs.num_dynamic++;
-	else
-		raw->configs.num_static++;
 }
 
-void morse_raw_deactivate_config(struct morse_raw *raw, struct morse_raw_config *cfg)
+void morse_raw_deactivate_config(struct morse_raw_config *cfg)
 {
-	if (morse_raw_cfg_has_bcn_idx(cfg)) {
-		MORSE_WARN_ON(FEATURE_ID_RAW, raw->configs.num_dynamic == 0);
-		raw->configs.num_dynamic--;
-	} else {
-		MORSE_WARN_ON(FEATURE_ID_RAW, raw->configs.num_static == 0);
-		raw->configs.num_static--;
-	}
-
 	list_del_init(&cfg->active_list);
 }
 
@@ -1286,230 +1177,89 @@ bool morse_raw_is_config_active(struct morse_raw_config *cfg)
 	return !list_empty(&cfg->active_list);
 }
 
-/**
- * morse_raw_process_config_group() - Process the priority group configurations from the command
- *
- * @mors_vif:	Morse VIF structure
- * @dynamic_conf:	Config group entry for dynamic RAW
- * @static_conf:	Config group entry for static RAW
- * Return: 0 if command was processed successfully, otherwise error code
- */
-static int morse_raw_process_config_group(struct morse_vif *mors_vif, struct morse_raw *raw,
-				   struct morse_cmd_raw_tlv_dyn_config *dynamic_conf,
-				   struct morse_cmd_req_config_raw *static_conf)
+int morse_raw_process_cmd(struct morse_vif *mors_vif, struct morse_cmd_raw_cfg *cmd)
 {
-	struct morse_raw_config *config, *tmp;
-	u8 *tlv_head;
-	u16 flags;
-	u16 id;
-	int len;
 	int ret = 0;
-	bool enable = false;
-	u16 beacon_idx = U16_MAX;
+	struct morse_raw *raw;
+	struct morse_raw_config *config, *tmp;
 	struct morse *mors = morse_vif_to_morse(mors_vif);
+	struct ieee80211_vif *vif = morse_vif_to_ieee80211_vif(mors_vif);
+	bool enable = false;
 
-	if (!dynamic_conf && !static_conf)
-		return -ENOENT;
-
-	if (dynamic_conf) {
-		beacon_idx = le16_to_cpu(dynamic_conf->index);
-		len = le16_to_cpu(dynamic_conf->len);
-		flags = MORSE_CMD_CFG_RAW_FLAG_ENABLE | MORSE_CMD_CFG_RAW_FLAG_UPDATE;
-		id = le16_to_cpu(dynamic_conf->id);
-		tlv_head = dynamic_conf->variable;
-
-		MORSE_RAW_DBG(mors, "Dynamic RAW CMD: %d %x %d\n", id, flags, beacon_idx);
-	} else {
-		len = le16_to_cpu(static_conf->hdr.len) -
-			((sizeof(*static_conf) - sizeof(static_conf->hdr)));
-		flags = le32_to_cpu(static_conf->flags);
-		id = le16_to_cpu(static_conf->id);
-		tlv_head = static_conf->variable;
-
-		MORSE_RAW_DBG(mors, "RAW CMD: %d %x\n", id, flags);
+	if (vif->type != NL80211_IFTYPE_AP) {
+		MORSE_RAW_INFO(mors, "RAW not supported on non-AP interfaces\n");
+		return -ENOTSUPP;
 	}
 
-	if (id >= RAW_INTERNAL_ID_OFFSET)
-		return -EPERM;
+	MORSE_RAW_DBG(mors, "RAW CMD: %d %x\n", cmd->id, cmd->flags);
 
-	enable = ((flags & MORSE_CMD_CFG_RAW_FLAG_ENABLE) != 0);
+	raw = &mors_vif->ap->raw;
 
-	/* Pause and unpause the BSS stats when static RAW is configured. Pause will stop the BSS
-	 * stats events and the dynamic RAW commands to and fro of smart manager. Resume will
-	 * start the BSS stats events to smart manager and dynamic RAW commands will resume.
-	 */
-	if (enable && static_conf)
-		morse_bss_stats_pause(mors_vif);
-	else if (!enable && static_conf)
-		morse_bss_stats_resume(mors_vif);
+	mutex_lock(&raw->lock);
 
-	if (id == 0) {
+	if (cmd->id >= RAW_INTERNAL_ID_OFFSET) {
+		ret = -EPERM;
+		goto exit;
+	}
+
+	enable = ((cmd->flags & RAW_CMD_FLAG_ENABLE) != 0);
+
+	if (cmd->id == 0) {
 		if (enable)
 			morse_raw_enable(raw);
 		else
 			morse_raw_disable(raw);
 
-		if (flags & MORSE_CMD_CFG_RAW_FLAG_DELETE) {
-			MORSE_RAW_DBG(mors, "RAW DELETE CMD: %d %x\n", id, flags);
+		if (cmd->flags & RAW_CMD_FLAG_DELETE)
 			list_for_each_entry_safe(config, tmp, &raw->raw_config_list, list)
-				morse_raw_delete_config(raw, config);
-		}
-		return 0;
+				morse_raw_delete_config(config);
+
+		goto exit;
 	}
 
-	if (flags & MORSE_CMD_CFG_RAW_FLAG_UPDATE) {
-		config = morse_raw_create_or_find_by_id(raw, id);
-		if (!config)
-			return -ENOMEM;
+	if (cmd->flags & RAW_CMD_FLAG_UPDATE) {
+		config = morse_raw_create_or_find_by_id(raw, cmd->id);
+		if (!config) {
+			ret = -ENOMEM;
+			goto exit;
+		}
 
-		if (!morse_raw_cmd_to_config(tlv_head, len, config)) {
+		if (!morse_raw_cmd_to_config(cmd, config)) {
 			/* Allowed to have invalid configs provided they are disabled */
 			if (enable)
 				ret = -EINVAL;
 
 			/* config is not valid, disable it */
 			enable = false;
-		} else {
-			morse_dump_raw_config(mors, config);
 		}
 	} else {
-		config = morse_raw_find_config_by_id(raw, id);
+		config = morse_raw_find_config_by_id(raw, cmd->id);
 		if (!config) {
 			if (enable) {
 				MORSE_RAW_WARN(mors,
 					"Trying to enable a RAW without configuration\n");
 				ret = -ENOENT;
 			}
-			return ret;
+			goto exit;
 		}
 
-		if (flags & MORSE_CMD_CFG_RAW_FLAG_DELETE) {
-			morse_raw_delete_config(raw, config);
+		if (cmd->flags & RAW_CMD_FLAG_DELETE) {
+			morse_raw_delete_config(config);
 			config = NULL;
 		}
 	}
 
 	if (config) {
-		config->dynamic.insert_at_idx = beacon_idx;
-
 		if (enable)
 			morse_raw_activate_config(raw, config);
 		else
-			morse_raw_deactivate_config(raw, config);
+			morse_raw_deactivate_config(config);
 	}
 
-	return ret;
-}
-
-/**
- * morse_raw_process_dynamic_cmd() - Execute command to enable/disable/configure dynamic RAW
- *
- * @mors_vif:	Morse VIF structure
- * @raw:	RAW context
- * @req:	Request from smart manager
- * Return: 0 if command was processed successfully, otherwise error code
- */
-static int morse_raw_process_dynamic_cmd(struct morse_vif *mors_vif, struct morse_raw *raw,
-				struct morse_cmd_req_config_raw *req)
-{
-	union morse_cmd_raw_tlvs *tlv;
-	int num_configs;
-	u8 *head;
-	u8 *tail;
-	int ret = 0;
-
-	mutex_lock(&raw->lock);
-
-	if (morse_raw_has_static_config(raw)) {
-		mutex_unlock(&raw->lock);
-		return 0;
-	}
-
-	/* Re-initialize to remove any previously configured RAW from config list */
-	morse_dynamic_raw_init(mors_vif);
-
-	head = req->variable;
-	tail = ((uint8_t *)req) + le16_to_cpu(req->hdr.len) + sizeof(req->hdr);
-
-	while (head < tail) {
-		struct morse_cmd_raw_tlv_dyn_config *config;
-
-		tlv = (union morse_cmd_raw_tlvs *)head;
-
-		switch (tlv->tag) {
-		case MORSE_CMD_RAW_TLV_TAG_DYN_GLOBAL:
-			raw->dynamic.num_beacons =
-					le16_to_cpu(tlv->dyn_global.num_bcn_indexes);
-			num_configs = le16_to_cpu(tlv->dyn_global.num_configs);
-			if (!num_configs) {
-				mutex_unlock(&raw->lock);
-				return 0;
-			}
-			head += sizeof(tlv->dyn_global);
-			break;
-		case MORSE_CMD_RAW_TLV_TAG_DYN_CONFIG:
-			config = (struct morse_cmd_raw_tlv_dyn_config *)tlv;
-			if (config) {
-				ret = morse_raw_process_config_group(mors_vif, raw,
-								     config, NULL);
-				head += le16_to_cpu(config->len) + sizeof(tlv->dyn_config);
-			}
-			break;
-		case MORSE_CMD_RAW_TLV_TAG_SLOT_DEF:
-		case MORSE_CMD_RAW_TLV_TAG_GROUP:
-		case MORSE_CMD_RAW_TLV_TAG_START_TIME:
-		case MORSE_CMD_RAW_TLV_TAG_PRAW:
-		case MORSE_CMD_RAW_TLV_TAG_BCN_SPREAD:
-			/* Config TLVs to be processed with config group */
-			break;
-		default:
-			/* unrecognised TLV */
-			WARN_ON(true);
-			ret = -EINVAL;
-			break;
-		}
-		if (ret < 0)
-			break;
-	}
-
+exit:
 	/* By default, RPS IE / state is the same for consecutive beacons */
 	clear_bit(RAW_STATE_UPDATE_EACH_BEACON, &raw->flags);
-	if (!list_empty(&raw->active_raws))
-		set_bit(RAW_STATE_UPDATE_EACH_BEACON, &raw->flags);
 
-	if (ret == 0 && !morse_raw_is_enabled(mors_vif))
-		morse_raw_enable(raw);
-
-	mutex_unlock(&raw->lock);
-
-	morse_raw_trigger_update(mors_vif, false);
-
-	return ret;
-}
-
-/**
- * morse_raw_process_static_cmd() - Execute command to enable/disable/configure static RAW
- *
- * @mors_vif:	Morse VIF structure
- * @raw:	RAW context
- * @req:	Request from hostapd or morsectrl
- * Return: 0 if command was processed successfully, otherwise error code
- */
-static int morse_raw_process_static_cmd(struct morse_vif *mors_vif, struct morse_raw *raw,
-		struct morse_cmd_req_config_raw *req)
-{
-	int ret = 0;
-	struct morse_raw_config *config;
-
-	mutex_lock(&raw->lock);
-
-	/* Re-initialize to remove any previously configured dynamic RAW from config list */
-	morse_dynamic_raw_init(mors_vif);
-
-	ret = morse_raw_process_config_group(mors_vif, raw, NULL, req);
-
-	/* By default, RPS IE / state is the same for consecutive beacons */
-	clear_bit(RAW_STATE_UPDATE_EACH_BEACON, &raw->flags);
 	if (!list_empty(&raw->active_praws)) {
 		/* RAW config updates require PRAWs to be retransmitted */
 		morse_raw_start_praw_transmission(raw, true);
@@ -1526,33 +1276,8 @@ static int morse_raw_process_static_cmd(struct morse_vif *mors_vif, struct morse
 	}
 
 	mutex_unlock(&raw->lock);
-
 	/* Update RPS IE with new configuration. */
 	morse_raw_trigger_update(mors_vif, false);
-
-	return ret;
-}
-
-int morse_raw_process_cmd(struct morse_vif *mors_vif, struct morse_cmd_req_config_raw *req)
-{
-	struct morse_raw *raw;
-	int ret = 0;
-	struct ieee80211_vif *vif = morse_vif_to_ieee80211_vif(mors_vif);
-	struct morse *mors = morse_vif_to_morse(mors_vif);
-	bool is_dynamic_req = ((le32_to_cpu(req->flags) & MORSE_CMD_CFG_RAW_FLAG_DYNAMIC) != 0);
-
-	if (vif->type != NL80211_IFTYPE_AP) {
-		MORSE_RAW_INFO(mors, "RAW not supported on non-AP interfaces\n");
-		return -ENOTSUPP;
-	}
-
-	raw = &mors_vif->ap->raw;
-
-	if (is_dynamic_req)
-		ret = morse_raw_process_dynamic_cmd(mors_vif, raw, req);
-	else
-		ret = morse_raw_process_static_cmd(mors_vif, raw, req);
-
 	return ret;
 }
 
@@ -1563,9 +1288,7 @@ void morse_raw_beacon_sent(struct morse_vif *mors_vif)
 
 	if (morse_raw_is_enabled(mors_vif) && test_bit(RAW_STATE_UPDATE_EACH_BEACON, &raw->flags)) {
 		/* If we were too slow updating, validity may be out of sync for PRAWs */
-		MORSE_RAW_WARN_ON(test_bit(RAW_STATE_BEACON_SENT, &raw->flags));
-		set_bit(RAW_STATE_BEACON_SENT, &raw->flags);
-
+		MORSE_RAW_WARN_ON(test_and_set_bit(RAW_STATE_BEACON_SENT, &raw->flags));
 		schedule_work(&raw->update_work);
 	}
 }
@@ -1619,30 +1342,6 @@ int morse_raw_init(struct morse_vif *mors_vif, bool enable)
 	return 0;
 }
 
-void morse_dynamic_raw_init(struct morse_vif *mors_vif)
-{
-	struct morse_raw *raw;
-	struct morse_raw_config *config, *tmp;
-
-	if (!mors_vif || !mors_vif->ap)
-		return;
-
-	raw = &mors_vif->ap->raw;
-
-	if (!morse_raw_has_dynamic_config(raw))
-		return;
-
-	/* Cleanup dynamic RAW configurations */
-	raw->dynamic.num_beacons = 0;
-	raw->dynamic.current_num = 0;
-
-	/* Delete any previous active dynamic RAW config */
-	list_for_each_entry_safe(config, tmp, &raw->raw_config_list, list) {
-		if (morse_raw_cfg_has_bcn_idx(config))
-			morse_raw_delete_config(raw, config);
-	}
-}
-
 void morse_raw_finish(struct morse_vif *mors_vif)
 {
 	struct morse_raw *raw;
@@ -1661,5 +1360,5 @@ void morse_raw_finish(struct morse_vif *mors_vif)
 	raw->rps_ie = NULL;
 
 	list_for_each_entry_safe(config, tmp, &raw->raw_config_list, list)
-		morse_raw_delete_config(raw, config);
+		morse_raw_delete_config(config);
 }

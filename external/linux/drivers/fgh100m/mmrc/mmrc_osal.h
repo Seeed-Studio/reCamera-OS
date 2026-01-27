@@ -1,7 +1,5 @@
 /*
- * Copyright 2022 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Morse Micro.
  */
 #ifndef MMRC_OSAL_H__
 #define MMRC_OSAL_H__

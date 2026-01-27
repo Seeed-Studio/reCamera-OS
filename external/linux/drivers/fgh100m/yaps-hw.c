@@ -1,8 +1,6 @@
 /*
  * Copyright 2022-2023 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include "linux/crc7.h"
@@ -110,37 +108,31 @@ struct morse_yaps_hw_aux_data {
 	u32 status_regs_addr;
 
 	/* Alloc pool sizes */
-	u16 tc_tx_pool_size;
-	u16 tc_cmd_pool_size;
-	u8 tc_beacon_pool_size;
-	u8 tc_mgmt_pool_size;
-	u8 fc_rx_pool_size;
-	u8 fc_resp_pool_size;
-	u8 fc_tx_sts_pool_size;
-	u8 fc_aux_pool_size;
+	int tc_tx_pool_size;
+	int tc_cmd_pool_size;
+	int tc_beacon_pool_size;
+	int tc_mgmt_pool_size;
+	int fc_rx_pool_size;
+	int fc_resp_pool_size;
+	int fc_tx_sts_pool_size;
+	int fc_aux_pool_size;
 
 	/* To chip/from chip queue sizes */
-	u8 tc_tx_q_size;
-	u8 tc_cmd_q_size;
-	u8 tc_beacon_q_size;
-	u8 tc_mgmt_q_size;
-	u8 fc_q_size;
-	u8 fc_done_q_size;
+	int tc_tx_q_size;
+	int tc_cmd_q_size;
+	int tc_beacon_q_size;
+	int tc_mgmt_q_size;
+	int fc_q_size;
+	int fc_done_q_size;
 
-	u16 reserved_yaps_page_size;
+	int reserved_yaps_page_size;
 
-	/* Buffers to/from chip to support large contiguous reads/writes
-	 * Buffers must be aligned before use.
-	 */
+	/* Buffers to/from chip to support large contiguous reads/writes */
 	char *to_chip_buffer;
 	char *from_chip_buffer;
 
-	/* Status registers for queues and aloc pools on chip
-	 * This structure is filled directly by bus reads, so it is aligned to 8 bytes to support
-	 * MORSE_SDIO_ALIGNMENT of 1, 2, 4 or 8. Stricter alignment requirements will trigger a
-	 * warning in morse_yaps_hw_init().
-	 */
-	struct morse_yaps_status_registers status_regs __aligned(8);
+	/* Status registers for queues and aloc pools on chip */
+	struct morse_yaps_status_registers status_regs;
 };
 
 static int yaps_hw_lock(struct morse_yaps *yaps)
@@ -176,7 +168,7 @@ static void morse_yaps_fill_aux_data_from_hw_tbl(struct morse_yaps_hw_aux_data *
 	aux_data->tc_mgmt_q_size = tbl_ptr->tc_mgmt_q_size;
 	aux_data->fc_q_size = tbl_ptr->fc_q_size;
 	aux_data->fc_done_q_size = tbl_ptr->fc_done_q_size;
-	aux_data->reserved_yaps_page_size = le16_to_cpu(tbl_ptr->yaps_reserved_page_size);
+	aux_data->reserved_yaps_page_size = tbl_ptr->yaps_reserved_page_size;
 }
 
 static inline u8 morse_yaps_crc(u32 word)
@@ -185,10 +177,10 @@ static inline u8 morse_yaps_crc(u32 word)
 	int len = sizeof(word);
 
 	/* Mask to look at only non-crc bits in both metadata word and delimiters */
-	word &= 0x1ffffff;
+	word = cpu_to_be32(word & 0x1ffffff);
 	while (len--) {
-		crc = crc7_be_byte(crc, (word >> 24) & 0xff);
-		word <<= 8;
+		crc = crc7_be_byte(crc, word & 0xff);
+		word >>= 8;
 	}
 	return crc >> 1;
 }
@@ -281,6 +273,19 @@ static bool morse_yaps_will_fit(struct morse_yaps *yaps, struct morse_yaps_pkt *
 	return will_fit;
 }
 
+/* SW-7590:
+ * This is a workaround for an SDIO interrupt lock up issue.
+ * Once fixed on the silicon, this should only be called for
+ * the revisions of the chip with the problem.
+ */
+static void morse_yaps_hw_modify_status_pend_flag(struct morse *mors, u32 length)
+{
+	if (length > SDIO_BLOCKSIZE && (length % SDIO_BLOCKSIZE) == 0)
+		set_bit(MORSE_YAPS_STATUS_REG_READ_PEND, &mors->chip_if->event_flags);
+	else
+		clear_bit(MORSE_YAPS_STATUS_REG_READ_PEND, &mors->chip_if->event_flags);
+}
+
 static int morse_yaps_hw_write_pkt_err_check(struct morse_yaps *yaps, struct morse_yaps_pkt *pkt)
 {
 	if (pkt->skb->len + yaps->aux_data->reserved_yaps_page_size > YAPS_MAX_PKT_SIZE_BYTES)
@@ -299,9 +304,7 @@ static int morse_yaps_hw_write_pkts(struct morse_yaps *yaps,
 	int ret = 0;
 	int i;
 	u32 delim = 0;
-	char *to_chip_buffer_aligned = PTR_ALIGN(yaps->aux_data->to_chip_buffer,
-						  yaps->mors->bus_ops->bulk_alignment);
-	char *write_buf = to_chip_buffer_aligned;
+	char *write_buf = yaps->aux_data->to_chip_buffer;
 	int tx_len;
 	int batch_txn_len = 0;
 	int pkts_pending = 0;
@@ -322,22 +325,22 @@ static int morse_yaps_hw_write_pkts(struct morse_yaps *yaps,
 
 	/* Batch packets into larger transactions. Send as many as we have space for. */
 	for (i = 0; i < num_pkts; ++i) {
-		/* packets are padded with skb_pad.
-		 * Hence, the true size of the packet is not set in skb->len.
-		 */
-		u32 pkt_size = pkts[i].skb->len + YAPS_CALC_PADDING(pkts[i].skb->len);
-
-		tx_len = pkt_size + sizeof(delim);
+		tx_len = pkts[i].skb->len + YAPS_CALC_PADDING(pkts[i].skb->len) + sizeof(delim);
 
 		/* Send when we have reached window size, don't split pkt over boundary */
 		if ((batch_txn_len + tx_len) > YAPS_HW_WINDOW_SIZE_BYTES) {
 			ret = morse_dm_write(yaps->mors, yaps->aux_data->yds_addr,
-					     to_chip_buffer_aligned, batch_txn_len);
+					     yaps->aux_data->to_chip_buffer, batch_txn_len);
+
+			/*
+			 * No need to check for SDIO interrupt lock up here.
+			 * There is definitely more data to be sent
+			 */
 
 			batch_txn_len = 0;
 			if (ret)
 				goto exit;
-			write_buf = to_chip_buffer_aligned;
+			write_buf = yaps->aux_data->to_chip_buffer;
 			*num_pkts_sent += pkts_pending;
 			pkts_pending = 0;
 		}
@@ -357,8 +360,9 @@ static int morse_yaps_hw_write_pkts(struct morse_yaps *yaps,
 
 		/* Build stream header */
 		/* Always set IRQ for the last packet so the chip doesn't miss it */
-		delim = morse_yaps_delimiter(yaps, pkt_size, pkts[i].tc_queue, delim_irq);
-		*((__le32 *)write_buf) = cpu_to_le32(delim);
+		delim = morse_yaps_delimiter(yaps, pkts[i].skb->len, pkts[i].tc_queue,
+					     delim_irq);
+		*((u32 *)write_buf) = cpu_to_le32(delim);
 		memcpy(write_buf + sizeof(delim), pkts[i].skb->data, pkts[i].skb->len);
 
 		write_buf += tx_len;
@@ -372,8 +376,10 @@ static int morse_yaps_hw_write_pkts(struct morse_yaps *yaps,
 exit:
 	if (batch_txn_len > 0) {
 		ret = morse_dm_write(yaps->mors, yaps->aux_data->yds_addr,
-				     to_chip_buffer_aligned, batch_txn_len);
+				     yaps->aux_data->to_chip_buffer, batch_txn_len);
 		*num_pkts_sent += pkts_pending;
+
+		morse_yaps_hw_modify_status_pend_flag(yaps->mors, batch_txn_len);
 	}
 
 	yaps_hw_unlock(yaps);
@@ -424,9 +430,7 @@ static int morse_yaps_hw_read_pkts(struct morse_yaps *yaps,
 {
 	int ret;
 	int i = 0;
-	char *from_chip_buffer_aligned = PTR_ALIGN(yaps->aux_data->from_chip_buffer,
-						 yaps->mors->bus_ops->bulk_alignment);
-	char *read_ptr = from_chip_buffer_aligned;
+	char *read_ptr = yaps->aux_data->from_chip_buffer;
 	int bytes_remaining = morse_calc_bytes_remaining(yaps);
 	bool again = false;
 
@@ -455,7 +459,9 @@ static int morse_yaps_hw_read_pkts(struct morse_yaps *yaps,
 
 	/* Read all available packets to the buffer */
 	ret = morse_dm_read(yaps->mors, yaps->aux_data->ysl_addr,
-			    from_chip_buffer_aligned, bytes_remaining);
+			    yaps->aux_data->from_chip_buffer, bytes_remaining);
+
+	morse_yaps_hw_modify_status_pend_flag(yaps->mors, bytes_remaining);
 
 	if (ret)
 		goto exit;
@@ -466,7 +472,7 @@ static int morse_yaps_hw_read_pkts(struct morse_yaps *yaps,
 		int total_len;
 		int pkt_size;
 
-		delim = le32_to_cpu(*((__le32 *)read_ptr));
+		delim = le32_to_cpu(*((u32 *)read_ptr));
 		read_ptr += sizeof(delim);
 		bytes_remaining -= sizeof(delim);
 
@@ -513,12 +519,14 @@ static int morse_yaps_hw_read_pkts(struct morse_yaps *yaps,
 			/* TODO remove the warning, this is not a kernel bug */
 			MORSE_DBG_RATELIMITED(yaps->mors, "yaps split pkt\n");
 			memcpy(pkts[i].skb->data, read_ptr, bytes_remaining);
-			read_ptr = from_chip_buffer_aligned;
+			read_ptr = yaps->aux_data->from_chip_buffer;
 
 			ret = morse_dm_read(yaps->mors,
 					    /* Offset by 4 to avoid retry logic */
 					    yaps->aux_data->ysl_addr + 4,
 					    read_ptr, read_overhang_len);
+
+			morse_yaps_hw_modify_status_pend_flag(yaps->mors, read_overhang_len);
 
 			if (ret)
 				goto exit;
@@ -572,7 +580,7 @@ static int morse_yaps_hw_update_status(struct morse_yaps *yaps)
 				MORSE_DEVICE_TYPE_IS_FPGA(yaps->mors->chip_id))
 			usleep_range(20, 50);
 
-	} while (!ret && status_regs->lock);
+	} while (!ret && le32_to_cpu(status_regs->lock));
 
 	if (ret) {
 		if (ret != -ENODEV) {
@@ -584,40 +592,24 @@ static int morse_yaps_hw_update_status(struct morse_yaps *yaps)
 		goto exit_unlock;
 	}
 
-	status_regs->tc_tx_pool_num_pages =
-		le32_to_cpu((__force __le32)status_regs->tc_tx_pool_num_pages);
-	status_regs->tc_cmd_pool_num_pages =
-		le32_to_cpu((__force __le32)status_regs->tc_cmd_pool_num_pages);
-	status_regs->tc_beacon_pool_num_pages =
-		le32_to_cpu((__force __le32)status_regs->tc_beacon_pool_num_pages);
-	status_regs->tc_mgmt_pool_num_pages =
-		le32_to_cpu((__force __le32)status_regs->tc_mgmt_pool_num_pages);
-	status_regs->fc_rx_pool_num_pages =
-		le32_to_cpu((__force __le32)status_regs->fc_rx_pool_num_pages);
-	status_regs->fc_resp_pool_num_pages =
-		le32_to_cpu((__force __le32)status_regs->fc_resp_pool_num_pages);
-	status_regs->fc_tx_sts_pool_num_pages =
-		le32_to_cpu((__force __le32)status_regs->fc_tx_sts_pool_num_pages);
-	status_regs->fc_aux_pool_num_pages =
-		le32_to_cpu((__force __le32)status_regs->fc_aux_pool_num_pages);
-	status_regs->tc_tx_num_pkts =
-		le32_to_cpu((__force __le32)status_regs->tc_tx_num_pkts);
-	status_regs->tc_cmd_num_pkts =
-		le32_to_cpu((__force __le32)status_regs->tc_cmd_num_pkts);
-	status_regs->tc_beacon_num_pkts =
-		le32_to_cpu((__force __le32)status_regs->tc_beacon_num_pkts);
-	status_regs->tc_mgmt_num_pkts =
-		le32_to_cpu((__force __le32)status_regs->tc_mgmt_num_pkts);
-	status_regs->fc_num_pkts =
-		le32_to_cpu((__force __le32)status_regs->fc_num_pkts);
-	status_regs->fc_done_num_pkts = le32_to_cpu((__force __le32)status_regs->fc_done_num_pkts);
-	status_regs->fc_rx_bytes_in_queue =
-		le32_to_cpu((__force __le32)status_regs->fc_rx_bytes_in_queue);
+	status_regs->tc_tx_pool_num_pages = le32_to_cpu(status_regs->tc_tx_pool_num_pages);
+	status_regs->tc_cmd_pool_num_pages = le32_to_cpu(status_regs->tc_cmd_pool_num_pages);
+	status_regs->tc_beacon_pool_num_pages = le32_to_cpu(status_regs->tc_beacon_pool_num_pages);
+	status_regs->tc_mgmt_pool_num_pages = le32_to_cpu(status_regs->tc_mgmt_pool_num_pages);
+	status_regs->fc_rx_pool_num_pages = le32_to_cpu(status_regs->fc_rx_pool_num_pages);
+	status_regs->fc_resp_pool_num_pages = le32_to_cpu(status_regs->fc_resp_pool_num_pages);
+	status_regs->fc_tx_sts_pool_num_pages = le32_to_cpu(status_regs->fc_tx_sts_pool_num_pages);
+	status_regs->fc_aux_pool_num_pages = le32_to_cpu(status_regs->fc_aux_pool_num_pages);
+	status_regs->tc_tx_num_pkts = le32_to_cpu(status_regs->tc_tx_num_pkts);
+	status_regs->tc_cmd_num_pkts = le32_to_cpu(status_regs->tc_cmd_num_pkts);
+	status_regs->tc_beacon_num_pkts = le32_to_cpu(status_regs->tc_beacon_num_pkts);
+	status_regs->tc_mgmt_num_pkts = le32_to_cpu(status_regs->tc_mgmt_num_pkts);
+	status_regs->fc_num_pkts = le32_to_cpu(status_regs->fc_num_pkts);
+	status_regs->fc_done_num_pkts = le32_to_cpu(status_regs->fc_done_num_pkts);
+	status_regs->fc_rx_bytes_in_queue = le32_to_cpu(status_regs->fc_rx_bytes_in_queue);
 	status_regs->tc_delim_crc_fail_detected =
-	    le32_to_cpu((__force __le32)status_regs->tc_delim_crc_fail_detected);
-	status_regs->lock = le32_to_cpu((__force __le32)status_regs->lock);
-	status_regs->fc_host_ysl_status =
-		le32_to_cpu((__force __le32)status_regs->fc_host_ysl_status);
+	    le32_to_cpu(status_regs->tc_delim_crc_fail_detected);
+	status_regs->fc_host_ysl_status = le32_to_cpu(status_regs->fc_host_ysl_status);
 
 	/* SW-7464
 	 * tc_total_pkt_count accounts for the packets that have been sent to the chip and
@@ -636,8 +628,7 @@ static int morse_yaps_hw_update_status(struct morse_yaps *yaps)
 		 */
 		/* TODO remove */
 		WARN_ON_ONCE(status_regs->tc_delim_crc_fail_detected);
-		MORSE_YAPS_ERR(yaps->mors, "%s: to-chip yaps delimiter CRC fail, pkt_count=%d\n",
-			__func__, tc_total_pkt_count);
+		MORSE_YAPS_ERR(yaps->mors, "%s: to-chip yaps delimiter CRC fail\n", __func__);
 		ret = -EIO;
 	}
 
@@ -690,7 +681,6 @@ int morse_yaps_hw_init(struct morse *mors)
 	int flags;
 	struct morse_yaps *yaps = NULL;
 	int aux_data_len = sizeof(struct morse_yaps_hw_aux_data);
-	int alignment = mors->bus_ops->bulk_alignment;
 
 	morse_claim_bus(mors);
 
@@ -713,23 +703,16 @@ int morse_yaps_hw_init(struct morse *mors)
 		goto err_exit;
 	}
 
-	yaps->aux_data->to_chip_buffer = kzalloc(YAPS_HW_WINDOW_SIZE_BYTES + alignment - 1,
-						 GFP_KERNEL);
+	yaps->aux_data->to_chip_buffer = kzalloc(YAPS_HW_WINDOW_SIZE_BYTES, GFP_KERNEL);
 	if (!yaps->aux_data->to_chip_buffer) {
 		ret = -ENOMEM;
 		goto err_exit;
 	}
 
-	yaps->aux_data->from_chip_buffer = kzalloc(YAPS_HW_WINDOW_SIZE_BYTES + alignment - 1,
-						   GFP_KERNEL);
+	yaps->aux_data->from_chip_buffer = kzalloc(YAPS_HW_WINDOW_SIZE_BYTES, GFP_KERNEL);
 	if (!yaps->aux_data->from_chip_buffer) {
 		ret = -ENOMEM;
 		goto err_exit;
-	}
-
-	if (!IS_ALIGNED((uintptr_t)&yaps->aux_data->status_regs, alignment)) {
-		MORSE_YAPS_WARN(mors, "%s: Status registers are not aligned to %d bytes\n",
-				__func__, alignment);
 	}
 
 	yaps->ops = &morse_yaps_hw_ops;
@@ -763,6 +746,15 @@ err_exit:
 	return ret;
 }
 
+void morse_yaps_hw_yaps_flush_tx_data(struct morse *mors)
+{
+	struct morse_yaps *yaps = mors->chip_if->yaps;
+
+	if ((yaps->flags & MORSE_CHIP_IF_FLAGS_DIR_TO_CHIP) &&
+	    (yaps->flags & (MORSE_CHIP_IF_FLAGS_DATA | MORSE_CHIP_IF_FLAGS_BEACON)))
+		morse_yaps_flush_tx_data(yaps);
+}
+
 void morse_yaps_hw_finish(struct morse *mors)
 {
 	struct morse_yaps *yaps;
@@ -772,8 +764,8 @@ void morse_yaps_hw_finish(struct morse *mors)
 
 	yaps = mors->chip_if->yaps;
 	morse_yaps_hw_enable_irqs(mors, false);
-	morse_yaps_finish(yaps);
 	cancel_work_sync(&mors->chip_if_work);
+	morse_yaps_finish(yaps);
 	cancel_work_sync(&mors->tx_stale_work);
 	if (yaps->aux_data) {
 		kfree(yaps->aux_data->from_chip_buffer);

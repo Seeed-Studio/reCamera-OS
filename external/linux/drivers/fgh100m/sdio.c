@@ -1,8 +1,6 @@
 /*
  * Copyright 2017-2023 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include <linux/kernel.h>
@@ -36,8 +34,6 @@
 #define SDIO_CLK_DEBUGFS_MAX  128
 char sdio_clk_debugfs[SDIO_CLK_DEBUGFS_MAX] = "";
 module_param_string(sdio_clk_debugfs, sdio_clk_debugfs, sizeof(sdio_clk_debugfs), 0644);
-MODULE_PARM_DESC(sdio_clk_debugfs,
-	"Path to the SDIO clock in the debugfs used to automatically lower SDIO clock during powersave");
 
 /** Minimum string length for the path of SDIO-CLK switching */
 #define MIN_STRLEN_SDIO_CLK_PATH 20
@@ -325,8 +321,7 @@ static int morse_sdio_regl_write(struct morse_sdio *sdio, u32 address, u32 value
 
 	bus_trace_log(&sdio->trace, BUS_TRACE_EVENT_ID_REG_WRITE, func_to_use->num, address, 4);
 	address &= 0x0000FFFF;	/* remove base and keep offset */
-	sdio_writel(func_to_use, (__force u32)cpu_to_le32(value),
-				(__force u32)cpu_to_le32(address), (int *)&ret);
+	sdio_writel(func_to_use, value, address, (int *)&ret);
 
 	/* return written size */
 	if (ret)
@@ -361,7 +356,7 @@ static int morse_sdio_regl_read(struct morse_sdio *sdio, u32 address, u32 *value
 
 	bus_trace_log(&sdio->trace, BUS_TRACE_EVENT_ID_REG_READ, func_to_use->num, address, 4);
 	address &= 0x0000FFFF;	/* remove base and keep offset */
-	*value = sdio_readl(func_to_use,  (__force u32)cpu_to_le32(address), (int *)&ret);
+	*value = sdio_readl(func_to_use, address, (int *)&ret);
 	/* return read size */
 	if (ret)
 		sdio_log_err(sdio, "readl", func_to_use->num, address, sizeof(u32), ret);
@@ -586,10 +581,9 @@ static int morse_sdio_reg32_read(struct morse *mors, u32 address, u32 *val)
 	struct morse_sdio *sdio = (struct morse_sdio *)mors->drv_priv;
 
 	ret = morse_sdio_regl_read(sdio, address, val);
-	if (ret == sizeof(*val)) {
-		*val = le32_to_cpup((__le32 *)val);
+	if (ret == sizeof(*val))
 		return 0;
-	}
+
 	return -EIO;
 }
 
@@ -753,15 +747,9 @@ static int morse_sdio_probe(struct sdio_func *func, const struct sdio_device_id 
 {
 	int ret = 0;
 	u32 chip_id;
-	struct morse *mors = NULL;
+	struct morse *mors;
 	struct morse_sdio *sdio;
 	struct device *dev = &func->dev;
-	bool mac_registered = false;
-	bool irq_enabled = false;
-	bool sdio_enabled = false;
-	bool if_initiated = false;
-	const bool reset_hw = false;
-	bool attach = false;
 
 	BUILD_BUG_ON_MSG(!IS_POWER_OF_TWO(MORSE_SDIO_ALIGNMENT),
 			"SDIO bulk alignment must be a multiple of two");
@@ -802,38 +790,36 @@ static int morse_sdio_probe(struct sdio_func *func, const struct sdio_device_id 
 	ret = morse_sdio_enable(sdio);
 	if (ret) {
 		MORSE_SDIO_ERR(mors, "morse_sdio_enable failed: %d\n", ret);
-		goto err_exit;
+		goto err_cfg;
 	}
-	sdio_enabled = true;
 
-	/* Unlike SPI and USB, SDIO already knows the chip_id from the SDIO Function.
-	 * Use that to initialise mors->cfg
-	 */
 	ret = morse_chip_cfg_init(mors, func->device);
 	if (ret) {
-		MORSE_SDIO_ERR(mors, "morse_chip_cfg_init failed: %d\n", ret);
-		goto err_exit;
+		MORSE_SDIO_ERR(mors, "morse_chip_cfg_detect_and_init failed: %d\n", ret);
+		goto err_cfg;
 	}
-
-	/* Verify the above chip_id matches the one read directly from the chip */
-	morse_claim_bus(mors);
-	ret = morse_reg32_read(mors, MORSE_REG_CHIP_ID(mors), &chip_id);
-	morse_release_bus(mors);
-	if (ret || chip_id != mors->chip_id) {
-		MORSE_SDIO_ERR(mors, "Chip ID read failed: %d\n", ret);
-		goto err_exit;
-	}
-	MORSE_SDIO_INFO(mors, "Morse Micro SDIO device found, chip ID=0x%04x\n", mors->chip_id);
 
 	/* setting gpio pin configs from device tree */
 	if (morse_of_probe(dev, mors->cfg, morse_of_match_table) < 0)
-		goto err_exit;
+		goto err_cfg;
 
 	/* Digital reset the chip now if external (host) xtal initialisation is required */
 	if (enable_ext_xtal_init) {
 		MORSE_DBG(mors, "Resetting chip early for external xtal init");
 		mors->cfg->digital_reset(mors);
 	}
+
+	morse_claim_bus(mors);
+	ret = morse_reg32_read(mors, MORSE_REG_CHIP_ID(mors), &chip_id);
+	morse_release_bus(mors);
+
+	if (ret < 0) {
+		MORSE_SDIO_ERR(mors, "morse read chip id failed: %d\n", ret);
+		goto err_fw;
+	}
+	mors->chip_id = chip_id;
+
+	MORSE_SDIO_INFO(mors, "Morse Micro SDIO device found, chip ID=0x%04x\n", mors->chip_id);
 
 	morse_sdio_config_burst_mode(mors, true);
 
@@ -844,14 +830,12 @@ static int morse_sdio_probe(struct sdio_func *func, const struct sdio_device_id 
 	if (enable_otp_check && !is_otp_xtal_wait_supported(mors)) {
 		MORSE_SDIO_ERR(mors, "OTP check failed\n");
 		ret = -EIO;
-		goto err_exit;
+		goto err_cfg;
 	}
 
-	ret = morse_firmware_prepare_and_init(mors, reset_hw, morse_hw_should_reattach());
-	if (ret == -EALREADY)
-		attach = true;
-	else if (ret)
-		goto err_exit;
+	ret = morse_firmware_init(mors, test_mode);
+	if (ret)
+		goto err_fw;
 
 	if (morse_test_mode_is_interactive(test_mode)) {
 		mors->chip_wq = create_singlethread_workqueue("MorseChipIfWorkQ");
@@ -859,53 +843,40 @@ static int morse_sdio_probe(struct sdio_func *func, const struct sdio_device_id 
 			MORSE_SDIO_ERR(mors,
 				       "create_singlethread_workqueue(MorseChipIfWorkQ) failed\n");
 			ret = -ENOMEM;
-			goto err_exit;
+			goto err_fw;
 		}
 		mors->net_wq = create_singlethread_workqueue("MorseNetWorkQ");
 		if (!mors->net_wq) {
 			MORSE_SDIO_ERR(mors,
 				       "create_singlethread_workqueue(MorseNetWorkQ) failed\n");
 			ret = -ENOMEM;
-			goto err_exit;
+			goto err_net_wq;
 		}
 
 		ret = mors->cfg->ops->init(mors);
 		if (ret) {
 			MORSE_SDIO_ERR(mors, "chip_if_init failed: %d\n", ret);
-			goto err_exit;
+			goto err_buffs;
 		}
-		if_initiated = true;
 
 		ret = morse_firmware_parse_extended_host_table(mors);
 		if (ret) {
 			MORSE_SDIO_ERR(mors, "failed to parse extended host table: %d\n", ret);
-			goto err_exit;
+			goto err_buffs;
 		}
-	}
 
-	/* Enable SDIO interrupts before callng ieee80211_register_hw() or morse_wiphy_register */
-	ret = morse_sdio_enable_irq(sdio);
-	if (ret) {
-		MORSE_SDIO_ERR(mors, "morse_sdio_enable_irq failed: %d\n", ret);
-		goto err_exit;
-	}
-	irq_enabled = true;
-
-	if (morse_test_mode_is_interactive(test_mode)) {
 		ret = morse_mac_register(mors);
 		if (ret) {
 			MORSE_SDIO_ERR(mors, "morse_mac_register failed: %d\n", ret);
-			goto err_exit;
+			goto err_mac;
 		}
-		mac_registered = true;
 	}
-
-	if (attach)
-		ret = morse_hw_attach(mors);
-
-	if (ret)
-		goto err_exit;
-
+	/* Now all set, enable SDIO interrupts */
+	ret = morse_sdio_enable_irq(sdio);
+	if (ret) {
+		MORSE_SDIO_ERR(mors, "morse_sdio_enable_irq failed: %d\n", ret);
+		goto err_irq;
+	}
 #ifdef CONFIG_MORSE_ENABLE_TEST_MODES
 	if (test_mode == MORSE_CONFIG_TEST_MODE_BUS)
 		morse_bus_test(mors, "SDIO");
@@ -930,51 +901,51 @@ static int morse_sdio_probe(struct sdio_func *func, const struct sdio_device_id 
 	morse_uaccess = uaccess_alloc();
 	if (IS_ERR(morse_uaccess)) {
 		MORSE_PR_ERR(FEATURE_ID_SDIO, "uaccess_alloc() failed\n");
-		ret = PTR_ERR(morse_uaccess);
-		goto err_exit;
+		return PTR_ERR(morse_uaccess);
 	}
 
 	ret = uaccess_init(morse_uaccess);
 	if (ret) {
 		MORSE_PR_ERR(FEATURE_ID_SDIO, "uaccess_init() failed: %d\n", ret);
-		goto err_exit;
+		goto err_uaccess;
 	}
 
 	ret = uaccess_device_register(mors, morse_uaccess, &func->dev);
 	if (ret) {
 		MORSE_SDIO_ERR(mors, "uaccess_device_register() failed: %d\n", ret);
-		goto err_exit;
+		goto err_uaccess;
 	}
 #endif
 
 	/* morse_buffers_test(mors); */
 	return ret;
 
-err_exit:
 #ifdef CONFIG_MORSE_USER_ACCESS
-	if (morse_uaccess) {
-		uaccess_cleanup(morse_uaccess);
-		morse_uaccess = NULL;
-	}
-	if (mac_registered)
-		morse_mac_unregister(mors);
+err_uaccess:
+	morse_sdio_disable_irq(sdio);
+	uaccess_cleanup(morse_uaccess);
 #endif
-	if (irq_enabled)
-		morse_sdio_disable_irq(sdio);
-	if (sdio_enabled)
-		morse_sdio_release(sdio);
-	if (if_initiated)
+err_irq:
+	if (morse_test_mode_is_interactive(test_mode))
+		morse_mac_unregister(mors);
+err_mac:
+	if (morse_test_mode_is_interactive(test_mode))
 		mors->cfg->ops->finish(mors);
-	if (mors && mors->net_wq) {
+err_buffs:
+	if (morse_test_mode_is_interactive(test_mode)) {
 		flush_workqueue(mors->net_wq);
 		destroy_workqueue(mors->net_wq);
 	}
-	if (mors && mors->chip_wq) {
+err_net_wq:
+	if (morse_test_mode_is_interactive(test_mode)) {
 		flush_workqueue(mors->chip_wq);
 		destroy_workqueue(mors->chip_wq);
 	}
-	if (mors)
-		morse_mac_destroy(mors);
+err_fw:
+	morse_sdio_release(sdio);
+err_cfg:
+	morse_mac_destroy(mors);
+err_exit:
 	pr_err("%s failed. The driver has not been loaded!\n", __func__);
 	return ret;
 }
@@ -982,9 +953,6 @@ err_exit:
 static void morse_sdio_remove(struct sdio_func *func)
 {
 	struct morse *mors = sdio_get_drvdata(func);
-	int ret = 0;
-	bool reattach_hw = morse_hw_should_reattach();
-	bool is_hw_detached = reattach_hw;
 
 	dev_info(&func->dev, "sdio removed func %d vendor 0x%x device 0x%x\n",
 		 func->num, func->vendor, func->device);
@@ -1005,11 +973,6 @@ static void morse_sdio_remove(struct sdio_func *func)
 			destroy_workqueue(mors->chip_wq);
 			flush_workqueue(mors->net_wq);
 			destroy_workqueue(mors->net_wq);
-			if (reattach_hw) {
-				ret = morse_hw_detach(mors);
-				if (ret)
-					is_hw_detached = false;
-			}
 		} else {
 			morse_sdio_disable_irq(sdio);
 		}
@@ -1019,8 +982,7 @@ static void morse_sdio_remove(struct sdio_func *func)
 
 		/* Reset HW for a cleaner restart */
 		sdio_set_drvdata(func, NULL);
-		if (!is_hw_detached)
-			morse_sdio_reset(mors->cfg->mm_reset_gpio, func);
+		morse_sdio_reset(mors->cfg->mm_reset_gpio, func);
 	}
 }
 

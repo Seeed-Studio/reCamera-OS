@@ -1,8 +1,6 @@
 /*
  * Copyright 2021-2023 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include <linux/types.h>
@@ -41,16 +39,6 @@ int morse_pager_tx_status_irq_enable(struct morse *mors, bool enable)
 	return morse_hw_irq_enable(mors, MORSE_PAGER_BYPASS_TX_STATUS_IRQ_NUM, enable);
 }
 
-int morse_pager_cmd_resp_irq_enable(struct morse *mors, bool enable)
-{
-	if (enable)
-		enabled_irqs |= MORSE_PAGER_IRQ_BYPASS_CMD_RESP_AVAILABLE;
-	else
-		enabled_irqs &= ~MORSE_PAGER_IRQ_BYPASS_CMD_RESP_AVAILABLE;
-
-	return morse_hw_irq_enable(mors, MORSE_PAGER_BYPASS_CMD_RESP_IRQ_NUM, enable);
-}
-
 int morse_pager_irq_handler(struct morse *mors, u32 status)
 {
 	int count;
@@ -59,47 +47,29 @@ int morse_pager_irq_handler(struct morse *mors, u32 status)
 	struct morse_chip_if_state *chip_if = mors->chip_if;
 	bool rx_pend = false;
 	bool tx_buffer_return_pend = false;
-	bool is_tx_status_bypass = false;
-	bool is_cmd_resp_bypass = false;
-
-	/* Only observe enabled IRQs - ignore the rest */
-	status &= enabled_irqs;
 
 	for (count = 0; count < chip_if->pager_count; count++) {
-		if (!(status & MORSE_PAGER_IRQ_MASK(count)))
+		if (!((status & enabled_irqs) & MORSE_PAGER_IRQ_MASK(count)))
 			continue;
 
 		pager = &chip_if->pagers[count];
 
 		if (pager->flags & MORSE_PAGER_FLAGS_POPULATED)
-			rx_pend = true;
+			rx_pend |= true;
 		else
-			tx_buffer_return_pend = true;
+			tx_buffer_return_pend |= true;
 	}
 
-	/* Check the bypass locations for 'RX' pending */
-	is_tx_status_bypass = !!(status & MORSE_PAGER_IRQ_BYPASS_TX_STATUS_AVAILABLE);
-	is_cmd_resp_bypass = !!(status & MORSE_PAGER_IRQ_BYPASS_CMD_RESP_AVAILABLE);
-
-	if (is_tx_status_bypass && chip_if->bypass.tx_sts.location) {
+	if (chip_if->tx_status_addr_location &&
+	    ((status & enabled_irqs) & MORSE_PAGER_IRQ_BYPASS_TX_STATUS_AVAILABLE)) {
 		u32 page;
 
-		ret = morse_reg32_read(mors, chip_if->bypass.tx_sts.location, &page);
+		ret = morse_reg32_read(mors, chip_if->tx_status_addr_location, &page);
 		if (ret == 0) {
-			ret = kfifo_put(&chip_if->bypass.tx_sts.to_process, page);
+			ret = kfifo_put(&chip_if->tx_status_addrs, page);
 			MORSE_WARN_ON(FEATURE_ID_DEFAULT, ret == 0);
-			rx_pend = true;
-		}
-	}
-
-	if (is_cmd_resp_bypass && chip_if->bypass.cmd_resp.location) {
-		u32 page;
-
-		ret = morse_reg32_read(mors, chip_if->bypass.cmd_resp.location, &page);
-		if (ret == 0) {
-			ret = kfifo_put(&chip_if->bypass.cmd_resp.to_process, page);
-			MORSE_WARN_ON(FEATURE_ID_DEFAULT, ret == 0);
-			rx_pend = true;
+			/* Kick RX path as this is where tx statuses are processed */
+			rx_pend |= true;
 		}
 	}
 

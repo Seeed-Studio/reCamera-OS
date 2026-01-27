@@ -1,8 +1,6 @@
 /*
  * Copyright 2017-2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include <linux/firmware.h>
@@ -50,10 +48,6 @@
 #define MM6108_REG_XTAL_INIT_SEQ_ADDR_2_VAL	0x2	   /* Gpio 1 output_val val */
 #define MM6108_REG_XTAL_INIT_SEQ_ADDR_3_VAL	0x21D	   /* Digpll enable val */
 #define MM6108_REG_XTAL_INIT_SEQ_ADDR_4_VAL	0x1B06	   /* System clk Control val */
-
-/* 64bit hardware clock registers (microsecond tick) */
-#define MM6108_REG_CLINT_MTIME_0_ADDR		0x200bff8
-#define MM6108_REG_CLINT_MTIME_1_ADDR		0x200bffc
 
 /** Delay after initiating digital reset for external xtal init */
 #define MM6108_XTAL_INIT_DIG_RESET_DELAY_MS 50
@@ -254,22 +248,15 @@ static int mm610x_pre_coredump_hook(struct morse *mors, enum morse_coredump_meth
 	if (method == COREDUMP_METHOD_USERSPACE_SCRIPT)
 		return 0;
 
-	morse_claim_bus(mors);
-
 	ret = morse_reg32_read(mors, MORSE_REG_CLK_CTRL(mors), &clk_reg);
 	if (ret)
-		goto exit;
+		return ret;
 
 	/* Clear all clock enables for each core. This is to reduce the likelihood
 	 * of bus contention while the driver initiates reads of imem/dmem.
 	 */
 	clk_reg &= ~(u32)(MM610X_CORE_CLK_ENABLE_MASK);
 	ret = morse_reg32_write(mors, MORSE_REG_CLK_CTRL(mors), clk_reg);
-	if (ret)
-		goto exit;
-
-exit:
-	morse_release_bus(mors);
 
 	return ret;
 }
@@ -308,10 +295,6 @@ static const struct morse_hw_regs mm6108_regs = {
 	.aon = MM6108_REG_AON_ADDR,
 	.aon_count = 2,
 
-	/* MTIME registers */
-	.mtime_lower = MM6108_REG_CLINT_MTIME_0_ADDR,
-	.mtime_upper = MM6108_REG_CLINT_MTIME_1_ADDR,
-
 	/* hart0 boot address */
 	.boot_address = MM6108_REG_APPS_BOOT_ADDR,
 };
@@ -332,8 +315,12 @@ struct morse_hw_cfg mm6108_cfg = {
 	.board_type_max_value = MM610X_BOARD_TYPE_MAX_VALUE,
 	.bus_double_read = true,
 	.enable_short_bcn_as_dtim = false,
-	.led_group.enable_led_support = false,
 	.enable_ext_xtal_delay = mm610x_enable_ext_xtal_delay,
+	.valid_chip_ids = {
+			   MM6108A0_ID,
+			   MM6108A1_ID,
+			   MM6108A2_ID,
+			   CHIP_ID_END },
 };
 
 struct morse_chip_series mm61xx_chip_series = {

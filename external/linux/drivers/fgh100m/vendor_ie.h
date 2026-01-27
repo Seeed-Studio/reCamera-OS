@@ -3,8 +3,6 @@
 
 /*
  * Copyright 2017-2022 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #include "morse.h"
@@ -50,13 +48,13 @@ struct vendor_ie_oui_filter_list_item {
 	/**
 	 * Callback function for vendor IE match
 	 *
-	 * @wdev - wireless interface the frame was received on
+	 * @vif - Virtual interface the frame was received on
 	 * @frame_type - The frame type that was received
 	 *			of type @ref enum morse_vendor_ie_mgmt_type_flags
 	 * @vie - The vendor IE that was matched
 	 * @return 0 on success, else error code
 	 */
-	int (*on_vendor_ie_match)(struct wireless_dev *wdev,
+	int (*on_vendor_ie_match)(struct ieee80211_vif *vif,
 				  u16 frame_type, const struct ieee80211_vendor_ie *vie);
 };
 
@@ -119,20 +117,6 @@ void morse_vendor_ie_process_rx_mgmt(struct ieee80211_vif *vif, const struct sk_
  * @return 0 on success, else error code
  */
 int morse_vendor_ie_handle_config_cmd(struct morse_vif *mors_vif,
-				      struct morse_cmd_req_vendor_ie_config *cfg);
-
-/**
- * Process received information elements. Will search for vendor IEs with OUIs that match
- * those in the virtual interface's OUI filter, and will call the call back for each match.
- *
- * @wdev: Wireless interface
- * @ies: Information elements of the frame to process
- * @length: total length of ies
- * @mgmt_type: management frame type (+ S1G beacon) of the received frame
- *			 of type @ref enum morse_vendor_ie_mgmt_type_flags
- * @return 0 on success, else error code
- */
-int morse_vendor_ie_process_rx_ies(struct wireless_dev *wdev, const u8 *ies, u16 length,
-				   u16 mgmt_type);
+				      struct morse_cmd_vendor_ie_config *cfg);
 
 #endif /* !_MORSE_VENDOR_IE_H_ */

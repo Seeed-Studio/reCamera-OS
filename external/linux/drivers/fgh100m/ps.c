@@ -1,8 +1,6 @@
 /*
  * Copyright 2017-2023 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include <linux/types.h>
@@ -59,35 +57,17 @@ static void morse_ps_set_wake_gpio(struct morse *mors, bool raise)
 
 static void morse_ps_wait_after_wake_pin_raise(struct morse *mors)
 {
-	unsigned long rem;
-	unsigned long timeout;
-	unsigned int max_boot_time_ms = morse_ps_get_wakeup_delay_ms(mors);
-	bool hw_signals_wake = !!(mors->firmware_flags &
-				  MORSE_FW_FLAGS_TOGGLES_BUSY_PIN_ON_WAKE_PIN);
-
 	if (!mors->cfg->mm_ps_gpios_supported)
 		return;
 
 	if (morse_ps_is_busy_pin_asserted(mors))
 		return; /* device already indicating busy - don't wait the delay */
 
-	/* increase grace period - HW should signal wake well within expected boot time */
-	if (hw_signals_wake)
-		max_boot_time_ms *= 3;
-
-	timeout = msecs_to_jiffies(max_boot_time_ms);
-	rem = wait_for_completion_timeout(mors->ps.awake, timeout);
-	MORSE_PS_DBG(mors, "%s: took %dms to wake\n", __func__, jiffies_to_msecs(timeout - rem));
-
-	if (hw_signals_wake && rem == 0) {
-		MORSE_WARN(mors, "%s: HW did not signal in the expected boot period, continuing\n",
-			   __func__);
-	}
+	mdelay(morse_ps_get_wakeup_delay_ms(mors));
 }
 
 static int morse_ps_wakeup(struct morse_ps *mps)
 {
-	DECLARE_COMPLETION_ONSTACK(awake);
 	struct morse *mors = container_of(mps, struct morse, ps);
 
 	if (!mps->enable)
@@ -96,11 +76,8 @@ static int morse_ps_wakeup(struct morse_ps *mps)
 	if (!mps->suspended)
 		return 0;
 
-	WRITE_ONCE(mors->ps.awake, &awake);
 	morse_ps_set_wake_gpio(mors, true);
 	morse_ps_wait_after_wake_pin_raise(mors);
-	WRITE_ONCE(mors->ps.awake, NULL);
-
 	morse_set_bus_enable(mors, true);
 	mps->suspended = false;
 	return 0;
@@ -126,12 +103,10 @@ static irqreturn_t morse_ps_irq_handle(int irq, void *arg)
 {
 	struct morse_ps *mps = (struct morse_ps *)arg;
 	struct morse *mors = container_of(mps, struct morse, ps);
-	struct completion *awake = READ_ONCE(mps->awake);
 
-	if (awake)
-		complete(awake);
-	else
-		queue_work(mors->chip_wq, &mps->async_wake_work);
+	MORSE_PS_DBG(mors, "%s: Async wakeup request IRQ - waking up\n", __func__);
+	/* There is a delay in waking up, so pass to a queue */
+	queue_work(mors->chip_wq, &mps->async_wake_work);
 
 	return IRQ_HANDLED;
 }
@@ -215,12 +190,15 @@ static int morse_ps_evaluate(struct morse_ps *mps)
 
 static void morse_ps_evaluate_work(struct work_struct *work)
 {
-	struct morse_ps *mps = container_of(work, struct morse_ps, delayed_eval_work.work);
+	struct morse_ps *mps = container_of(work,
+					    struct morse_ps, delayed_eval_work.work);
+	struct morse *mors = container_of(mps, struct morse, ps);
 
 	if (!mps->enable)
 		return;
 
 	mutex_lock(&mps->lock);
+	MORSE_PS_DBG(mors, "%s: Wakers: %d\n", __func__, mps->wakers);
 	morse_ps_evaluate(mps);
 	mutex_unlock(&mps->lock);
 }
@@ -240,6 +218,7 @@ int morse_ps_enable(struct morse *mors)
 		ret = -EFAULT;
 	} else {
 		mps->wakers--;
+		MORSE_PS_DBG(mors, "%s: Wakers: %d\n", __func__, mps->wakers);
 		ret = morse_ps_evaluate(mps);
 	}
 
@@ -258,6 +237,7 @@ int morse_ps_disable(struct morse *mors)
 
 	mutex_lock(&mps->lock);
 	mps->wakers++;
+	MORSE_PS_DBG(mors, "%s: Wakers: %d\n", __func__, mps->wakers);
 	ret = morse_ps_evaluate(mps);
 	mutex_unlock(&mps->lock);
 

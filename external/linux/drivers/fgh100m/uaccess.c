@@ -1,8 +1,6 @@
 /*
  * Copyright 2017-2023 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include <linux/slab.h>
@@ -96,11 +94,14 @@ static ssize_t uaccess_write(struct file *filp, const char __user *buf, size_t c
 		count = min(count, UACCESS_BUFFER_SIZE);
 
 		morse_claim_bus(des->mors);
-		if (count == sizeof(u32))
-			ret = morse_reg32_write(des->mors, des->address, *((u32 *)des->data));
-		else
-			ret = morse_dm_write(des->mors, des->address, (u8 *)des->data, count);
+		if (count == sizeof(u32)) {
+			u32 value = *((u32 *)des->data);
 
+			value = cpu_to_le32(value);
+			ret = morse_reg32_write(des->mors, des->address, value);
+		} else {
+			ret = morse_dm_write(des->mors, des->address, (u8 *)des->data, count);
+		}
 		morse_release_bus(des->mors);
 
 		if (ret < 0) {
@@ -170,14 +171,14 @@ static long uaccess_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 	 * and 'write' is reversed.
 	 */
 	if (_IOC_DIR(cmd) & _IOC_READ) {
-#if KERNEL_VERSION(5, 0, 0) > LINUX_VERSION_CODE
+#if KERNEL_VERSION(5, 4, 83) > LINUX_VERSION_CODE
 		err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
 #else
 		err = !access_ok((void __user *)arg, _IOC_SIZE(cmd));
 #endif
 	} else {
 		if (_IOC_DIR(cmd) & _IOC_WRITE)
-#if KERNEL_VERSION(5, 0, 0) > LINUX_VERSION_CODE
+#if KERNEL_VERSION(5, 4, 83) > LINUX_VERSION_CODE
 			err =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
 #else
 			err =  !access_ok((void __user *)arg, _IOC_SIZE(cmd));

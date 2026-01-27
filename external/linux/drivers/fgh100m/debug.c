@@ -1,25 +1,22 @@
 /*
  * Copyright 2017-2023 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
-#include <linux/ratelimit.h>
-#include <linux/semaphore.h>
-#include <linux/wait.h>
-
+#include "morse.h"
+#include "debug.h"
+#include "trace.h"
+#include "mac.h"
+#include "watchdog.h"
 #include "bus.h"
-#include "coredump.h"
 #include "firmware.h"
 #include "ipmon.h"
-#include "mac.h"
-#include "morse.h"
-#include "trace.h"
-#include "twt.h"
 #include "vendor_ie.h"
-#include "watchdog.h"
-#include "wiphy.h"
+#include "twt.h"
+#include "coredump.h"
+#include "linux/semaphore.h"
+#include "linux/wait.h"
+#include <linux/ratelimit.h>
 
 /*
  * Array of configured LOG levels, indexed by the ID of the feature / module.
@@ -50,7 +47,6 @@ static const char * const morse_log_features[] = {
 	[FEATURE_ID_BEACON] = "beacon",
 	[FEATURE_ID_YAPS] = "yaps",
 	[FEATURE_ID_USB] = "usb",
-	[FEATURE_ID_HWCLOCK] = "hwclock",
 };
 
 /*
@@ -239,27 +235,7 @@ static void read_sta_vendor_info_iter(void *data, struct ieee80211_sta *sta)
 	read_vendor_operations(file, &mors_sta->vendor_info.operations);
 }
 
-static void read_sta_bss_vendor_info(struct seq_file *file, struct morse_vif *mors_vif)
-{
-	seq_printf(file, "    SW version: %d.%d.%d\n",
-			mors_vif->bss_vendor_info.sw_ver.major,
-			mors_vif->bss_vendor_info.sw_ver.minor,
-			mors_vif->bss_vendor_info.sw_ver.patch);
-	seq_printf(file, "    HW version: 0x%08x\n",
-			mors_vif->bss_vendor_info.chip_id);
-	seq_printf(file, "    Rate control: %s\n",
-			rc_method_to_string(mors_vif->bss_vendor_info.rc_method));
-	seq_puts(file, "    Capabilities\n");
-	seq_printf(file, "      MMSS: %u\n", mors_vif->bss_ampdu_mmss);
-	seq_printf(file, "      MMSS offset: %u\n",
-			mors_vif->bss_vendor_info.morse_mmss_offset);
-	seq_printf(file, "      [%c] Supports short ack timeout\n",
-			mors_vif->bss_vendor_info.supports_short_ack_timeout ?
-								'*' : ' ');
-	read_vendor_operations(file, &mors_vif->bss_vendor_info.operations);
-}
-
-static int read_softmac_vendor_info_tbl(struct seq_file *file, void *data)
+static int read_vendor_info_tbl(struct seq_file *file, void *data)
 {
 	int vif_id;
 	struct morse *mors = dev_get_drvdata(file->private);
@@ -295,53 +271,26 @@ static int read_softmac_vendor_info_tbl(struct seq_file *file, void *data)
 			   morse_mac_is_sta_vif_associated(vif) &&
 			   mors_vif->bss_vendor_info.valid) {
 			seq_printf(file, "AP [%pM]:\n", vif->bss_conf.bssid);
-			read_sta_bss_vendor_info(file, mors_vif);
+			seq_printf(file, "    SW version: %d.%d.%d\n",
+				   mors_vif->bss_vendor_info.sw_ver.major,
+				   mors_vif->bss_vendor_info.sw_ver.minor,
+				   mors_vif->bss_vendor_info.sw_ver.patch);
+			seq_printf(file, "    HW version: 0x%08x\n",
+				   mors_vif->bss_vendor_info.chip_id);
+			seq_printf(file, "    Rate control: %s\n",
+				   rc_method_to_string(mors_vif->bss_vendor_info.rc_method));
+			seq_puts(file, "    Capabilities\n");
+			seq_printf(file, "      MMSS: %u\n", mors_vif->bss_ampdu_mmss);
+			seq_printf(file, "      MMSS offset: %u\n",
+				   mors_vif->bss_vendor_info.morse_mmss_offset);
+			seq_printf(file, "      [%c] Supports short ack timeout\n",
+				   mors_vif->bss_vendor_info.supports_short_ack_timeout ?
+										'*' : ' ');
+			read_vendor_operations(file, &mors_vif->bss_vendor_info.operations);
 		}
 	}
 
 	return 0;
-}
-
-static int read_fullmac_vendor_info_tbl(struct seq_file *file, void *data)
-{
-	struct morse *mors = dev_get_drvdata(file->private);
-	struct morse_vif *mors_vif = morse_wiphy_get_sta_vif(mors);
-	struct net_device *ndev = NULL;
-
-	seq_puts(file, "MM vendor-specific information\n");
-	seq_printf(file, "    SW version: %d.%d.%d\n", mors->sw_ver.major,
-		   mors->sw_ver.minor, mors->sw_ver.patch);
-	seq_printf(file, "    HW version: 0x%08x\n", mors->chip_id);
-	seq_printf(file, "    Rate control: %s\n", rc_method_to_string(mors->rc_method));
-
-	if (mors_vif) {
-		ndev = mors_vif->wdev.netdev;
-
-		seq_printf(file, "%s: VIF [%d]:\n", ndev->name, mors_vif->id);
-		seq_puts(file, "    Capabilities\n");
-		seq_printf(file, "      MMSS: %u\n", mors_vif->capabilities.ampdu_mss);
-		seq_printf(file, "      MMSS offset: %u\n",
-				mors_vif->capabilities.morse_mmss_offset);
-		/* Is unconditionally set */
-		seq_puts(file, "      [*] Supports short ack timeout\n");
-
-		read_vendor_operations(file, &mors_vif->operations);
-
-		if (mors_vif->connected_bss && mors_vif->bss_vendor_info.valid) {
-			seq_printf(file, "AP [%pM]:\n", mors_vif->connected_bss->bssid);
-			read_sta_bss_vendor_info(file, mors_vif);
-		}
-	}
-
-	return 0;
-}
-
-static int read_vendor_info_tbl(struct seq_file *file, void *data)
-{
-	if (is_fullmac_mode())
-		return read_fullmac_vendor_info_tbl(file, data);
-	else
-		return read_softmac_vendor_info_tbl(file, data);
 }
 
 static int dump_raw_configs(struct seq_file *file, void *data)
@@ -641,21 +590,13 @@ static ssize_t morse_debug_watchdog_write(struct file *file, const char __user *
 {
 	struct morse *mors = file->private_data;
 
-	/* Length of the longest string compared ("disable" = 7) + a null terminator */
-	char k_buf[8] = {0};
-
-	/* Expect at least the smallest command string from userspace */
-	if (copy_from_user(k_buf, user_buf, sizeof(k_buf) - 1) > (sizeof(k_buf) - strlen("stop"))) {
-		pr_info
-		    ("[watchdog] Could not access user buf\n");
-		return -EFAULT;
-	} else if (strcmp(k_buf, "stop") == 0) {
-		morse_watchdog_stop(mors);
-	} else if (strcmp(k_buf, "start") == 0) {
+	if (strncmp(user_buf, "start", 5) == 0) {
 		morse_watchdog_start(mors);
-	} else if (strcmp(k_buf, "refresh") == 0) {
+	} else if (strncmp(user_buf, "stop", 4) == 0) {
+		morse_watchdog_stop(mors);
+	} else if (strncmp(user_buf, "refresh", 7) == 0) {
 		morse_watchdog_refresh(mors);
-	} else if (strcmp(k_buf, "disable") == 0) {
+	} else if (strncmp(user_buf, "disable", 7) == 0) {
 		morse_watchdog_cleanup(mors);
 	} else {
 		pr_info

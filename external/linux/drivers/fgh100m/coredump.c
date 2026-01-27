@@ -1,7 +1,5 @@
 /*
  * Copyright 2024 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #include <linux/types.h>
 #include <linux/atomic.h>
@@ -216,9 +214,9 @@ static void elf_copy_notes(struct morse *mors,
 		(*phdr)->p_memsz = (*phdr)->p_filesz;
 
 		/* init note header */
-		enote->n_type = (__force u32)cpu_to_le32(note->type);
-		enote->n_namesz = (__force u32)cpu_to_le32(note->namesz);
-		enote->n_descsz = (__force u32)cpu_to_le32(note->datasz);
+		enote->n_type = cpu_to_le32(note->type);
+		enote->n_namesz = cpu_to_le32(note->namesz);
+		enote->n_descsz = cpu_to_le32(note->datasz);
 
 		/* copy in note name + data */
 		insert_at += sizeof(*enote);
@@ -227,59 +225,6 @@ static void elf_copy_notes(struct morse *mors,
 		/* advance data offset pointer */
 		*offset += (*phdr)->p_filesz;
 		*phdr += 1;
-	}
-}
-
-static void get_stop_info(struct morse *mors)
-{
-	const struct morse_coredump_mem_region *region;
-	const struct morse_coredump_data *crash = &mors->coredump.crash;
-
-	lockdep_assert_held(&mors->coredump.lock);
-	list_for_each_entry(region, &crash->memory.regions, list) {
-		struct stop_info {
-			__le32 hart;
-			__le32 line;
-			char info[];
-		} __packed * info;
-
-		if (region->type != MORSE_MEM_REGION_TYPE_ASSERT_INFO)
-			continue;
-
-		MORSE_COREDUMP_DBG(mors, "%s: looking in region 0x%08x:%d",
-			__func__, region->start, region->len);
-
-		if (region->len < (sizeof(*info) + 1)) {
-			MORSE_COREDUMP_WARN(mors, "%s: size of info region is unexpected",
-					    __func__);
-			continue;
-		}
-
-		info = kzalloc(ROUND_BYTES_TO_WORD(region->len + 1), GFP_KERNEL);
-		if (!info) {
-			MORSE_COREDUMP_ERR(mors, "%s: failed to allocate %d bytes",
-					   __func__, region->len);
-			continue;
-		}
-
-		if (read_memory_region(mors, region, info) == 0) {
-			uint hart = le32_to_cpu(info->hart);
-			uint line = le32_to_cpu(info->line);
-
-			if (strlen(info->info) > 0 || line > 0) {
-				mors->coredump.crash.information = kasprintf(GFP_KERNEL,
-									     "%s:%d (hart:%d)",
-									     info->info, line,
-									     hart);
-			}
-		}
-
-		kfree(info);
-		if (mors->coredump.crash.information) {
-			MORSE_COREDUMP_ERR(mors, "stop at %s\n",
-					   mors->coredump.crash.information);
-			break;
-		}
 	}
 }
 
@@ -295,9 +240,6 @@ static void elf_copy_memory_regions(struct morse *mors,
 
 	list_for_each_entry(region, &crash->memory.regions, list) {
 		u8 *insert_at = (u8 *)ehdr + *offset;
-
-		if (region->type != MORSE_MEM_REGION_TYPE_GENERAL)
-			continue;
 
 		MORSE_COREDUMP_DBG(mors, "%s: copying region 0x%08x:%d",
 			__func__, region->start, region->len);
@@ -341,7 +283,7 @@ static void elf_init_header(struct morse *mors, struct elf32_hdr *ehdr, size_t p
 static void add_coredump_meta(const struct morse *mors, struct list_head *notes)
 {
 	const struct morse_coredump_data *crash = &mors->coredump.crash;
-	u32 cd_file_version = (__force u32)cpu_to_le32(MORSE_COREDUMP_FILE_VERSION);
+	u32 cd_file_version = cpu_to_le32(MORSE_COREDUMP_FILE_VERSION);
 	u32 rel_major = mors->sw_ver.major;
 	u32 rel_minor = mors->sw_ver.minor;
 	u32 rel_patch = mors->sw_ver.patch;
@@ -366,8 +308,6 @@ static void add_coredump_meta(const struct morse *mors, struct list_head *notes)
 	meta_append_str(notes, "morse.kernel-version", init_utsname()->release);
 	meta_append_str(notes, "morse.country", mors->country);
 	meta_append_bin(notes, "morse.mac-addr", mors->macaddr, ETH_ALEN);
-	if (mors->coredump.crash.information)
-		meta_append_str(notes, "morse.stop-info", mors->coredump.crash.information);
 }
 
 static int coredump_build(struct morse *mors, void **cd, size_t *cd_size)
@@ -384,10 +324,6 @@ static int coredump_build(struct morse *mors, void **cd, size_t *cd_size)
 
 	lockdep_assert_held(&mors->coredump.lock);
 
-	/* Claim/release bus for the entire bus access operation */
-	morse_claim_bus(mors);
-
-	get_stop_info(mors);
 	INIT_LIST_HEAD(&notes);
 	add_coredump_meta(mors, &notes);
 
@@ -412,12 +348,10 @@ static int coredump_build(struct morse *mors, void **cd, size_t *cd_size)
 	phdr = (struct elf32_phdr *)((u8 *)ehdr + ehdr->e_phoff);
 	offset = sizeof(*ehdr) + (sizeof(*phdr) * ehdr->e_phnum);
 
-	/* Insert memory regions */
+	/* insert memory regions */
 	elf_copy_memory_regions(mors, ehdr, &phdr, &offset);
 
-	morse_release_bus(mors);
-
-	/* Insert notes */
+	/* insert notes */
 	elf_copy_notes(mors, &notes, ehdr, &phdr, &offset);
 
 	MORSE_COREDUMP_DBG(mors, "%s: elf size: %zu, n program headers: %zu",
@@ -512,14 +446,14 @@ int morse_coredump(struct morse *mors)
 	if (use_userspace)
 		method = COREDUMP_METHOD_USERSPACE_SCRIPT;
 
+	morse_claim_bus(mors);
+
 	/* Trigger a crash on-chip to force it to stop and save state. Will have
 	 * no affect if chip has already crashed
 	 */
 	if (mors->firmware_flags & MORSE_FW_FLAGS_SUPPORT_CHIP_HALT_IRQ) {
-		morse_claim_bus(mors);
 		ret = morse_reg32_write(mors, MORSE_CHIP_HALT_TRGR_SET(mors),
 								MORSE_CHIP_HALT_IRQ_BIT);
-		morse_release_bus(mors);
 
 		if (ret) {
 			MORSE_COREDUMP_WARN(mors,
@@ -557,6 +491,7 @@ exit:
 	if (ret)
 		MORSE_COREDUMP_ERR(mors, "%s: failed to coredump: %d\n", __func__, ret);
 
+	morse_release_bus(mors);
 	return ret;
 }
 
@@ -643,20 +578,9 @@ void morse_coredump_set_fw_version_str(struct morse *mors, const char *str)
 	mutex_unlock(&mors->coredump.lock);
 }
 
-static void coredump_clear_stop_info(struct morse *mors)
-{
-	mutex_lock(&mors->coredump.lock);
-
-	kfree(mors->coredump.crash.information);
-	mors->coredump.crash.information = NULL;
-
-	mutex_unlock(&mors->coredump.lock);
-}
-
 void morse_coredump_destroy(struct morse *mors)
 {
 	morse_coredump_remove_memory_regions(mors);
 	morse_coredump_set_fw_binary_str(mors, NULL);
 	morse_coredump_set_fw_version_str(mors, NULL);
-	coredump_clear_stop_info(mors);
 }

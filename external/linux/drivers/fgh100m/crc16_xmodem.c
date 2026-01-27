@@ -293,27 +293,24 @@ static inline u16 swaplow(u16 crc)
 }
 
 /* This code assumes that integers are stored little-endian. */
-u16 crc16xmodem_word(__le16 crc, void const *mem, size_t len)
+u16 crc16xmodem_word(u16 crc, void const *mem, size_t len)
 {
 	unsigned char const *data = mem;
 	size_t n;
 	size_t i;
 	u64 word;
-	u16 crc_host = le16_to_cpu(crc);
 
 	if (!data)
 		return 0;
 	while (len && ((ptrdiff_t)data & 0x7)) {
 		len--;
-		crc_host = (crc_host << 8) ^ table_byte[((crc_host >> 8) ^ *data++) & 0xff];
+		crc = (crc << 8) ^ table_byte[((crc >> 8) ^ *data++) & 0xff];
 	}
-	crc_host = swaplow(crc_host);
+	crc = swaplow(crc);
 	n = len >> 3;
 	for (i = 0; i < n; i++) {
-		u64 data_word = le64_to_cpu(((__le64 const *)data)[i]);
-
-		word = crc_host ^ data_word;
-		crc_host = table_word[7][word & 0xff] ^
+		word = crc ^ ((u64 const *)data)[i];
+		crc = table_word[7][word & 0xff] ^
 		    table_word[6][(word >> 8) & 0xff] ^
 		    table_word[5][(word >> 16) & 0xff] ^
 		    table_word[4][(word >> 24) & 0xff] ^
@@ -323,12 +320,12 @@ u16 crc16xmodem_word(__le16 crc, void const *mem, size_t len)
 	}
 	data += n << 3;
 	len &= 7;
-	crc_host = swaplow(crc_host);
+	crc = swaplow(crc);
 	while (len) {
 		len--;
-		crc_host = (crc_host << 8) ^ table_byte[((crc_host >> 8) ^ *data++) & 0xff];
+		crc = (crc << 8) ^ table_byte[((crc >> 8) ^ *data++) & 0xff];
 	}
-	return crc_host;
+	return crc;
 }
 
 static u16 multmodp(u16 a, u16 b)

@@ -4,8 +4,6 @@
 /*
  * Copyright 2017-2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 /*
@@ -18,6 +16,7 @@
 
 #undef MORSE_MAC_CONFIG_HT_CAP
 #undef MORSE_MAC_CONFIG_IEEE80211_HW
+#undef MORSE_MAC_CONFIG_WIPHY
 #undef MORSE_MAC_CONFIX_RX_STATUS_SIG
 
 #endif /* !_MORSE_MAC_CFG_H_ */

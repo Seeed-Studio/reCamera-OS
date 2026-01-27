@@ -1,7 +1,6 @@
 /*
  * Copyright 2024 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #ifndef _REG_RULES_H_

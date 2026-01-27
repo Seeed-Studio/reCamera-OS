@@ -1,7 +1,5 @@
 /*
  * Copyright 2020 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #include <linux/types.h>
@@ -488,9 +486,9 @@ static void morse_dot11_tim_to_s1g_parse_block_mode(struct tim_to_s1g_parse_stat
 	for (i = 0; i < state->length_11n && i < subblocks_to_block_boundary; i++) {
 		u8 temp = state->virtual_map_11n[i];
 
-		for (j = 0; temp != 0; temp >>= 1, j++) {
+		for (j = 0; temp != 0; temp >>= 1, j++)	{
 			/* bit found */
-			if (temp & 0x1) {
+			if (temp & 0x1)	{
 				/* Work out actual AID (to account for bitmap_offset in 11n tim) */
 				u16 aid = aid_base + (i * S1G_TIM_NUM_AID_PER_SUBBLOCK) + j;
 
@@ -654,7 +652,7 @@ static void morse_dot11_tim_to_s1g_parse_olb_mode(struct tim_to_s1g_parse_state 
 
 		for (j = 0; temp != 0; temp >>= 1, j++) {
 			/* bit found */
-			if (temp & 0x1) {
+			if (temp & 0x1)	{
 				/*
 				 * Work out actual AID (to account for bitmap_offset in 11n tim)
 				 */
@@ -694,7 +692,7 @@ static void morse_dot11_tim_to_s1g_parse_olb_mode(struct tim_to_s1g_parse_state 
 		/* Can only advance by a block (8 bytes) at a time */
 		empty_front_blocks = empty_front_subblocks / S1G_TIM_NUM_SUBBLOCKS_PER_BLOCK;
 
-		if (empty_front_blocks) {
+		if (empty_front_blocks)	{
 			/* Update the offset */
 			block_offset += empty_front_blocks;
 			start_idx += (S1G_TIM_NUM_SUBBLOCKS_PER_BLOCK * empty_front_blocks);

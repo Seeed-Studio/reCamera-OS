@@ -1,7 +1,5 @@
 /*
  * Copyright 2023 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #include <linux/types.h>
@@ -238,6 +236,7 @@ void morse_mac_send_pv1_hc_action_frame(struct morse *mors,
 	struct morse_sta *mors_sta;
 	struct morse_skbq *mq;
 	int ie_len;
+	struct morse_pv1 *pv1;
 	struct dot11ah_ies_mask *ies_mask = NULL;
 	int ret;
 	struct morse_sta_pv1 *sta_resp_status;
@@ -261,6 +260,7 @@ void morse_mac_send_pv1_hc_action_frame(struct morse *mors,
 	mors_sta = (struct morse_sta *)sta->drv_priv;
 	mors_vif = ieee80211_vif_to_morse_vif(vif);
 
+	pv1 = &mors_vif->pv1;
 	tx = &mors_vif->pv1.tx_request;
 	rx = &mors_vif->pv1.rx_request;
 	sta_resp_status = &mors_sta->tx_pv1_ctx;
@@ -363,6 +363,7 @@ static u16 morse_prepare_pv1_frame_ctrl(struct morse_vif *mors_vif,
 {
 	struct morse_sta_pv1 *pv1_sta = &mors_sta->tx_pv1_ctx;
 	struct morse_pv1_hc_request *tx_request = &mors_vif->pv1.tx_request;
+	u16 pv0_fc = le16_to_cpu(hdr->frame_control);
 	u8 *qos_ctrl = ieee80211_get_qos_ctl(hdr);
 	u16 pv1_fc = DOT11_PV1_PROTOCOL_VERSION & IEEE80211_PV1_FCTL_VERS;
 	u16 tid = qos_ctrl[0] & IEEE80211_QOS_CTL_TID_MASK;
@@ -375,19 +376,19 @@ static u16 morse_prepare_pv1_frame_ctrl(struct morse_vif *mors_vif,
 	else
 		pv1_fc |= IEEE80211_PV1_FCTL_FTYPE & DOT11_MAC_PV1_FRAME_TYPE_QOS_DATA;
 
-	if (ieee80211_has_fromds(hdr->frame_control))
+	if (ieee80211_has_fromds(pv0_fc))
 		pv1_fc |= (IEEE80211_PV1_FCTL_FROMDS);
 
-	if (ieee80211_has_morefrags(hdr->frame_control))
+	if (ieee80211_has_morefrags(pv0_fc))
 		pv1_fc |= IEEE80211_PV1_FCTL_MOREFRAGS;
 
-	if (ieee80211_has_pm(hdr->frame_control))
+	if (ieee80211_has_pm(pv0_fc))
 		pv1_fc |= IEEE80211_PV1_FCTL_PM;
 
-	if (ieee80211_has_moredata(hdr->frame_control))
+	if (ieee80211_has_moredata(pv0_fc))
 		pv1_fc |= IEEE80211_PV1_FCTL_MOREDATA;
 
-	if (ieee80211_has_protected(hdr->frame_control))
+	if (ieee80211_has_protected(pv0_fc))
 		pv1_fc |= IEEE80211_PV1_FCTL_PROTECTED;
 
 	if (*qos_ctrl & IEEE80211_QOS_CTL_EOSP)
@@ -447,14 +448,14 @@ static int morse_prepare_pv1_sid_header(struct ieee80211_vif *vif,
 	}
 
 	if (fc & IEEE80211_PV1_FCTL_FROMDS) {
-		sid_header->u.from_ds.addr1_sid = sid;
+		sid_header->u.from_ds.addr1_sid = cpu_to_le16(sid);
 		memcpy(sid_header->u.from_ds.addr2, pv0_hdr->addr2, ETH_ALEN);
 	} else {
 		memcpy(sid_header->u.to_ds.addr1, pv0_hdr->addr1, ETH_ALEN);
-		sid_header->u.to_ds.addr2_sid = sid;
+		sid_header->u.to_ds.addr2_sid = cpu_to_le16(sid);
 	}
 
-	sid_header->sequence_ctrl = pv0_hdr->seq_ctrl;
+	sid_header->sequence_ctrl = cpu_to_le16(pv0_hdr->seq_ctrl);
 	pv1_header_length += (tmp - sid_header->variable);
 
 	return pv1_header_length;
@@ -477,7 +478,7 @@ static int morse_prepare_pv1_qos_header(struct dot11ah_mac_pv1_hdr *pv1_hdr,
 
 	memcpy(qos_hdr->addr1, pv0_hdr->addr1, ETH_ALEN);
 	memcpy(qos_hdr->addr2, pv0_hdr->addr2, ETH_ALEN);
-	qos_hdr->sequence_ctrl = pv0_hdr->seq_ctrl;
+	qos_hdr->sequence_ctrl = cpu_to_le16(pv0_hdr->seq_ctrl);
 
 	return sizeof(*qos_hdr);
 }
@@ -531,7 +532,7 @@ static int morse_convert_pv0_to_pv1(struct morse *mors, struct morse_vif *mors_v
 	struct ieee80211_vif *vif = morse_vif_to_ieee80211_vif(mors_vif);
 	u16 pv0_fc = le16_to_cpu(hdr->frame_control);
 	u8 tid = skb->priority & IEEE80211_QOS_CTL_TAG1D_MASK;
-	u16 seq_num = IEEE80211_SEQ_TO_SN(le16_to_cpu(hdr->seq_ctrl));
+	u16 seq_num = IEEE80211_SEQ_TO_SN(hdr->seq_ctrl);
 	bool is_mgmt = ieee80211_is_mgmt(hdr->frame_control);
 	u8 pv1_header_buf[DOT11_PV1_MAC_HEADER_SIZE_MAX] = {0};
 	struct dot11ah_mac_pv1_hdr *pv1_mac_header =
@@ -631,37 +632,43 @@ static void morse_convert_pv1_to_pv0_qos_ctrl(u8 *qos, u16 fc)
 		qos[0] |= IEEE80211_QOS_CTL_ACK_POLICY_NOACK;
 }
 
-struct pv1_find_sta_aid_iter {
-	const struct ieee80211_vif *on_vif;
-	u8 aid;
-	struct ieee80211_sta *out_sta;
-};
-
-static void pv1_find_sta_by_aid(void *data, struct ieee80211_sta *sta)
+/**
+ * morse_pv1_find_sta_by_aid - Get STA context of AP based on STA AID, derived
+ *				from SID of PV1 header
+ *
+ * @mors_vif:	AP interface
+ * @aid:	Association ID of STA
+ *
+ * @return:	STA context structure
+ *
+ * @note:	The RCU lock must be held when calling this function and while using the returned
+ *		pointer.
+ */
+static struct ieee80211_sta *morse_pv1_find_sta_by_aid(struct morse_vif *mors_vif, u16 aid)
 {
-	struct pv1_find_sta_aid_iter *iter_data = data;
-	struct morse_sta *msta = (struct morse_sta *)sta->drv_priv;
+	struct list_head *morse_sta_list = &mors_vif->ap->stas;
+	struct list_head *pos;
 
-	if (!msta) {
-		MORSE_WARN_ON(FEATURE_ID_MESH, 1);
-		return;
+	list_for_each(pos, morse_sta_list) {
+		struct morse_sta *msta = list_entry(pos, struct morse_sta, list);
+
+		if (msta) {
+			struct ieee80211_sta *sta =
+				container_of((void *)msta, struct ieee80211_sta, drv_priv);
+			if (sta->aid == aid)
+				return sta;
+		}
 	}
 
-	if (msta->vif != iter_data->on_vif)
-		return;
-
-	MORSE_WARN_ON(FEATURE_ID_DEFAULT, iter_data->out_sta); /* already found */
-	if (sta->aid == iter_data->aid)
-		iter_data->out_sta = sta;
+	return NULL;
 }
 
 struct ieee80211_sta *morse_pv1_find_sta(struct ieee80211_vif *vif,
 				struct dot11ah_mac_pv1_hdr *pv1_hdr)
 {
 	struct morse_vif *mors_vif = ieee80211_vif_to_morse_vif(vif);
-	struct morse *mors = morse_vif_to_morse(mors_vif);
 	u16 pv1_fc = le16_to_cpu(pv1_hdr->frame_ctrl);
-	u16 pv1_fc_type = le16_to_cpu(pv1_hdr->frame_ctrl) & IEEE80211_PV1_FCTL_FTYPE;
+	u16 pv1_fc_type = pv1_hdr->frame_ctrl & IEEE80211_PV1_FCTL_FTYPE;
 	struct ieee80211_sta *sta = NULL;
 	u16 sid;
 	u16 aid;
@@ -674,20 +681,12 @@ struct ieee80211_sta *morse_pv1_find_sta(struct ieee80211_vif *vif,
 			sid = le16_to_cpu(sid_header->u.from_ds.addr1_sid);
 		else
 			sid = le16_to_cpu(sid_header->u.to_ds.addr2_sid);
-		aid = sid & DOT11_MAC_PV1_SID_AID_MASK;
+		aid = le16_to_cpu(sid & DOT11_MAC_PV1_SID_AID_MASK);
 
-		if (vif->type == NL80211_IFTYPE_AP) {
-			struct pv1_find_sta_aid_iter data = {
-				.on_vif = vif,
-				.aid = aid,
-				.out_sta = NULL,
-			};
-
-			ieee80211_iterate_stations_atomic(mors->hw, pv1_find_sta_by_aid, &data);
-			sta = data.out_sta;
-		} else if (vif->type == NL80211_IFTYPE_STATION) {
+		if (vif->type == NL80211_IFTYPE_AP)
+			sta = morse_pv1_find_sta_by_aid(mors_vif, aid);
+		else if (vif->type == NL80211_IFTYPE_STATION)
 			sta = ieee80211_find_sta(vif, vif->bss_conf.bssid);
-		}
 	} else if (pv1_fc_type == DOT11_MAC_PV1_FRAME_TYPE_QOS_DATA) {
 		struct dot11ah_mac_pv1_qos_data_hdr *qos_data_hdr =
 				(struct dot11ah_mac_pv1_qos_data_hdr *)pv1_hdr;
@@ -739,11 +738,11 @@ static int morse_prepare_pv0_mac_header(struct morse_vif *mors_vif,
 
 		pv1_hdr_size = sizeof(*sid_header);
 		if (pv1_fc & IEEE80211_PV1_FCTL_FROMDS) {
-			sid = le16_to_cpu(sid_header->u.from_ds.addr1_sid);
+			sid = sid_header->u.from_ds.addr1_sid;
 			memcpy(pv0_hdr->addr2, sid_header->u.from_ds.addr2, sizeof(pv0_hdr->addr2));
 			memcpy(pv0_hdr->addr1, vif->addr, sizeof(pv0_hdr->addr1));
 		} else {
-			sid = le16_to_cpu(sid_header->u.to_ds.addr2_sid);
+			sid = sid_header->u.to_ds.addr2_sid;
 			memcpy(pv0_hdr->addr1, sid_header->u.to_ds.addr1, sizeof(pv0_hdr->addr1));
 			if (sta)
 				memcpy(pv0_hdr->addr2, sta->addr, sizeof(pv0_hdr->addr2));
@@ -862,7 +861,7 @@ int morse_mac_convert_pv1_to_pv0(struct morse *mors, struct morse_vif *mors_vif,
 	/* Add QoS control for both open and SAE */
 	memcpy(skb_push(skb, IEEE80211_QOS_CTL_LEN), &qos_ctrl, IEEE80211_QOS_CTL_LEN);
 
-	if (!ieee80211_has_a4(cpu_to_le16(pv0_fc)))
+	if (!ieee80211_has_a4(pv0_fc))
 		pv0_hdr_size -= sizeof(pv0_hdr.addr4);
 
 	/* Add PV0 header to SKB pointer */
@@ -1001,7 +1000,7 @@ int morse_mac_convert_pv0_to_pv1(struct morse *mors, struct morse_vif *mors_vif,
 	if (!mors_sta || mors_sta->state < IEEE80211_STA_ASSOC)
 		return -EFAULT;
 
-	if (!ieee80211_is_data_qos(hdr->frame_control))
+	if (!ieee80211_is_data_qos(pv0_fc))
 		return -EINVAL;
 
 	if ((pv0_fc & IEEE80211_FCTL_PROTECTED) && !info->control.hw_key) {

@@ -4,14 +4,9 @@
 /*
  * Copyright 2017-2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include <net/mac80211.h>
-#ifdef CONFIG_ANDROID
-#include <net/netlink.h>
-#endif
 
 #include "mac.h"
 #include "vendor_ie.h"
@@ -49,21 +44,14 @@ static const u8 morse_oui[] = { 0x0C, 0xBF, 0x74 };
 
 enum morse_vendor_cmds {
 	MORSE_VENDOR_CMD_TO_MORSE = 0,
-	MORSE_VENDOR_HW_CMD_TO_MORSE = 1,
-#ifdef CONFIG_ANDROID
-	MORSE_VENDOR_SUBCMD_GET_SUPPORTED_FEATURES = 2,
-	MORSE_VENDOR_SUBCMD_GET_PACKET_FILTER_CAPABILITIES = 3,
-	MORSE_VENDOR_SUBCMD_SET_PACKET_FILTER = 4,
-	MORSE_VENDOR_SUBCMD_READ_PACKET_FILTER_DATA = 5,
-#endif
+	MORSE_VENDOR_WIPHY_CMD_TO_MORSE = 1,
 };
 
 enum morse_vendor_events {
 	MORSE_VENDOR_EVENT_BCN_VENDOR_IE_FOUND = 0,	/* To be deprecated in a future version */
 	MORSE_VENDOR_EVENT_OCS_DONE = 1,
 	MORSE_VENDOR_EVENT_MGMT_VENDOR_IE_FOUND = 2,
-	MORSE_VENDOR_EVENT_MESH_PEER_ADDR = 3,
-	MORSE_VENDOR_EVENT_BSS_STATS = 4
+	MORSE_VENDOR_EVENT_MESH_PEER_ADDR = 3
 };
 
 enum morse_vendor_attributes {
@@ -71,10 +59,6 @@ enum morse_vendor_attributes {
 	/* Bitmask of type @ref enum morse_vendor_ie_mgmt_type_flags */
 	MORSE_VENDOR_ATTR_MGMT_FRAME_TYPE = 1,
 };
-
-struct morse_mesh_peer_addr_vendor_evt {
-	u8 addr[ETH_ALEN];
-} __packed;
 
 /** Morse vendor capability & operations IE */
 struct dot11_morse_vendor_caps_ops_ie {
@@ -136,13 +120,13 @@ void morse_vendor_reset_sta_transient_info(struct ieee80211_vif *vif, struct mor
 /**
  * Send a vendor_ie_found netlink event
  *
- * @wdev: Wireless interface
- * @frame_type: Frame type that the vendor IE was found in
+ * @vif Interface to send the event on
+ * @frame_type Frame type that the vendor IE was found in
  *		     of type @ref enum morse_vendor_ie_mgmt_type_flags
- * @vie: Vendor IE which was found
+ * @vie Vendor IE which was found
  * @return int 0 on success else error code
  */
-int morse_vendor_send_mgmt_vendor_ie_found_event(struct wireless_dev *wdev, u16 frame_type,
+int morse_vendor_send_mgmt_vendor_ie_found_event(struct ieee80211_vif *vif, u16 frame_type,
 						 const struct ieee80211_vendor_ie *vie);
 
 /**
@@ -152,7 +136,7 @@ int morse_vendor_send_mgmt_vendor_ie_found_event(struct wireless_dev *wdev, u16 
  * @vie Vendor IE which was found
  * @return int 0 on success else error code
  */
-int morse_vendor_send_ocs_done_event(struct ieee80211_vif *vif, struct morse_cmd_evt_ocs_done *evt);
+int morse_vendor_send_ocs_done_event(struct ieee80211_vif *vif, struct morse_event *event);
 
 /**
  * Send mesh peer addr netlink event
@@ -162,42 +146,11 @@ int morse_vendor_send_ocs_done_event(struct ieee80211_vif *vif, struct morse_cmd
  *
  * Return: 0 on success else error code
  */
-int morse_vendor_send_peer_addr_event(struct ieee80211_vif *vif,
-				      struct morse_mesh_peer_addr_vendor_evt *event);
+int morse_vendor_send_peer_addr_event(struct ieee80211_vif *vif, struct morse_event *event);
 
 void morse_vendor_update_ack_timeout_on_assoc(struct morse *mors,
 					      struct ieee80211_vif *vif, struct ieee80211_sta *sta);
 
 void morse_set_vendor_commands_and_events(struct wiphy *wiphy);
-
-/**
- * Send BSS statistics netlink event
- *
- * @vif interface to send the event on
- * @evt station statistics event
- * @evt_data_len size of event data
- * @return int 0 on success else error code
- */
-int morse_vendor_send_bss_stats_event(struct ieee80211_vif *vif,
-			struct morse_evt_bss_stats *evt, size_t evt_data_len);
-
-/**
- * morse-vendor_find_vendor_ie()	- Find vendor IE with morse OUI.
- *
- * @ies_mask: Parsed S1G IEs to search morse OUI from.
- *
- * Return: Pointer to vendor IEs with morse OUI within ies_mask.
- *	   NULL if it couldn't find any morse OUI.
- */
-struct dot11_morse_vendor_caps_ops_ie *
-morse_vendor_find_vendor_ie(struct dot11ah_ies_mask *ies_mask);
-/**
- * morse_vendor_fill_sta_vendor_info()	- Fill vendor info into station interface from vendor IEs.
- *
- * @mors_vif: Station morse interface to fill vendor info into.
- * @ie: IEs that contain vendor info.
- */
-void morse_vendor_fill_sta_vendor_info(struct morse_vif *mors_vif,
-				       struct dot11_morse_vendor_caps_ops_ie *ie);
 
 #endif /* !_MORSE_VENDOR_H_ */

@@ -1,7 +1,5 @@
 /*
  * Copyright 2024 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #pragma once
 
@@ -21,8 +19,6 @@ enum morse_coredump_method {
 enum morse_coredump_mem_region_type {
 	/* no specific distinction made on memory region */
 	MORSE_MEM_REGION_TYPE_GENERAL = 1,
-	/* Assertion information */
-	MORSE_MEM_REGION_TYPE_ASSERT_INFO = 2,
 };
 
 /* Describe an on-chip memory region */
@@ -67,10 +63,7 @@ enum morse_coredump_note_type {
  * and data (upon coredump).
  */
 struct morse_coredump_data {
-	/* Reason for coredump creation */
 	enum morse_coredump_reason reason;
-	/* Stop information string (may be NULL if not available) */
-	char *information;
 	/* system timestamp of when the data was filled */
 	struct timespec64 timestamp;
 	/* chip-memory regions of interest upon a coredump */

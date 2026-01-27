@@ -1,8 +1,6 @@
 /*
  * Copyright 2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 #include <linux/ieee80211.h>
 #include <net/mac80211.h>
@@ -11,7 +9,6 @@
 #include "morse.h"
 #include "debug.h"
 #include "vendor.h"
-#include "wiphy.h"
 #include "mac.h"
 #include "dot11ah/s1g_ieee80211.h"
 
@@ -95,16 +92,27 @@ static int morse_vendor_ie_clear_ie_list(struct morse_vif *mors_vif, u16 mgmt_ty
 	return 0;
 }
 
-int morse_vendor_ie_process_rx_ies(struct wireless_dev *wdev, const u8 *ies, u16 length,
-				   u16 mgmt_type)
+/**
+ * Process received information elements. Will search for vendor IEs with OUIs that match
+ * those in the virtual interface's OUI filter, and will call the call back for each match.
+ *
+ * @vif Virtual interface IEs were received on
+ * @ies Information elements of the frame to process
+ * @length total length of ies
+ * @mgmt_type_mask management frame type (+ S1G beacon) of the received frame
+ *			 of type @ref enum morse_vendor_ie_mgmt_type_flags
+ * @return 0 on success, else error code
+ */
+static int morse_vendor_ie_process_rx_ies(struct ieee80211_vif *vif, const u8 *ies, u16 length,
+					  u16 mgmt_type)
 {
 	int ret = 0;
+	struct morse_vif *mors_vif = ieee80211_vif_to_morse_vif(vif);
+	const struct ieee80211_vendor_ie *vie = (const struct ieee80211_vendor_ie *)ies;
 	const u8 *pos = ies;
 	const u8 *const end = ies + length;
 	struct vendor_ie_oui_filter_list_item *item;
-	const struct ieee80211_vendor_ie *vie = (const struct ieee80211_vendor_ie *)ies;
 	const u8 min_vendor_ie_length = sizeof(*vie) - sizeof(vie->element_id) - sizeof(vie->len);
-	struct morse_vif *mors_vif = morse_wdev_to_morse_vif(wdev);
 
 	while ((pos < end) && (ret == 0)) {
 		pos = cfg80211_find_ie(WLAN_EID_VENDOR_SPECIFIC, pos, length);
@@ -118,7 +126,7 @@ int morse_vendor_ie_process_rx_ies(struct wireless_dev *wdev, const u8 *ies, u16
 			list_for_each_entry(item, &mors_vif->vendor_ie.oui_filter_list, list) {
 				if ((memcmp(item->oui, vie->oui, sizeof(vie->oui)) == 0) &&
 				    (item->mgmt_type_mask & mgmt_type)) {
-					ret = item->on_vendor_ie_match(wdev, mgmt_type, vie);
+					ret = item->on_vendor_ie_match(vif, mgmt_type, vie);
 					if (ret)
 						break;
 				}
@@ -201,7 +209,7 @@ static void try_remove_oui(struct morse_vif *mors_vif,
  */
 static int morse_vendor_ie_add_oui_to_filter(struct morse_vif *mors_vif, u16 mgmt_type_mask,
 					     u8 *oui,
-					     int (*on_vendor_ie_match)(struct wireless_dev *, u16,
+					     int (*on_vendor_ie_match)(struct ieee80211_vif *, u16,
 					     const struct ieee80211_vendor_ie *))
 {
 	int ret = 0;
@@ -350,7 +358,6 @@ void morse_vendor_ie_process_rx_mgmt(struct ieee80211_vif *vif, const struct sk_
 {
 	const struct ieee80211_mgmt *mgmt = (struct ieee80211_mgmt *)skb->data;
 	struct morse_vif *mors_vif = ieee80211_vif_to_morse_vif(vif);
-	struct wireless_dev *wdev = ieee80211_vif_to_wdev(vif);
 	enum morse_vendor_ie_mgmt_type_flags type;
 	const u8 *elements;
 	u16 elem_len;
@@ -384,49 +391,47 @@ void morse_vendor_ie_process_rx_mgmt(struct ieee80211_vif *vif, const struct sk_
 
 	elem_len = skb->len - (elements - (u8 *)skb->data);
 
-	morse_vendor_ie_process_rx_ies(wdev, elements, elem_len, type);
+	morse_vendor_ie_process_rx_ies(vif, elements, elem_len, type);
 }
 
 int morse_vendor_ie_handle_config_cmd(struct morse_vif *mors_vif,
-				      struct morse_cmd_req_vendor_ie_config *cfg)
+				      struct morse_cmd_vendor_ie_config *cfg)
 {
 	int ret = -EINVAL;
-	const u16 data_size =
-		le16_to_cpu(cfg->hdr.len) - sizeof(cfg->opcode) - sizeof(cfg->mgmt_type_mask);
-	u16 mgmt_type_mask = le16_to_cpu(cfg->mgmt_type_mask);
+	const u16 data_size = (cfg->hdr.len + sizeof(cfg->hdr)) - sizeof(*cfg);
 
-	if (!mgmt_type_mask ||
-	    (mgmt_type_mask &
-	     ~(MORSE_CMD_VENDOR_IE_TYPE_FLAG_BEACON |
-	       MORSE_CMD_VENDOR_IE_TYPE_FLAG_PROBE_REQ | MORSE_CMD_VENDOR_IE_TYPE_FLAG_PROBE_RESP |
-	       MORSE_CMD_VENDOR_IE_TYPE_FLAG_ASSOC_REQ | MORSE_CMD_VENDOR_IE_TYPE_FLAG_ASSOC_RESP)))
+	if (!cfg->mgmt_type_mask ||
+	    (cfg->mgmt_type_mask &
+	     ~(MORSE_VENDOR_IE_TYPE_BEACON |
+	       MORSE_VENDOR_IE_TYPE_PROBE_REQ | MORSE_VENDOR_IE_TYPE_PROBE_RESP |
+	       MORSE_VENDOR_IE_TYPE_ASSOC_REQ | MORSE_VENDOR_IE_TYPE_ASSOC_RESP)))
 		return -ENOTSUPP;
 
-	switch (le16_to_cpu(cfg->opcode)) {
-	case MORSE_CMD_VENDOR_IE_OP_ADD_ELEMENT:
+	switch (cfg->opcode) {
+	case MORSE_VENDOR_IE_OP_ADD_ELEMENT:
 		{
-			ret = morse_vendor_ie_add_to_ie_list(mors_vif, mgmt_type_mask,
+			ret = morse_vendor_ie_add_to_ie_list(mors_vif, cfg->mgmt_type_mask,
 							     cfg->data, data_size);
 			break;
 		}
-	case MORSE_CMD_VENDOR_IE_OP_CLEAR_ELEMENTS:
+	case MORSE_VENDOR_IE_OP_CLEAR_ELEMENTS:
 		{
-			ret = morse_vendor_ie_clear_ie_list(mors_vif, mgmt_type_mask);
+			ret = morse_vendor_ie_clear_ie_list(mors_vif, cfg->mgmt_type_mask);
 			break;
 		}
-	case MORSE_CMD_VENDOR_IE_OP_ADD_FILTER:
+	case MORSE_VENDOR_IE_OP_ADD_FILTER:
 		{
 			if (data_size != OUI_SIZE)
 				break;
 
-			ret = morse_vendor_ie_add_oui_to_filter(mors_vif, mgmt_type_mask,
+			ret = morse_vendor_ie_add_oui_to_filter(mors_vif, cfg->mgmt_type_mask,
 				      cfg->data, morse_vendor_send_mgmt_vendor_ie_found_event);
 
 			break;
 		}
-	case MORSE_CMD_VENDOR_IE_OP_CLEAR_FILTERS:
+	case MORSE_VENDOR_IE_OP_CLEAR_FILTERS:
 		{
-			ret = morse_vendor_ie_clear_oui_filter(mors_vif, mgmt_type_mask);
+			ret = morse_vendor_ie_clear_oui_filter(mors_vif, cfg->mgmt_type_mask);
 			break;
 		}
 	}

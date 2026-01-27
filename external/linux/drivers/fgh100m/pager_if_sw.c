@@ -1,8 +1,6 @@
 /*
  * Copyright 2021-2023 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include <linux/kfifo.h>
@@ -299,7 +297,7 @@ static int morse_pager_sw_notify_pager(const struct morse_pager *pager)
 static int morse_pager_sw_pop(struct morse_pager *pager, struct morse_page *page)
 {
 	int ret = 0;
-	__le32 page_addr = 0;
+	u32 page_addr = 0;
 
 	if (kfifo_is_empty(&MORSE_AUX_DATA_CACHE(pager))) {
 		int i;
@@ -333,7 +331,7 @@ static int morse_pager_sw_pop(struct morse_pager *pager, struct morse_page *page
 		kfree(buffer);
 	}
 
-	ret = kfifo_get(&MORSE_AUX_DATA_CACHE(pager), (__force u32 *)&page_addr);
+	ret = kfifo_get(&MORSE_AUX_DATA_CACHE(pager), &page_addr);
 	WARN_ON(ret == 0);
 	ret = 0;
 
@@ -347,11 +345,11 @@ static int morse_pager_sw_pop(struct morse_pager *pager, struct morse_page *page
 static int morse_pager_sw_put(struct morse_pager *pager, struct morse_page *page)
 {
 	int ret = 0;
-	__le32 page_addr = cpu_to_le32(page->addr);
+	u32 page_addr = cpu_to_le32(page->addr);
 	struct morse_pager_sw_aux_data *aux_data =
 	    (struct morse_pager_sw_aux_data *)pager->aux_data;
 
-	ret = kfifo_put(&MORSE_AUX_DATA_CACHE(pager), (__force u32)page_addr);
+	ret = kfifo_put(&MORSE_AUX_DATA_CACHE(pager), page_addr);
 	WARN_ON(ret == 0);
 
 	aux_data->pages_need_put = true;
@@ -488,7 +486,7 @@ int morse_pager_sw_pagesets_init(struct morse *mors)
 		}
 
 		ret = morse_pager_sw_init(mors, pager, addr,
-					  __le16_to_cpu(pager_entry.size),
+					  __le32_to_cpu(pager_entry.size),
 					  __le32_to_cpu(pager_entry.base),
 					  __le32_to_cpu(pager_entry.head),
 					  __le32_to_cpu(pager_entry.tail));
@@ -559,14 +557,12 @@ int morse_pager_sw_pagesets_init(struct morse *mors)
 	mors->chip_if->from_chip_pageset = &mors->chip_if->pagesets[1];
 	INIT_WORK(&mors->chip_if_work, morse_pagesets_work);
 	INIT_WORK(&mors->tx_stale_work, morse_pagesets_stale_tx_work);
-	INIT_KFIFO(mors->chip_if->bypass.tx_sts.to_process);
-	INIT_KFIFO(mors->chip_if->bypass.cmd_resp.to_process);
+	INIT_KFIFO(mors->chip_if->tx_status_addrs);
 
 	/* Enable interrupts */
 	morse_pager_irq_enable(tx_return, true);
 	morse_pager_irq_enable(rx_data, true);
 	morse_pager_tx_status_irq_enable(mors, true);
-	morse_pager_cmd_resp_irq_enable(mors, true);
 	morse_hw_enable_stop_notifications(mors, true);
 
 	morse_release_bus(mors);
@@ -614,7 +610,6 @@ void morse_pager_sw_pagesets_finish(struct morse *mors)
 	cancel_work_sync(&mors->tx_stale_work);
 
 	morse_pager_tx_status_irq_enable(mors, false);
-	morse_pager_cmd_resp_irq_enable(mors, false);
 	for (pager = mors->chip_if->pagers, count = 0;
 	     count < mors->chip_if->pager_count; pager++, count++) {
 		morse_pager_irq_enable(pager, false);

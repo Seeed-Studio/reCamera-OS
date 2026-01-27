@@ -1,8 +1,6 @@
 /*
  * Copyright 2017-2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #if !defined(__TRACE_MORSE_H) || defined(TRACE_HEADER_MULTI_READ)

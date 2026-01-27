@@ -6,8 +6,7 @@
  *
  * Copyright 2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
+ * This header is used by the ipmon app, Morse driver and Morse firmware.
  */
 
 #include <linux/ieee80211.h>

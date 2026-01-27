@@ -1,6 +1,5 @@
 /*
  * Copyright 2025 Morse Micro
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #include "morse.h"

@@ -1,13 +1,12 @@
 /*
  * Copyright 2023 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #pragma once
 
 /**
  * @file morse_rate_code.h
  * @brief Morse rate code definitions and utility functions.
+ * This file will be shared across host, firmware (MAC and PHY)
  */
 #include <linux/types.h>
 #include "misc.h"
@@ -131,7 +130,7 @@ typedef __le32 morse_rate_code_t;
  */
 static inline enum morse_rate_preamble morse_ratecode_preamble_get(morse_rate_code_t rc)
 {
-	return (enum morse_rate_preamble)(BMGET(le32_to_cpu(rc), MORSE_RATECODE_PREAMBLE));
+	return (enum morse_rate_preamble)(BMGET(rc, MORSE_RATECODE_PREAMBLE));
 }
 
 /**
@@ -145,7 +144,7 @@ static inline enum morse_rate_preamble morse_ratecode_preamble_get(morse_rate_co
  */
 static inline u8 morse_ratecode_mcs_index_get(morse_rate_code_t rc)
 {
-	return BMGET(le32_to_cpu(rc), MORSE_RATECODE_MCS_INDEX);
+	return BMGET(rc, MORSE_RATECODE_MCS_INDEX);
 }
 
 /**
@@ -156,7 +155,7 @@ static inline u8 morse_ratecode_mcs_index_get(morse_rate_code_t rc)
  */
 static inline u8 morse_ratecode_nss_index_get(morse_rate_code_t rc)
 {
-	return BMGET(le32_to_cpu(rc), MORSE_RATECODE_NSS_INDEX);
+	return BMGET(rc, MORSE_RATECODE_NSS_INDEX);
 }
 
 /**
@@ -167,7 +166,7 @@ static inline u8 morse_ratecode_nss_index_get(morse_rate_code_t rc)
  */
 static inline enum dot11_bandwidth morse_ratecode_bw_index_get(morse_rate_code_t rc)
 {
-	return (enum dot11_bandwidth)(BMGET(le32_to_cpu(rc), MORSE_RATECODE_BW_INDEX));
+	return (enum dot11_bandwidth)(BMGET(rc, MORSE_RATECODE_BW_INDEX));
 }
 
 /**
@@ -178,7 +177,7 @@ static inline enum dot11_bandwidth morse_ratecode_bw_index_get(morse_rate_code_t
  */
 static inline bool morse_ratecode_rts_get(morse_rate_code_t rc)
 {
-	return BMGET(le32_to_cpu(rc), MORSE_RATECODE_RTS_FLAG);
+	return BMGET(rc, MORSE_RATECODE_RTS_FLAG);
 }
 
 /**
@@ -189,7 +188,7 @@ static inline bool morse_ratecode_rts_get(morse_rate_code_t rc)
  */
 static inline bool morse_ratecode_cts2self_get(morse_rate_code_t rc)
 {
-	return BMGET(le32_to_cpu(rc), MORSE_RATECODE_CTS2SELF_FLAG);
+	return BMGET(rc, MORSE_RATECODE_CTS2SELF_FLAG);
 }
 
 /**
@@ -200,7 +199,7 @@ static inline bool morse_ratecode_cts2self_get(morse_rate_code_t rc)
  */
 static inline bool morse_ratecode_sgi_get(morse_rate_code_t rc)
 {
-	return BMGET(le32_to_cpu(rc), MORSE_RATECODE_SHORT_GI_FLAG);
+	return BMGET(rc, MORSE_RATECODE_SHORT_GI_FLAG);
 }
 
 /**
@@ -211,7 +210,7 @@ static inline bool morse_ratecode_sgi_get(morse_rate_code_t rc)
  */
 static inline bool morse_ratecode_trav_pilots_get(morse_rate_code_t rc)
 {
-	return BMGET(le32_to_cpu(rc), MORSE_RATECODE_TRAV_PILOTS_FLAG);
+	return BMGET(rc, MORSE_RATECODE_TRAV_PILOTS_FLAG);
 }
 
 /**
@@ -222,7 +221,7 @@ static inline bool morse_ratecode_trav_pilots_get(morse_rate_code_t rc)
  */
 static inline bool morse_ratecode_ctrl_resp_1mhz_get(morse_rate_code_t rc)
 {
-	return BMGET(le32_to_cpu(rc), MORSE_RATECODE_CTRL_RESP_1MHZ_FLAG);
+	return BMGET(rc, MORSE_RATECODE_CTRL_RESP_1MHZ_FLAG);
 }
 
 /**
@@ -233,7 +232,7 @@ static inline bool morse_ratecode_ctrl_resp_1mhz_get(morse_rate_code_t rc)
  */
 static inline bool morse_ratecode_dup_format_get(morse_rate_code_t rc)
 {
-	return BMGET(le32_to_cpu(rc), MORSE_RATECODE_DUP_FORMAT_FLAG);
+	return BMGET(rc, MORSE_RATECODE_DUP_FORMAT_FLAG);
 }
 
 /**
@@ -244,7 +243,7 @@ static inline bool morse_ratecode_dup_format_get(morse_rate_code_t rc)
  */
 static inline enum dot11_bandwidth morse_ratecode_dup_bw_index_get(morse_rate_code_t rc)
 {
-	return (enum dot11_bandwidth)(BMGET(le32_to_cpu(rc), MORSE_RATECODE_DUP_BW_INDEX));
+	return (enum dot11_bandwidth)(BMGET(rc, MORSE_RATECODE_DUP_BW_INDEX));
 }
 
 /**
@@ -278,7 +277,7 @@ static inline morse_rate_code_t morse_ratecode_init(enum dot11_bandwidth bw_inde
 						    u32 mcs_index,
 						    enum morse_rate_preamble preamble)
 {
-	return cpu_to_le32(MORSE_RATECODE_INIT(bw_index, nss_index, mcs_index, preamble));
+	return MORSE_RATECODE_INIT(bw_index, nss_index, mcs_index, preamble);
 }
 
 /**
@@ -290,8 +289,7 @@ static inline morse_rate_code_t morse_ratecode_init(enum dot11_bandwidth bw_inde
 static inline void morse_ratecode_preamble_set(morse_rate_code_t *rc,
 					       enum morse_rate_preamble preamble)
 {
-	*rc = cpu_to_le32((le32_to_cpu(*rc) &
-		~(MORSE_RATECODE_PREAMBLE)) | BMSET(preamble, MORSE_RATECODE_PREAMBLE));
+	*rc = ((*rc & ~(MORSE_RATECODE_PREAMBLE)) | BMSET(preamble, MORSE_RATECODE_PREAMBLE));
 }
 
 /**
@@ -302,8 +300,7 @@ static inline void morse_ratecode_preamble_set(morse_rate_code_t *rc,
  */
 static inline void morse_ratecode_mcs_index_set(morse_rate_code_t *rc, u32 mcs_index)
 {
-	*rc = cpu_to_le32((le32_to_cpu(*rc) &
-		~(MORSE_RATECODE_MCS_INDEX)) | BMSET(mcs_index, MORSE_RATECODE_MCS_INDEX));
+	*rc = ((*rc & ~(MORSE_RATECODE_MCS_INDEX)) | BMSET(mcs_index, MORSE_RATECODE_MCS_INDEX));
 }
 
 /**
@@ -314,8 +311,7 @@ static inline void morse_ratecode_mcs_index_set(morse_rate_code_t *rc, u32 mcs_i
  */
 static inline void morse_ratecode_nss_index_set(morse_rate_code_t *rc, u32 nss_index)
 {
-	*rc = cpu_to_le32((le32_to_cpu(*rc) &
-		~(MORSE_RATECODE_NSS_INDEX)) | BMSET(nss_index, MORSE_RATECODE_NSS_INDEX));
+	*rc = ((*rc & ~(MORSE_RATECODE_NSS_INDEX)) | BMSET(nss_index, MORSE_RATECODE_NSS_INDEX));
 }
 
 /**
@@ -327,8 +323,7 @@ static inline void morse_ratecode_nss_index_set(morse_rate_code_t *rc, u32 nss_i
 static inline void morse_ratecode_bw_index_set(morse_rate_code_t *rc,
 					       enum dot11_bandwidth bw_index)
 {
-	*rc = cpu_to_le32((le32_to_cpu(*rc) &
-		~(MORSE_RATECODE_BW_INDEX)) | BMSET(bw_index, MORSE_RATECODE_BW_INDEX));
+	*rc = ((*rc & ~(MORSE_RATECODE_BW_INDEX)) | BMSET(bw_index, MORSE_RATECODE_BW_INDEX));
 }
 
 /**
@@ -371,7 +366,7 @@ static inline void morse_ratecode_dup_bw_index_set(morse_rate_code_t *rc,
  */
 static inline void morse_ratecode_enable_rts(morse_rate_code_t *rc)
 {
-	*rc |= cpu_to_le32(MORSE_RATECODE_RTS_FLAG);
+	*rc |= (MORSE_RATECODE_RTS_FLAG);
 }
 
 /**
@@ -381,7 +376,7 @@ static inline void morse_ratecode_enable_rts(morse_rate_code_t *rc)
  */
 static inline void morse_ratecode_enable_cts2self(morse_rate_code_t *rc)
 {
-	*rc |= cpu_to_le32(MORSE_RATECODE_CTS2SELF_FLAG);
+	*rc |= (MORSE_RATECODE_CTS2SELF_FLAG);
 }
 
 /**
@@ -391,7 +386,7 @@ static inline void morse_ratecode_enable_cts2self(morse_rate_code_t *rc)
  */
 static inline void morse_ratecode_enable_ctrl_resp_1mhz(morse_rate_code_t *rc)
 {
-	*rc |= cpu_to_le32(MORSE_RATECODE_CTRL_RESP_1MHZ_FLAG);
+	*rc |= (MORSE_RATECODE_CTRL_RESP_1MHZ_FLAG);
 }
 
 /**
@@ -401,7 +396,7 @@ static inline void morse_ratecode_enable_ctrl_resp_1mhz(morse_rate_code_t *rc)
  */
 static inline void morse_ratecode_enable_sgi(morse_rate_code_t *rc)
 {
-	*rc |= cpu_to_le32(MORSE_RATECODE_SHORT_GI_FLAG);
+	*rc |= (MORSE_RATECODE_SHORT_GI_FLAG);
 }
 
 /**
@@ -411,7 +406,7 @@ static inline void morse_ratecode_enable_sgi(morse_rate_code_t *rc)
  */
 static inline void morse_ratecode_disable_sgi(morse_rate_code_t *rc)
 {
-	*rc &= ~cpu_to_le32(MORSE_RATECODE_SHORT_GI_FLAG);
+	*rc &= ~(MORSE_RATECODE_SHORT_GI_FLAG);
 }
 
 /**
@@ -421,7 +416,7 @@ static inline void morse_ratecode_disable_sgi(morse_rate_code_t *rc)
  */
 static inline void morse_ratecode_enable_dup_format(morse_rate_code_t *rc)
 {
-	*rc |= cpu_to_le32(MORSE_RATECODE_DUP_FORMAT_FLAG);
+	*rc |= (MORSE_RATECODE_DUP_FORMAT_FLAG);
 }
 
 /**
@@ -431,7 +426,7 @@ static inline void morse_ratecode_enable_dup_format(morse_rate_code_t *rc)
  */
 static inline void morse_ratecode_disable_dup_format(morse_rate_code_t *rc)
 {
-	*rc &= ~cpu_to_le32(MORSE_RATECODE_DUP_FORMAT_FLAG);
+	*rc &= ~(MORSE_RATECODE_DUP_FORMAT_FLAG);
 }
 
 /**
@@ -441,7 +436,7 @@ static inline void morse_ratecode_disable_dup_format(morse_rate_code_t *rc)
  */
 static inline void morse_ratecode_enable_trav_pilots(morse_rate_code_t *rc)
 {
-	*rc |= cpu_to_le32(MORSE_RATECODE_TRAV_PILOTS_FLAG);
+	*rc |= (MORSE_RATECODE_TRAV_PILOTS_FLAG);
 }
 
 /**
@@ -451,7 +446,7 @@ static inline void morse_ratecode_enable_trav_pilots(morse_rate_code_t *rc)
  */
 static inline void morse_ratecode_disable_trav_pilots(morse_rate_code_t *rc)
 {
-	*rc &= ~cpu_to_le32(MORSE_RATECODE_TRAV_PILOTS_FLAG);
+	*rc &= ~(MORSE_RATECODE_TRAV_PILOTS_FLAG);
 }
 
 /**

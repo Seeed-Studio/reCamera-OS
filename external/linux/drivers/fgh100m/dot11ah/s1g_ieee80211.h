@@ -12,8 +12,6 @@
 /*
  * Copyright 2017-2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 /*
@@ -82,11 +80,21 @@ enum ieee80211_s1g_chanwidth {
  */
 #define IEEE80211_PV1_FCTL_FROMDS          0x0100
 
-#if KERNEL_VERSION(5, 8, 0) > MAC80211_VERSION_CODE
+/* These structures are already in K5.10, lets use them */
+#if KERNEL_VERSION(5, 10, 11) > MAC80211_VERSION_CODE
+
+#define IEEE80211_STYPE_S1G_BEACON	0x0010
+
+#define IEEE80211_S1G_BCN_NEXT_TBTT	0x100
+
+/* convert frequencies */
+#define MHZ_TO_KHZ(freq) ((freq) * 1000)
+#define KHZ_TO_MHZ(freq) ((freq) / 1000)
+
 /**
  * struct ieee80211_channel - channel definition
  *
- * The new ieee80211_channel from K5.8 supporting S1G.
+ * The new ieee80211_channel from K5.10 supporting S1G.
  */
 struct ieee80211_channel_s1g {
 	enum nl80211_band band;
@@ -105,65 +113,7 @@ struct ieee80211_channel_s1g {
 	unsigned int dfs_cac_ms;
 };
 
-#ifndef IEEE80211_STYPE_S1G_BEACON
-#define IEEE80211_STYPE_S1G_BEACON	0x0010
-#endif
-
-#ifndef IEEE80211_S1G_BCN_NEXT_TBTT
-#define IEEE80211_S1G_BCN_NEXT_TBTT	0x100
-#endif
-
-/* convert frequencies */
-#define MHZ_TO_KHZ(freq) ((freq) * 1000)
-#define KHZ_TO_MHZ(freq) ((freq) / 1000)
-
-/**
- * ieee80211_is_ext - check if type is IEEE80211_FTYPE_EXT
- * @fc: frame control bytes in little-endian byteorder
- */
-static inline int ieee80211_is_ext(__le16 fc)
-{
-	return (fc & cpu_to_le16(IEEE80211_FCTL_FTYPE)) ==
-		   cpu_to_le16(IEEE80211_FTYPE_EXT);
-}
-
-/**
- * ieee80211_is_s1g_beacon - check if type is S1G Beacon
- * @fc: frame control bytes in little-endian byteorder
- */
-static inline int ieee80211_is_s1g_beacon(__le16 fc)
-{
-	return (ieee80211_is_ext(fc) &&
-		((fc & cpu_to_le16(IEEE80211_FCTL_STYPE)) ==
-			cpu_to_le16(IEEE80211_STYPE_S1G_BEACON)));
-}
-
-/**
- * ieee80211_channel_to_khz - convert ieee80211_channel to frequency in KHz
- * @chan: struct ieee80211_channel to convert
- * Return: The corresponding frequency (in KHz)
- */
-static inline u32
-ieee80211_channel_to_khz(const struct ieee80211_channel_s1g *chan)
-{
-	return MHZ_TO_KHZ(chan->center_freq) + chan->freq_offset;
-}
-
-struct ieee80211_s1g_cap {
-	u8 capab_info[10];
-	u8 supp_mcs_nss[5];
-} __packed;
-#else
-
-#define ieee80211_channel_s1g ieee80211_channel
-
-#endif
-
-/* These structures are already in K5.10, lets use them */
-#if KERNEL_VERSION(5, 10, 4) > MAC80211_VERSION_CODE
-
-#define ieee80211_ext mm_ieee80211_ext
-struct mm_ieee80211_ext {
+struct ieee80211_ext {
 	__le16 frame_control;
 	__le16 duration;
 	union {
@@ -209,6 +159,38 @@ enum morse_dot11ah_channel_flags {
 };
 
 /**
+ * ieee80211_channel_to_khz - convert ieee80211_channel to frequency in KHz
+ * @chan: struct ieee80211_channel to convert
+ * Return: The corresponding frequency (in KHz)
+ */
+static inline u32
+ieee80211_channel_to_khz(const struct ieee80211_channel_s1g *chan)
+{
+	return MHZ_TO_KHZ(chan->center_freq) + chan->freq_offset;
+}
+
+/**
+ * ieee80211_is_ext - check if type is IEEE80211_FTYPE_EXT
+ * @fc: frame control bytes in little-endian byteorder
+ */
+static inline int ieee80211_is_ext(__le16 fc)
+{
+	return (fc & cpu_to_le16(IEEE80211_FCTL_FTYPE)) ==
+		   cpu_to_le16(IEEE80211_FTYPE_EXT);
+}
+
+/**
+ * ieee80211_is_s1g_beacon - check if type is S1G Beacon
+ * @fc: frame control bytes in little-endian byteorder
+ */
+static inline int ieee80211_is_s1g_beacon(__le16 fc)
+{
+	return (ieee80211_is_ext(fc) &&
+		((fc & cpu_to_le16(IEEE80211_FCTL_STYPE)) ==
+			cpu_to_le16(IEEE80211_STYPE_S1G_BEACON)));
+}
+
+/**
  * ieee80211_next_tbtt_present - check if IEEE80211_FTYPE_EXT &&
  * IEEE80211_STYPE_S1G_BEACON && IEEE80211_S1G_BCN_NEXT_TBTT
  * @fc: frame control bytes in little-endian byteorder
@@ -230,6 +212,17 @@ static inline bool ieee80211_is_s1g_short_beacon(__le16 fc)
 	return ieee80211_is_s1g_beacon(fc) && ieee80211_next_tbtt_present(fc);
 }
 
+#else
+
+#define ieee80211_channel_s1g ieee80211_channel
+
+#endif
+
+#if KERNEL_VERSION(5, 8, 0) > MAC80211_VERSION_CODE
+struct ieee80211_s1g_cap {
+	u8 capab_info[10];
+	u8 supp_mcs_nss[5];
+} __packed;
 #endif
 
 #if KERNEL_VERSION(4, 12, 0) > MAC80211_VERSION_CODE

@@ -1,8 +1,4 @@
-/** Copyright 2023-2025 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
-
+/** Copyright 2023 Morse Micro*/
 #include <linux/bitfield.h>
 #include <linux/kernel.h>
 #include "morse.h"
@@ -21,8 +17,6 @@
 #define MORSE_HWSCAN_DEFAULT_DWELL_ON_HOME_MS (200)
 /** Typical time it takes to send the probe */
 #define MORSE_HWSCAN_PROBE_DELAY_MS (30)
-/** Maximum time SURVEY adds to HWSCAN from testing */
-#define MORSE_HWSCAN_SURVEY_DELAY_MS (350)
 /** A margin to account for event/command processing */
 #define MORSE_HWSCAN_TIMEOUT_OVERHEAD_MS (2000)
 
@@ -33,6 +27,17 @@ struct hw_scan_tlv_hdr {
 	__le16 tag;
 	__le16 len;
 } __packed;
+
+/**
+ * Tags for scan tlv header
+ */
+enum hw_scan_tlv_tag {
+	HW_SCAN_TLV_TAG_PAD		= 0,
+	HW_SCAN_TLV_TAG_PROBE_REQ	= 1,
+	HW_SCAN_TLV_TAG_CHAN_LIST	= 2,
+	HW_SCAN_TLV_TAG_POWER_LIST	= 3,
+	HW_SCAN_TLV_TAG_DWELL_ON_HOME	= 4,
+};
 
 /** Scan channel frequency mask */
 #define HW_SCAN_CH_LIST_FREQ_KHZ	GENMASK(19, 0)
@@ -102,62 +107,6 @@ struct hw_scan_tlv_dwell_on_home {
 } __packed;
 
 /**
- * hw_scan_match_set - Individual filter match set
- *
- * @rssi_thresholds: don't report scan results below this threshold (in dBm)
- * @bssid: BSSID to be matched; may be all-zero BSSID in case of SSID match
- *	or no match (RSSI only)
- * @ssid_len: SSID len to be matched; may be zero-length in case of BSSID match
- *	or no match (RSSI only)
- * @ssid: SSID to be matched
- */
-struct hw_scan_match_set {
-	__sle32 rssi_thresholds;
-	u8 bssid[MORSE_CMD_MAC_ADDR_LEN];
-	u8 ssid_len;
-	u8 ssid[MORSE_CMD_SSID_MAX_LEN];
-} __packed;
-
-/**
- * HW scan TLV for filtering probe responses and beacons during scheduled scanning
- */
-struct hw_scan_tlv_filters {
-	struct hw_scan_tlv_hdr hdr;
-	struct hw_scan_match_set match_sets[];
-} __packed;
-
-/**
- * struct hw_scan_sched_plan - Individual sched scan plan
- *
- * @interval: interval between scheduled scan iterations (seconds).
- * @iterations: number of scan iterations in this scan plan. Zero means
- *	infinite loop.
- *	The last scan plan will always have this parameter set to zero,
- *	all other scan plans will have a finite number of iterations.
- */
-struct hw_scan_sched_plan {
-	__le32 interval;
-	__le32 iterations;
-} __packed;
-
-/**
- * HW scan TLV for scheduling HW scans at specified intervals
- */
-struct hw_scan_tlv_scheduled {
-	struct hw_scan_tlv_hdr hdr;
-	/** Scheduled plans */
-	struct hw_scan_sched_plan plan[];
-} __packed;
-
-struct hw_scan_tlv_scheduled_scan_info {
-	struct hw_scan_tlv_hdr hdr;
-	/** Timing delay before the scheduled starts (seconds) */
-	__le32 delay;
-	/** Min RSSI to be applied to all match sets */
-	__sle32 min_rssi_thold;
-} __packed;
-
-/**
  * morse_hw_scan_pack_tlv_hdr - Generate a TLV header from a given tag and length
  *
  * @tag: Tag to pack
@@ -176,11 +125,6 @@ static inline struct hw_scan_tlv_hdr morse_hw_scan_pack_tlv_hdr(u16 tag, u16 len
 bool hw_scan_is_supported(struct morse *mors)
 {
 	return (mors->enable_hw_scan && (mors->firmware_flags & MORSE_FW_FLAGS_SUPPORT_HW_SCAN));
-}
-
-bool sched_scan_is_supported(struct morse *mors)
-{
-	return (mors->enable_sched_scan && (mors->firmware_flags & MORSE_FW_FLAGS_SUPPORT_HW_SCAN));
 }
 
 bool hw_scan_saved_config_has_ssid(struct morse *mors)
@@ -214,7 +158,7 @@ static __le32 morse_hw_scan_pack_channel(const struct morse_dot11ah_channel *cha
 	u32 packed_channel;
 	u32 freq_khz = morse_dot11ah_channel_to_freq_khz(chan->ch.hw_value);
 	u8 op_bw_mhz = ch_flag_to_chan_bw(chan->ch.flags);
-	/* It is expected that the steps in @ref hw_scan_initialise_channel_and_power_lists will
+	/* It is expected that the steps in @ref hw_scan_initalise_channel_and_power_lists will
 	 * deconstruct any non-primary channels into their primary variants.
 	 */
 	u8 prim_bw_mhz = min_t(u8, op_bw_mhz, 2);
@@ -243,7 +187,7 @@ static u8 *hw_scan_add_channel_list_tlv(u8 *buf, struct morse_hw_scan_params *pa
 	struct hw_scan_tlv_channel_list *ch_list = (struct hw_scan_tlv_channel_list *)buf;
 	struct morse *mors = params->hw->priv;
 
-	ch_list->hdr = morse_hw_scan_pack_tlv_hdr(MORSE_CMD_HW_SCAN_TLV_TAG_CHAN_LIST,
+	ch_list->hdr = morse_hw_scan_pack_tlv_hdr(HW_SCAN_TLV_TAG_CHAN_LIST,
 		params->num_chans * sizeof(ch_list->channels[0]));
 
 	MORSE_HWSCAN_DBG(mors, "packing channel list (len: %d)\n", ch_list->hdr.len);
@@ -257,8 +201,8 @@ static u8 *hw_scan_add_channel_list_tlv(u8 *buf, struct morse_hw_scan_params *pa
 		MORSE_HWSCAN_DBG(mors, "[%d] : %08x (freq: %u khz, bw: %d, pwr_idx: %d)\n", i,
 			ch_list->channels[i],
 			morse_dot11ah_channel_to_freq_khz(chan->ch.hw_value),
-			morse_ratecode_bw_index_to_s1g_bw_mhz(BMGET(le32_to_cpu(ch_list
-				->channels[i]), HW_SCAN_CH_LIST_OP_BW)),
+			morse_ratecode_bw_index_to_s1g_bw_mhz(BMGET(ch_list->channels[i],
+					HW_SCAN_CH_LIST_OP_BW)),
 			params->channels[i].power_idx);
 	}
 	return (u8 *)&ch_list->channels[i];
@@ -278,11 +222,11 @@ static u8 *hw_scan_add_power_list_tlv(u8 *buf, struct morse_hw_scan_params *para
 	size_t size = sizeof(pwr_list->tx_power_qdbm[0]) * params->n_powers;
 	struct morse *mors = params->hw->priv;
 
-	pwr_list->hdr = morse_hw_scan_pack_tlv_hdr(MORSE_CMD_HW_SCAN_TLV_TAG_POWER_LIST, size);
+	pwr_list->hdr = morse_hw_scan_pack_tlv_hdr(HW_SCAN_TLV_TAG_POWER_LIST, size);
 	MORSE_HWSCAN_DBG(mors, "packing power list (len: %d)\n", pwr_list->hdr.len);
 
 	for (i = 0; i < params->n_powers; i++) {
-		pwr_list->tx_power_qdbm[i] = params->powers_qdbm[i];
+		pwr_list->tx_power_qdbm[i] = cpu_to_le32(params->powers_qdbm[i]);
 		MORSE_HWSCAN_DBG(mors, "[%d] : %d qdBm (%d dBm)\n", i,
 				params->powers_qdbm[i], QDBM_TO_DBM(params->powers_qdbm[i]));
 	}
@@ -303,7 +247,7 @@ static u8 *hw_scan_add_probe_req_tlv(u8 *buf, struct morse_hw_scan_params *param
 	struct hw_scan_tlv_probe_req *probe_req = (struct hw_scan_tlv_probe_req *)buf;
 	struct morse *mors = params->hw->priv;
 
-	probe_req->hdr = morse_hw_scan_pack_tlv_hdr(MORSE_CMD_HW_SCAN_TLV_TAG_PROBE_REQ, skb->len);
+	probe_req->hdr = morse_hw_scan_pack_tlv_hdr(HW_SCAN_TLV_TAG_PROBE_REQ, skb->len);
 
 	MORSE_HWSCAN_DBG(mors, "packing probe (len: %d)\n", probe_req->hdr.len);
 
@@ -325,7 +269,7 @@ static u8 *hw_scan_add_dwell_on_home_tlv(u8 *buf, struct morse_hw_scan_params *p
 	struct hw_scan_tlv_dwell_on_home *dwell = (struct hw_scan_tlv_dwell_on_home *)buf;
 	struct morse *mors = params->hw->priv;
 
-	dwell->hdr = morse_hw_scan_pack_tlv_hdr(MORSE_CMD_HW_SCAN_TLV_TAG_DWELL_ON_HOME,
+	dwell->hdr = morse_hw_scan_pack_tlv_hdr(HW_SCAN_TLV_TAG_DWELL_ON_HOME,
 		sizeof(*dwell) - sizeof(dwell->hdr));
 
 	MORSE_HWSCAN_DBG(mors, "packing dwell on home (len: %d)\n", dwell->hdr.len);
@@ -336,120 +280,33 @@ static u8 *hw_scan_add_dwell_on_home_tlv(u8 *buf, struct morse_hw_scan_params *p
 }
 
 /**
- * hw_scan_add_filter_tlv() - Add TLV to specify the filters for probe requests while in a
- *				scheduled scan
+ * hw_scan_initialise_probe_req - Initialise probe request template for HW scan
  *
- * @buf: Buffer to add the TLV to
- * @params: HW scan parameters
- * @sched_req: Scheduled scan request info
- * Return: pointer to the end of the inserted TLV
- */
-static u8 *hw_scan_add_filter_tlv(u8 *buf, struct morse_hw_scan_params *params,
-				  struct cfg80211_sched_scan_request *sched_req)
-{
-	int i;
-	struct hw_scan_match_set *ms;
-	struct morse *mors = params->hw->priv;
-	struct hw_scan_tlv_filters *filter = (struct hw_scan_tlv_filters *)buf;
-	size_t len = sizeof(filter->match_sets[0]) * sched_req->n_match_sets;
-
-	filter->hdr = morse_hw_scan_pack_tlv_hdr(MORSE_CMD_HW_SCAN_TLV_TAG_FILTER, len);
-
-	MORSE_HWSCAN_DBG(mors, "packing filters (len: %d)\n", filter->hdr.len);
-
-	for (i = 0; i < sched_req->n_match_sets; i++) {
-		ms = &filter->match_sets[i];
-		ms->ssid_len = sched_req->match_sets[i].ssid.ssid_len;
-		ms->rssi_thresholds = cpu_to_le32(sched_req->match_sets[i].rssi_thold);
-#if KERNEL_VERSION(4, 12, 0) < MAC80211_VERSION_CODE
-		/*
-		 * Earlier versions of the kernel do not support BSSID filtering and therefore is
-		 * not provided in the sched_scan_request. Value has been initialized to zero at
-		 * buffer allocation.
-		 */
-		memcpy(ms->bssid, sched_req->match_sets[i].bssid, MORSE_CMD_MAC_ADDR_LEN);
-#endif
-		memcpy(ms->ssid, sched_req->match_sets[i].ssid.ssid, ms->ssid_len);
-	}
-
-	return (u8 *)&filter->match_sets[i];
-}
-
-/**
- * hw_scan_add_scheduled_tlv() - Add TLV to specify parameters specific to the scheduled
- *				 scan timings
- *
- * @buf: Buffer to add the TLV to
- * @params: HW scan parameters
- * @sched_req: Scheduled scan request info
- * Return: pointer to the end of the inserted TLV
- */
-static u8 *hw_scan_add_scheduled_tlv(u8 *buf, struct morse_hw_scan_params *params,
-				    struct cfg80211_sched_scan_request *sched_req)
-{
-	int i;
-	struct morse *mors = params->hw->priv;
-	struct hw_scan_tlv_scheduled *sched = (struct hw_scan_tlv_scheduled *)buf;
-	size_t len = sizeof(sched->plan[0]) * sched_req->n_scan_plans;
-
-	sched->hdr = morse_hw_scan_pack_tlv_hdr(MORSE_CMD_HW_SCAN_TLV_TAG_SCHED, len);
-
-	MORSE_HWSCAN_DBG(mors, "packing scheduled params (len: %d)\n", sched->hdr.len);
-
-	for (i = 0; i < sched_req->n_scan_plans; i++) {
-		sched->plan[i].interval = cpu_to_le32(sched_req->scan_plans[i].interval);
-		sched->plan[i].iterations = cpu_to_le32(sched_req->scan_plans[i].iterations);
-	}
-
-	return (u8 *)&sched->plan[i];
-}
-
-/**
- * hw_scan_add_scheduled_params_tlv() - Add TLV to specify parameters specific to the scheduled scan
- *
- * @buf: Buffer to add the TLV to
- * @params: HW scan parameters
- * @sched_req: Scheduled scan request info
- * Return: pointer to the end of the inserted TLV
- */
-static u8 *hw_scan_add_scheduled_params_tlv(u8 *buf, struct morse_hw_scan_params *params,
-					   struct cfg80211_sched_scan_request *sched_req)
-{
-	struct hw_scan_tlv_scheduled_scan_info *sched_info =
-		(struct hw_scan_tlv_scheduled_scan_info *)buf;
-	struct morse *mors = params->hw->priv;
-
-	size_t len = sizeof(*sched_info) - sizeof(struct hw_scan_tlv_hdr);
-
-	sched_info->hdr = morse_hw_scan_pack_tlv_hdr(MORSE_CMD_HW_SCAN_TLV_TAG_SCHED_PARAMS, len);
-
-	MORSE_HWSCAN_DBG(mors, "packing scheduled scan params (len: %d)\n", sched_info->hdr.len);
-
-	sched_info->delay = cpu_to_le32(sched_req->delay);
-	sched_info->min_rssi_thold = cpu_to_le32(sched_req->min_rssi_thold);
-
-	return buf + sizeof(*sched_info);
-}
-
-/**
- * initialise_probe_req_param - Initialise probe request template in the hw scan params
- *
- * @params: HW scan params to initialise the probe request in
- * @ssid: SSID of probe request
- * @ssid_len: Length of the SSID
- * @ies: IEs to be added to the probe request
+ * @params: HW scan params
  * Return: 0 if success, otherwise error code
  */
-static int initialise_probe_req_param(struct morse_hw_scan_params *params,
-				u8 *ssid, u8 ssid_len, struct ieee80211_scan_ies *ies)
+static int hw_scan_initialise_probe_req(struct morse_hw_scan_params *params,
+		struct ieee80211_scan_request *scan_req)
 {
 	int ret;
 	struct morse *mors = params->hw->priv;
 	struct sk_buff *probe_req;
+	struct cfg80211_scan_request *req = &scan_req->req;
+	struct ieee80211_scan_ies *ies = &scan_req->ies;
+	u8 ssid_len = 0;
+	u8 *ssid = NULL;
 	u8 *pos;
 	int tx_bw_mhz;
 	struct ieee80211_tx_info *info;
 	u16 ies_len = ies->len[NL80211_BAND_5GHZ] + ies->common_ie_len;
+
+	if (req->n_ssids) {
+		if (req->n_ssids > 1)
+			MORSE_HWSCAN_WARN(mors,
+				"Multiple SSIDs found when only one supported. Using the first only.\n");
+		ssid_len = req->ssids[0].ssid_len;
+		ssid = req->ssids[0].ssid;
+	}
 
 	probe_req = ieee80211_probereq_get(params->hw, params->vif->addr, ssid, ssid_len, ies_len);
 	if (!probe_req)
@@ -473,70 +330,6 @@ static int initialise_probe_req_param(struct morse_hw_scan_params *params,
 		dev_kfree_skb_any(probe_req);
 
 	return ret;
-}
-
-/**
- * assign_scan_ssid - Assign the ssid to be used in scans
- *
- * @ssids: An array of ssid structures to assign
- * @n_ssids: Number of SSIDs in the array
- * @out_ssid: Pointer to where the function will store the chosen SSID pointer
- * @out_ssid_len: Pointer to where the function will store the chosen SSID length
- */
-static void assign_scan_ssid(struct morse *mors, struct cfg80211_ssid *ssids, int n_ssids,
-			     u8 **out_ssid, u8 *out_ssid_len)
-{
-	*out_ssid = NULL;
-	*out_ssid_len = 0;
-
-	if (n_ssids > 0) {
-		if (n_ssids > 1) {
-			MORSE_HWSCAN_WARN(mors,
-				"Multiple SSIDs found when only one supported. Using the first only.\n");
-		}
-		*out_ssid_len = ssids[0].ssid_len;
-		*out_ssid = ssids[0].ssid;
-	}
-}
-
-/**
- * sched_scan_initialise_probe_req - Initialise probe request template for sched scan
- *
- * @params: HW scan params
- * @req: Scheduled scan request information
- * @ies: IEs to be added to the probe request
- * Return: 0 if success, otherwise error code
- */
-static int sched_scan_initialise_probe_req(struct morse_hw_scan_params *params,
-		struct cfg80211_sched_scan_request *req, struct ieee80211_scan_ies *ies)
-{
-	struct morse *mors = params->hw->priv;
-	u8 ssid_len = 0;
-	u8 *ssid = NULL;
-
-	assign_scan_ssid(mors, req->ssids, req->n_ssids, &ssid, &ssid_len);
-
-	return initialise_probe_req_param(params, ssid, ssid_len, ies);
-}
-
-/**
- * hw_scan_initialise_probe_req - Initialise probe request template for HW scan
- *
- * @params: HW scan params
- * Return: 0 if success, otherwise error code
- */
-static int hw_scan_initialise_probe_req(struct morse_hw_scan_params *params,
-		struct ieee80211_scan_request *scan_req)
-{
-	struct morse *mors = params->hw->priv;
-	struct cfg80211_scan_request *req = &scan_req->req;
-	struct ieee80211_scan_ies *ies = &scan_req->ies;
-	u8 ssid_len = 0;
-	u8 *ssid = NULL;
-
-	assign_scan_ssid(mors, req->ssids, req->n_ssids, &ssid, &ssid_len);
-
-	return initialise_probe_req_param(params, ssid, ssid_len, ies);
 }
 
 /**
@@ -666,18 +459,16 @@ static int deconstruct_scan_channel_into_scan_list(struct morse_hw_scan_params *
 }
 
 /**
- * hw_scan_initialise_channel_and_power_lists - Initialise channel and power lists for HW scan
+ * hw_scan_initalise_channel_and_power_lists - Initialise channel and power lists for HW scan
  *
  * @params: HW scan params
- * @chans: Channels list to initialise
- * @n_channels: Number of channels in the channel list
  * Return: 0 if success, otherwise error code
  */
-static int hw_scan_initialise_channel_and_power_lists(struct morse_hw_scan_params *params,
-						     struct ieee80211_channel **chans,
-						     u32 n_channels)
+static int hw_scan_initalise_channel_and_power_lists(struct morse_hw_scan_params *params,
+						     struct cfg80211_scan_request *request)
 {
 	int i, j;
+	struct ieee80211_channel **chans = request->channels;
 	int num_pwrs_coarse = 0;
 	int last_pwr = INT_MIN;
 	int chans_to_allocate = 0;
@@ -688,7 +479,7 @@ static int hw_scan_initialise_channel_and_power_lists(struct morse_hw_scan_param
 	MORSE_WARN_ON(FEATURE_ID_HWSCAN, params->powers_qdbm);
 
 	/* Determine how many channels to allocate for */
-	for (i = 0; i < n_channels; i++) {
+	for (i = 0; i < request->n_channels; i++) {
 		const struct morse_dot11ah_channel *chan = morse_dot11ah_5g_chan_to_s1g(chans[i]);
 		int op_bw;
 
@@ -712,7 +503,7 @@ static int hw_scan_initialise_channel_and_power_lists(struct morse_hw_scan_param
 		return -ENOMEM;
 	params->allocated_chans = chans_to_allocate;
 
-	for (i = 0; i < n_channels; i++) {
+	for (i = 0; i < request->n_channels; i++) {
 		const struct morse_dot11ah_channel *chan = morse_dot11ah_5g_chan_to_s1g(chans[i]);
 
 		if (!chan)
@@ -781,22 +572,17 @@ static void hw_scan_clean_up_params(struct morse_hw_scan_params *params)
 	params->allocated_chans = 0;
 }
 
-size_t morse_hw_scan_get_command_size(struct morse_hw_scan_params *params,
-				      struct cfg80211_sched_scan_request *sched_req)
+size_t morse_hw_scan_get_command_size(struct morse_hw_scan_params *params)
 {
 	struct hw_scan_tlv_channel_list *ch_list;
 	struct hw_scan_tlv_power_list *pwr_list;
 	struct hw_scan_tlv_probe_req *probe_req;
 	struct hw_scan_tlv_dwell_on_home *dwell;
-	struct hw_scan_tlv_scheduled *scheduled;
-	struct hw_scan_tlv_scheduled_scan_info *sched_scan_info;
-	struct hw_scan_tlv_filters *filters;
-	struct morse_cmd_req_hw_scan *req;
-	size_t cmd_size = sizeof(*req);
+	struct morse_cmd_hw_scan_req *cmd;
+	size_t cmd_size = sizeof(*cmd);
 
 	/* No TLVs if simple abort command */
-	if (params->operation != MORSE_HW_SCAN_OP_START &&
-			params->operation != MORSE_HW_SCAN_OP_SCHED_START)
+	if (!params->start)
 		return cmd_size;
 
 	cmd_size += struct_size(ch_list, channels, params->num_chans);
@@ -808,31 +594,10 @@ size_t morse_hw_scan_get_command_size(struct morse_hw_scan_params *params,
 	if (params->dwell_on_home_ms)
 		cmd_size += sizeof(*dwell);
 
-	/** Add tlv size for scheduled scan requests if provided */
-	if (!sched_req)
-		return cmd_size;
-
-	cmd_size += sizeof(*sched_scan_info);
-
-	if (sched_req->match_sets)
-		cmd_size += struct_size(filters, match_sets, sched_req->n_match_sets);
-	if (sched_req->scan_plans)
-		cmd_size += struct_size(scheduled, plan, sched_req->n_scan_plans);
-
 	return cmd_size;
 }
 
-/**
- * morse_hw_scan_insert_tlvs - Insert tlv data into a buffer. Use morse_hw_scan_get_command_size
- *				to appropriately size the buffer.
- *
- * @params: hw scan params
- * @buf: buffer to add the tlv data to
- * @sched_req: scheduled scan request. Null if not available
- * Return: buf
- */
-u8 *morse_hw_scan_insert_tlvs(struct morse_hw_scan_params *params, u8 *buf,
-			      struct cfg80211_sched_scan_request *sched_req)
+u8 *morse_hw_scan_insert_tlvs(struct morse_hw_scan_params *params, u8 *buf)
 {
 	buf = hw_scan_add_channel_list_tlv(buf, params);
 
@@ -844,68 +609,68 @@ u8 *morse_hw_scan_insert_tlvs(struct morse_hw_scan_params *params, u8 *buf,
 	if (params->probe_req)
 		buf = hw_scan_add_probe_req_tlv(buf, params);
 
-	/** Add scheduled scan specific tlvs if available */
-	if (!sched_req)
-		return buf;
-
-	buf = hw_scan_add_scheduled_params_tlv(buf, params, sched_req);
-
-	if (sched_req->match_sets)
-		buf = hw_scan_add_filter_tlv(buf, params, sched_req);
-
-	if (sched_req->scan_plans)
-		buf = hw_scan_add_scheduled_tlv(buf, params, sched_req);
-
 	return buf;
 }
 
-/**
- * morse_hw_scan_print_tlv_filters - Print all the match sets in a hw_scan_tlv_filters.
- * @num_filters: Number of filters in the filters TLV
- * @filters: Pointer to a packed hw scan filter TLV
- */
-static void morse_hw_scan_print_tlv_filters(struct morse *mors, int num_filters,
-			const struct hw_scan_tlv_filters *filters)
+void morse_hw_scan_dump_scan_cmd(struct morse *mors, struct morse_cmd_hw_scan_req *cmd)
 {
 	int i;
-	const struct hw_scan_match_set *ms;
+	int num_chans;
+	int enabled = (cmd->flags & MORSE_HW_SCAN_CMD_FLAGS_START) ? 1 :
+			(cmd->flags & MORSE_HW_SCAN_CMD_FLAGS_ABORT) ? 0 : -1;
+	struct hw_scan_tlv_hdr *tlv;
+	struct hw_scan_tlv_channel_list *ch_list = NULL;
+	struct hw_scan_tlv_power_list *pwr_list = NULL;
+	struct hw_scan_tlv_dwell_on_home *home_dwell = NULL;
+	struct hw_scan_tlv_probe_req *probe = NULL;
 
-	if (!filters)
+	u8 *end = ((u8 *)cmd) + cmd->hdr.len + sizeof(cmd->hdr);
+
+	/* if no logs, just return */
+	if (!morse_log_is_enabled(FEATURE_ID_HWSCAN, MORSE_MSG_INFO))
 		return;
 
-	MORSE_HWSCAN_DBG(mors, "Filters:\n");
+	MORSE_HWSCAN_INFO(mors, "hw scan: %s",
+		enabled == 1 ? "start" : enabled == 0 ? "abort" : "N/A");
 
-	for (i = 0; i < num_filters; i++) {
-		ms = &filters->match_sets[i];
-		MORSE_HWSCAN_DBG(mors, "filter [%d]:", i);
-		MORSE_HWSCAN_DBG(mors, "    rssi threshold: %d\n",
-				 le32_to_cpu(ms->rssi_thresholds));
-		MORSE_HWSCAN_DBG(mors, "    bssid: %pM\n", ms->bssid);
-		MORSE_HWSCAN_DBG(mors, "    ssid length: %u\n", ms->ssid_len);
-		MORSE_HWSCAN_DBG(mors, "    ssid: %.*s\n", ms->ssid_len, ms->ssid);
+	if (enabled != 1)
+		return;
+
+	if (cmd->flags & MORSE_HW_SCAN_CMD_FLAGS_SURVEY)
+		MORSE_HWSCAN_DBG(mors, "    survey: y\n");
+
+	tlv = (struct hw_scan_tlv_hdr *)cmd->variable;
+	while (((u8 *)tlv) < end) {
+		if (tlv->tag == HW_SCAN_TLV_TAG_CHAN_LIST)
+			ch_list = (struct hw_scan_tlv_channel_list *)tlv;
+		else if (tlv->tag == HW_SCAN_TLV_TAG_POWER_LIST)
+			pwr_list = (struct hw_scan_tlv_power_list *)tlv;
+		else if (tlv->tag == HW_SCAN_TLV_TAG_DWELL_ON_HOME)
+			home_dwell = (struct hw_scan_tlv_dwell_on_home *)tlv;
+		else if (tlv->tag == HW_SCAN_TLV_TAG_PROBE_REQ)
+			probe = (struct hw_scan_tlv_probe_req *)tlv;
+
+		tlv = (struct hw_scan_tlv_hdr *)(((u8 *)tlv) + tlv->len + sizeof(tlv));
 	}
-}
 
-/**
- * print_hw_scan_tlv_channels - Print all the channels in a hw_scan_tlv_channel_list.
- * @num_chans: Number of channels in the channels list
- * @chan_list: Pointer to a packed hw scan channel list TLV
- * @pwr_list: Pointer to a packed hw scan power list TLV
- */
-static void morse_hw_scan_print_tlv_channels_and_power(struct morse *mors, int num_chans,
-				const struct hw_scan_tlv_channel_list *ch_list,
-				const struct hw_scan_tlv_power_list *pwr_list)
-{
-	int i;
+	MORSE_HWSCAN_DBG(mors, "    mode: %s\n", (probe) ? "active" : "passive");
+	MORSE_HWSCAN_DBG(mors, "    dwell: %u ms\n", le32_to_cpu(cmd->dwell_time_ms));
+	MORSE_HWSCAN_DBG(mors, "    home dwell: %u ms\n",
+		(home_dwell) ? home_dwell->home_dwell_time_ms : 0);
+
+	if (ch_list)
+		num_chans = ch_list->hdr.len / sizeof(ch_list->channels[0]);
+	else
+		num_chans = 0;
+	MORSE_HWSCAN_DBG(mors, "    channels: %u\n", num_chans);
 
 	if (!num_chans || !ch_list)
 		return;
 
-	MORSE_HWSCAN_DBG(mors, "Channels:\n");
 	for (i = 0; i < num_chans; i++) {
 		u32 packed_chan = le32_to_cpu(ch_list->channels[i]);
 
-		MORSE_HWSCAN_DBG(mors, "    [%d] : f:%lu o:%d p:%d i:%ld power:%d mBm\n", i,
+		MORSE_HWSCAN_DBG(mors, "[%d] : f:%lu o:%d p:%d i:%ld power:%d mBm\n", i,
 			BMGET(packed_chan, HW_SCAN_CH_LIST_FREQ_KHZ),
 			morse_ratecode_bw_index_to_s1g_bw_mhz(BMGET(packed_chan,
 					HW_SCAN_CH_LIST_OP_BW)),
@@ -917,152 +682,44 @@ static void morse_hw_scan_print_tlv_channels_and_power(struct morse *mors, int n
 	}
 }
 
-/**
- * morse_hw_scan_print_tlv_scheduled - Print all the schedules sets in a hw_scan_tlv_scheduled.
- * @num_sched: Number of schedules in the scheduled TLV
- * @sched: Pointer to a packed hw scan scheduled TLV
- */
-static void morse_hw_scan_print_tlv_scheduled(struct morse *mors, int num_sched,
-				const struct hw_scan_tlv_scheduled *sched)
+int morse_ops_hw_scan(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+			struct ieee80211_scan_request *hw_req)
 {
-	int i;
+	int ret = 0;
+	struct morse *mors = hw->priv;
+	struct cfg80211_scan_request *req = &hw_req->req;
+	struct morse_hw_scan_params *params;
+	u32 timeout_ms;
 
-	if (!sched)
-		return;
+	mutex_lock(&mors->lock);
 
-	MORSE_HWSCAN_DBG(mors, "Schedules:\n");
-	for (i = 0; i < num_sched; i++) {
-		MORSE_HWSCAN_DBG(mors, "    [%d], interval:%d, iterations:%d\n", i,
-				sched->plan[i].interval,
-				sched->plan[i].iterations);
-	}
-}
+	MORSE_HWSCAN_DBG(mors, "%s: state %d\n", __func__, mors->hw_scan.state);
 
-void morse_hw_scan_dump_scan_cmd(struct morse *mors, struct morse_cmd_req_hw_scan *req)
-{
-	int num_chans;
-	int num_sched;
-	int num_filter;
-	u32 flags = le32_to_cpu(req->flags);
-	int enabled = (flags & MORSE_CMD_HW_SCAN_FLAGS_START) ? 1 :
-			(flags & MORSE_CMD_HW_SCAN_FLAGS_ABORT) ? 0 : -1;
-	int sched_enabled = (flags & MORSE_CMD_HW_SCAN_FLAGS_SCHED_START) ? 1 :
-			(flags & MORSE_CMD_HW_SCAN_FLAGS_SCHED_STOP) ? 0 : -1;
-	struct hw_scan_tlv_hdr *tlv;
-	struct hw_scan_tlv_channel_list *ch_list = NULL;
-	struct hw_scan_tlv_power_list *pwr_list = NULL;
-	struct hw_scan_tlv_dwell_on_home *home_dwell = NULL;
-	struct hw_scan_tlv_probe_req *probe = NULL;
-	struct hw_scan_tlv_filters *filter = NULL;
-	struct hw_scan_tlv_scheduled *sched = NULL;
-	struct hw_scan_tlv_scheduled_scan_info *sched_params = NULL;
-
-	u8 *end = ((u8 *)req) + le16_to_cpu(req->hdr.len) + sizeof(req->hdr);
-
-	/* if no logs, just return */
-	if (!morse_log_is_enabled(FEATURE_ID_HWSCAN, MORSE_MSG_INFO))
-		return;
-
-	MORSE_HWSCAN_INFO(mors, "hw scan: %s",
-		enabled == 1 ? "start" : enabled == 0 ? "abort" : "N/A");
-
-	MORSE_HWSCAN_INFO(mors, "scheduled scan: %s",
-		sched_enabled == 1 ? "start" : sched_enabled == 0 ? "abort" : "N/A");
-
-	if (enabled != 1 && sched_enabled != 1)
-		return;
-
-	if (flags & MORSE_CMD_HW_SCAN_FLAGS_SURVEY)
-		MORSE_HWSCAN_DBG(mors, "    survey: y\n");
-
-	tlv = (struct hw_scan_tlv_hdr *)req->variable;
-	while (((u8 *)tlv) < end) {
-		u16 tag = le16_to_cpu(tlv->tag);
-
-		if (tag == MORSE_CMD_HW_SCAN_TLV_TAG_CHAN_LIST)
-			ch_list = (struct hw_scan_tlv_channel_list *)tlv;
-		else if (tag == MORSE_CMD_HW_SCAN_TLV_TAG_POWER_LIST)
-			pwr_list = (struct hw_scan_tlv_power_list *)tlv;
-		else if (tag == MORSE_CMD_HW_SCAN_TLV_TAG_DWELL_ON_HOME)
-			home_dwell = (struct hw_scan_tlv_dwell_on_home *)tlv;
-		else if (tag == MORSE_CMD_HW_SCAN_TLV_TAG_PROBE_REQ)
-			probe = (struct hw_scan_tlv_probe_req *)tlv;
-		else if (tag == MORSE_CMD_HW_SCAN_TLV_TAG_FILTER)
-			filter = (struct hw_scan_tlv_filters *)tlv;
-		else if (tag == MORSE_CMD_HW_SCAN_TLV_TAG_SCHED)
-			sched = (struct hw_scan_tlv_scheduled *)tlv;
-		else if (tag == MORSE_CMD_HW_SCAN_TLV_TAG_SCHED_PARAMS)
-			sched_params = (struct hw_scan_tlv_scheduled_scan_info *)tlv;
-
-		tlv = (struct hw_scan_tlv_hdr *)(((u8 *)tlv) + le16_to_cpu(tlv->len) + sizeof(tlv));
+	if (!mors->started) {
+		MORSE_HWSCAN_WARN(mors, "%s: device not ready yet\n", __func__);
+		ret = -ENODEV;
+		goto exit;
 	}
 
-	MORSE_HWSCAN_DBG(mors, "    mode: %s\n", (probe) ? "active" : "passive");
-	MORSE_HWSCAN_DBG(mors, "    dwell: %u ms\n", le32_to_cpu(req->dwell_time_ms));
-	MORSE_HWSCAN_DBG(mors, "    home dwell: %u ms\n",
-		(home_dwell) ? home_dwell->home_dwell_time_ms : 0);
-
-	if (sched_params) {
-		MORSE_HWSCAN_DBG(mors, "    sched delay: %u ms\n",
-			le32_to_cpu(sched_params->delay));
-		MORSE_HWSCAN_DBG(mors, "    sched min rssi: %d\n",
-			le32_to_cpu(sched_params->min_rssi_thold));
+	switch (mors->hw_scan.state) {
+	case HW_SCAN_STATE_IDLE:
+		mors->hw_scan.state = HW_SCAN_STATE_RUNNING;
+		reinit_completion(&mors->hw_scan.scan_done);
+		break;
+	case HW_SCAN_STATE_RUNNING:
+	case HW_SCAN_STATE_ABORTING:
+		ret = -EBUSY;
+		goto exit;
 	}
 
-	if (ch_list)
-		num_chans = le16_to_cpu(ch_list->hdr.len) / sizeof(ch_list->channels[0]);
-	else
-		num_chans = 0;
-	MORSE_HWSCAN_DBG(mors, "    channels: %u\n", num_chans);
+	params = mors->hw_scan.params;
 
-	if (sched)
-		num_sched = le16_to_cpu(sched->hdr.len) / sizeof(sched->plan[0]);
-	else
-		num_sched = 0;
-	MORSE_HWSCAN_DBG(mors, "    schedules: %u\n", num_sched);
-
-	if (filter)
-		num_filter = le16_to_cpu(filter->hdr.len) / sizeof(filter->match_sets[0]);
-	else
-		num_filter = 0;
-	MORSE_HWSCAN_DBG(mors, "    filters: %u\n", num_sched);
-
-	if (!num_chans || !ch_list)
-		return;
-
-	morse_hw_scan_print_tlv_channels_and_power(mors, num_chans, ch_list, pwr_list);
-
-	if (sched)
-		morse_hw_scan_print_tlv_scheduled(mors, num_sched, sched);
-
-	if (filter)
-		morse_hw_scan_print_tlv_filters(mors, num_filter, filter);
-}
-
-/**
- * morse_hw_scan_get_dwell_on_home - Get the currently configured dwell on home time
- * @mors: Morse chip struct
- * @vif: The interface pointer to check
- */
-static u32 morse_hw_scan_get_dwell_on_home(struct morse *mors, struct ieee80211_vif *vif)
-{
-	if (vif->type == NL80211_IFTYPE_STATION && morse_mac_is_sta_vif_associated(vif))
-		return mors->hw_scan.home_dwell_ms;
-	return 0;
-}
-
-static int morse_init_hw_scan_params(struct morse *mors, struct ieee80211_hw *hw,
-				     struct ieee80211_vif *vif)
-{
-	struct morse_hw_scan_params *params = mors->hw_scan.params;
-
-	lockdep_assert_held(&mors->lock);
 	if (!params) {
 		params = kzalloc(sizeof(*params), GFP_KERNEL);
-
 		if (!params) {
+			ret = -ENOMEM;
 			mors->hw_scan.state = HW_SCAN_STATE_IDLE;
-			return -ENOMEM;
+			goto exit;
 		}
 
 		mors->hw_scan.params = params;
@@ -1073,58 +730,6 @@ static int morse_init_hw_scan_params(struct morse *mors, struct ieee80211_hw *hw
 
 	params->hw = hw;
 	params->vif = vif;
-
-	return 0;
-}
-
-int morse_ops_hw_scan(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
-			struct ieee80211_scan_request *hw_req)
-{
-	int ret = 0;
-	struct morse *mors = hw->priv;
-	struct cfg80211_scan_request *req = &hw_req->req;
-	struct morse_hw_scan_params *params;
-	struct ieee80211_channel **chans = hw_req->req.channels;
-	u32 timeout_ms;
-
-	mutex_lock(&mors->lock);
-
-	MORSE_HWSCAN_DBG(mors, "%s: state %d\n", __func__, mors->hw_scan.state);
-
-	if (!mors->started) {
-		MORSE_HWSCAN_WARN(mors, "%s: device not ready\n", __func__);
-		ret = -ENODEV;
-		goto exit;
-	}
-
-	switch (mors->hw_scan.state) {
-	case HW_SCAN_STATE_SCHED:
-		/* Stop any running scheduled scan before proceeding with a hw scan as they have a
-		 * higher priority. Userspace applications can restart scheduled scans if
-		 * appropiate.
-		 */
-		mutex_unlock(&mors->lock);
-		morse_hw_stop_sched_scan(mors, false);
-		mutex_lock(&mors->lock);
-		mors->hw_scan.state = HW_SCAN_STATE_RUNNING;
-		break;
-	case HW_SCAN_STATE_IDLE:
-		mors->hw_scan.state = HW_SCAN_STATE_RUNNING;
-		reinit_completion(&mors->hw_scan.scan_done);
-		break;
-	case HW_SCAN_STATE_RUNNING:
-	case HW_SCAN_STATE_ABORTING:
-	case HW_SCAN_STATE_SCHED_STOPPING:
-		ret = -EBUSY;
-		goto exit;
-	}
-
-	ret = morse_init_hw_scan_params(mors, hw, vif);
-	if (ret)
-		goto exit;
-
-	params = mors->hw_scan.params;
-
 	params->has_directed_ssid = (req->ssids && req->ssids[0].ssid_len > 0);
 
 	if (req->duration)
@@ -1134,16 +739,15 @@ int morse_ops_hw_scan(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 	else
 		params->dwell_time_ms = MORSE_HWSCAN_DEFAULT_DWELL_TIME_MS;
 
-	params->operation = MORSE_HW_SCAN_OP_START;
-
+	params->start = true;
 	/* We only care about survey records when doing ACS / AP things */
 	params->survey = (vif->type == NL80211_IFTYPE_AP);
 	/* Return to home between scan channels to allow traffic to still flow */
-	params->dwell_on_home_ms = morse_hw_scan_get_dwell_on_home(mors, vif);
-
+	params->dwell_on_home_ms = ((vif->type == NL80211_IFTYPE_STATION) &&
+		morse_mac_is_sta_vif_associated(vif)) ?	MORSE_HWSCAN_DEFAULT_DWELL_ON_HOME_MS : 0;
 	params->use_1mhz_probes = morse_mac_is_1mhz_probe_req_enabled();
 
-	hw_scan_initialise_channel_and_power_lists(params, chans, hw_req->req.n_channels);
+	hw_scan_initalise_channel_and_power_lists(params, &hw_req->req);
 
 	/* Only initialise the probe request template if this is an active scan */
 	if (req->n_ssids > 0) {
@@ -1152,7 +756,7 @@ int morse_ops_hw_scan(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 			MORSE_HWSCAN_ERR(mors, "Failed to init probe req %d\n", ret);
 	}
 
-	ret = morse_cmd_hw_scan(mors, params, false, NULL);
+	ret = morse_cmd_hw_scan(mors, params, false);
 
 	if (ret) {
 		mors->hw_scan.state = HW_SCAN_STATE_IDLE;
@@ -1162,8 +766,6 @@ int morse_ops_hw_scan(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 	timeout_ms = params->dwell_time_ms + params->dwell_on_home_ms;
 	if (params->probe_req)
 		timeout_ms += MORSE_HWSCAN_PROBE_DELAY_MS;
-	if (params->survey)
-		timeout_ms += MORSE_HWSCAN_SURVEY_DELAY_MS;
 	timeout_ms *= params->num_chans;
 	timeout_ms += MORSE_HWSCAN_TIMEOUT_OVERHEAD_MS;
 	MORSE_HWSCAN_DBG(mors, "%s: expecting scan to complete in %u ms\n", __func__, timeout_ms);
@@ -1189,9 +791,6 @@ static void cancel_hw_scan(struct morse *mors)
 
 	switch (mors->hw_scan.state) {
 	case HW_SCAN_STATE_IDLE:
-	case HW_SCAN_STATE_SCHED:
-	case HW_SCAN_STATE_SCHED_STOPPING:
-		/* sched scan running ignore request */
 	case HW_SCAN_STATE_ABORTING:
 		/* scan not running */
 		mutex_unlock(&mors->lock);
@@ -1201,15 +800,14 @@ static void cancel_hw_scan(struct morse *mors)
 		break;
 	}
 
-	params.operation = MORSE_HW_SCAN_OP_STOP;
-
-	ret = morse_cmd_hw_scan(mors, &params, false, NULL);
+	params.start = false;
+	ret = morse_cmd_hw_scan(mors, &params, false);
 
 	mutex_unlock(&mors->lock);
 
 	if (ret ||
-	    !mors->started ||
-	    !wait_for_completion_timeout(&mors->hw_scan.scan_done, 1 * HZ)) {
+		!mors->started ||
+		!wait_for_completion_timeout(&mors->hw_scan.scan_done, 1 * HZ)) {
 		/* We may have lost the event on the bus, the chip could be wedged, or the cmd
 		 * failed for another reason.
 		 * Nevertheless, we should call the done event so mac80211 knows to unblock itself
@@ -1249,16 +847,6 @@ void morse_hw_scan_done_event(struct ieee80211_hw *hw)
 	case HW_SCAN_STATE_IDLE:
 		/* Scan has already been stopped. Just continue */
 		goto exit;
-
-	case HW_SCAN_STATE_SCHED_STOPPING:
-		/* A scheduled scan has finished */
-		mors->hw_scan.state = HW_SCAN_STATE_IDLE;
-		goto exit;
-	case HW_SCAN_STATE_SCHED:
-		/* Scheduled scan stopped without request, let mac80211 know */
-		mors->hw_scan.state = HW_SCAN_STATE_IDLE;
-		ieee80211_sched_scan_stopped(mors->hw);
-		goto exit;
 	case HW_SCAN_STATE_RUNNING:
 	case HW_SCAN_STATE_ABORTING:
 		mors->hw_scan.state = HW_SCAN_STATE_IDLE;
@@ -1284,7 +872,6 @@ void morse_hw_scan_init(struct morse *mors)
 {
 	mors->hw_scan.state = HW_SCAN_STATE_IDLE;
 	mors->hw_scan.params = NULL;
-	mors->hw_scan.home_dwell_ms = MORSE_HWSCAN_DEFAULT_DWELL_ON_HOME_MS;
 
 	init_completion(&mors->hw_scan.scan_done);
 	INIT_DELAYED_WORK(&mors->hw_scan.timeout, morse_hw_scan_timeout_work);
@@ -1299,17 +886,6 @@ void morse_hw_scan_destroy(struct morse *mors)
 	mors->hw_scan.params = NULL;
 }
 
-void morse_hw_sched_scan_finish(struct morse *mors)
-{
-	lockdep_assert_held(&mors->lock);
-	if (mors->hw_scan.state != HW_SCAN_STATE_SCHED)
-		return;
-
-	ieee80211_sched_scan_stopped(mors->hw);
-	complete(&mors->hw_scan.scan_done);
-	mors->hw_scan.state = HW_SCAN_STATE_IDLE;
-}
-
 void morse_hw_scan_finish(struct morse *mors)
 {
 	struct cfg80211_scan_info info = {
@@ -1317,156 +893,11 @@ void morse_hw_scan_finish(struct morse *mors)
 	};
 	lockdep_assert_held(&mors->lock);
 
-	if (mors->hw_scan.state == HW_SCAN_STATE_IDLE || mors->hw_scan.state == HW_SCAN_STATE_SCHED)
+	if (mors->hw_scan.state == HW_SCAN_STATE_IDLE)
 		return;
 
 	ieee80211_scan_completed(mors->hw, &info);
 	complete(&mors->hw_scan.scan_done);
 	mors->hw_scan.state = HW_SCAN_STATE_IDLE;
 	cancel_delayed_work_sync(&mors->hw_scan.timeout);
-}
-
-void morse_sched_scan_results_evt(struct ieee80211_hw *hw)
-{
-	struct morse *mors = hw->priv;
-
-	MORSE_HWSCAN_INFO(mors, "hw scan: scheduled scan results available\n");
-	ieee80211_sched_scan_results(hw);
-}
-
-int morse_ops_sched_scan_start(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
-			struct cfg80211_sched_scan_request *req,
-			struct ieee80211_scan_ies *ies)
-{
-	int ret = 0;
-	struct morse *mors = hw->priv;
-	struct morse_hw_scan_params *params;
-	struct ieee80211_channel **chans = req->channels;
-
-	mutex_lock(&mors->lock);
-
-	MORSE_HWSCAN_DBG(mors, "%s: state %d\n", __func__, mors->hw_scan.state);
-
-	if (!mors->started) {
-		MORSE_HWSCAN_WARN(mors, "%s: device not ready\n", __func__);
-		ret = -ENODEV;
-		goto exit;
-	}
-
-	switch (mors->hw_scan.state) {
-	case HW_SCAN_STATE_IDLE:
-		mors->hw_scan.state = HW_SCAN_STATE_SCHED;
-		reinit_completion(&mors->hw_scan.scan_done);
-		break;
-	case HW_SCAN_STATE_SCHED:
-	case HW_SCAN_STATE_RUNNING:
-		ret = -EBUSY;
-		goto exit;
-	case HW_SCAN_STATE_ABORTING:
-	case HW_SCAN_STATE_SCHED_STOPPING:
-		ret = -EBUSY;
-		goto exit;
-	}
-
-	ret = morse_init_hw_scan_params(mors, hw, vif);
-	if (ret)
-		goto exit;
-
-	params = mors->hw_scan.params;
-	params->has_directed_ssid = (req->ssids && req->ssids[0].ssid_len > 0);
-
-	/* Scheduled scans do not provide a dwell time - use the default values */
-	if (req->n_ssids == 0)
-		params->dwell_time_ms = MORSE_HWSCAN_DEFAULT_PASSIVE_DWELL_TIME_MS;
-	else
-		params->dwell_time_ms = MORSE_HWSCAN_DEFAULT_DWELL_TIME_MS;
-
-	params->operation = MORSE_HW_SCAN_OP_SCHED_START;
-
-	/* We only care about survey records when doing ACS / AP things */
-	params->survey = (vif->type == NL80211_IFTYPE_AP);
-	/* Return to home between scan channels to allow traffic to still flow */
-	params->dwell_on_home_ms = morse_hw_scan_get_dwell_on_home(mors, vif);
-
-	params->use_1mhz_probes = morse_mac_is_1mhz_probe_req_enabled();
-
-	hw_scan_initialise_channel_and_power_lists(params, chans, req->n_channels);
-
-	/* Only initialise the probe request template if this is an active scan */
-	if (req->n_ssids > 0) {
-		ret = sched_scan_initialise_probe_req(params, req, ies);
-		if (ret)
-			MORSE_HWSCAN_ERR(mors, "Failed to init probe req %d\n", ret);
-	}
-
-	ret = morse_cmd_hw_scan(mors, params, true, req);
-
-	if (ret) {
-		mors->hw_scan.state = HW_SCAN_STATE_IDLE;
-		goto exit;
-	}
-
-	morse_survey_init_usage_records(mors);
-
-exit:
-	mutex_unlock(&mors->lock);
-
-	return ret;
-}
-
-void morse_hw_stop_sched_scan(struct morse *mors, bool requested)
-{
-	struct morse_hw_scan_params params = {0};
-	int ret;
-
-	mutex_lock(&mors->lock);
-
-	MORSE_HWSCAN_DBG(mors, "%s: state %d\n", __func__, mors->hw_scan.state);
-
-	switch (mors->hw_scan.state) {
-	case HW_SCAN_STATE_IDLE:
-	case HW_SCAN_STATE_RUNNING:
-	case HW_SCAN_STATE_ABORTING:
-	case HW_SCAN_STATE_SCHED_STOPPING:
-		/* scan not running */
-		mutex_unlock(&mors->lock);
-		return;
-	case HW_SCAN_STATE_SCHED:
-		break;
-	}
-
-	mors->hw_scan.state = HW_SCAN_STATE_SCHED_STOPPING;
-	params.operation = MORSE_HW_SCAN_OP_SCHED_STOP;
-
-	ret = morse_cmd_hw_scan(mors, &params, false, NULL);
-
-	mutex_unlock(&mors->lock);
-
-	if (ret ||
-	    !mors->started ||
-	    !wait_for_completion_timeout(&mors->hw_scan.scan_done, 1 * HZ)) {
-		/* We may have lost the event on the bus, the chip could be wedged, or the cmd
-		 * failed for another reason.
-		 * Nevertheless, we should return early so mac80211 knows to unblock itself
-		 */
-		mutex_lock(&mors->lock);
-		mors->hw_scan.state = HW_SCAN_STATE_IDLE;
-		mutex_unlock(&mors->lock);
-	}
-
-	/* If we weren't requested to stop let mac80211 know that we have */
-	if (!requested) {
-		mutex_lock(&mors->lock);
-		ieee80211_sched_scan_stopped(mors->hw);
-		mutex_unlock(&mors->lock);
-	}
-}
-
-int morse_ops_sched_scan_stop(struct ieee80211_hw *hw, struct ieee80211_vif *vif)
-{
-	struct morse *mors = hw->priv;
-
-	MORSE_HWSCAN_INFO(mors, "sched scan stopped\n");
-	morse_hw_stop_sched_scan(mors, true);
-	return 0;
 }

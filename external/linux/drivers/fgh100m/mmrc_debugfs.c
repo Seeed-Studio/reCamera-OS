@@ -1,7 +1,5 @@
 /*
- * Copyright 2022 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Morse Micro.
  *
  */
 
@@ -13,29 +11,12 @@
 #include "debug.h"
 #include "mmrc-submodule/src/core/mmrc.h"
 
-struct station_stats_iter {
-	const struct ieee80211_vif *on_vif;
-	struct seq_file *file;
-};
-
-static void morse_print_station_stats(void *data, struct ieee80211_sta *sta)
+static void morse_print_station_stats(struct morse_sta *msta, struct seq_file *file)
 {
-	struct station_stats_iter *iter_data = data;
-	struct seq_file *file = iter_data->file;
 	u32 last_tx_rate_kbps;
 	u32 last_rx_rate_kbps;
-	struct morse_sta *msta = (struct morse_sta *)sta->drv_priv;
-	struct morse_skb_rx_status *status;
+	struct morse_skb_rx_status *status = &msta->last_rx.data_status;
 
-	if (!msta) {
-		MORSE_WARN_ON(FEATURE_ID_DEFAULT, 1);
-		return;
-	}
-
-	if (msta->vif != iter_data->on_vif)
-		return;
-
-	status = &msta->last_rx.data_status;
 	if (!msta->last_rx.is_data_set) {
 		seq_printf(file, "Mesh Peer link %pM (rc unknown)\n", msta->addr);
 		return;
@@ -80,16 +61,24 @@ static int mesh_stats_read(struct seq_file *file, void *data)
 
 	for (vif_id = 0; vif_id < mors->max_vifs; vif_id++) {
 		struct ieee80211_vif *vif = morse_get_vif_from_vif_id(mors, vif_id);
-		struct station_stats_iter iter_data = {
-			.on_vif = vif,
-			.file = file,
-		};
+		struct list_head *morse_sta_list;
+		struct list_head *pos;
+		struct morse_vif *mors_vif;
 
 		if (!vif || vif->type != NL80211_IFTYPE_MESH_POINT)
 			continue;
 
+		mors_vif = ieee80211_vif_to_morse_vif(vif);
+		morse_sta_list = &mors_vif->ap->stas;
+
 		seq_printf(file, "%s: Peer Stats\n", morse_vif_name(vif));
-		ieee80211_iterate_stations_atomic(mors->hw, morse_print_station_stats, &iter_data);
+		rcu_read_lock();
+		list_for_each(pos, morse_sta_list) {
+			struct morse_sta *msta = list_entry(pos, struct morse_sta, list);
+
+			morse_print_station_stats(msta, file);
+		}
+		rcu_read_unlock();
 	}
 	return 0;
 }
@@ -101,21 +90,10 @@ static int stats_read(struct seq_file *file, void *data)
 	struct mmrc_table *tb;
 	const struct mmrc_stats_table *rate_stats;
 	struct mmrc_rate ratei;
-	u16 i, col_idx, bw;
+	u16 i, bw;
 	u32 total_sent_packets = 0;
 	u16 caps_size;
 	u32 avg_throughput;
-
-	const char *const header[] = {
-		"                     --------------Rate--------------", "  Throughput",
-		" Probability", " ---------Last---------", " ---------Total---------",
-		" ----MPDU-----"
-	};
-	const char *const cols[] = {
-		" BW  ", "Guard", "Evidence", "Selection", "MCS  ", "SS", "Index", "Airtime",
-		" Max ", " Avg ", "    Average", "Retry", "Success", " Attempt", "    Success",
-		"    Attempt", "Success", " Fail"
-	};
 
 	spin_lock_bh(&mors->mrc.lock);
 	list_for_each(pos, &mors->mrc.stas) {
@@ -125,18 +103,13 @@ static int stats_read(struct seq_file *file, void *data)
 		tb = mrc_sta->tb;
 		caps_size = rows_from_sta_caps(&tb->caps);
 
-		seq_puts(file, "\nMorse Micro S1G RC Algorithm Statistics\n");
-		seq_printf(file, "Peer: %pM\n", sta->addr);
-
-		for (i = 0; i < ARRAY_SIZE(header); i++)
-			seq_printf(file, "%s", header[i]);
-		seq_puts(file, "\n");
-		for (i = 0; i < ARRAY_SIZE(cols); i++)
-			seq_printf(file, "%s ", cols[i]);
-		seq_puts(file, "\n");
-
+		seq_puts(file, "\nMorse Micro S1G RC Algorithm Statistics:\n");
+		seq_printf(file, "Peer %pM\n", sta->addr);
+		seq_puts(file,
+			 "   bw   guard evid rate_sel mcs#/ss index airtime TP(max)  TP(avg) ");
+		seq_puts(file,
+			 "prob last_rty last_suc last_att  tot_suc  tot_att mpdu_suc mpdu_fail\n");
 		for (i = 0; i < caps_size; i++) {
-			col_idx = 0;
 			ratei = get_rate_row(tb, i);
 			if (!validate_rate(tb, &ratei) || i != ratei.index)
 				continue;
@@ -146,58 +119,54 @@ static int stats_read(struct seq_file *file, void *data)
 			bw = ratei.bw == MMRC_BW_2MHZ ? 2 :
 			    ratei.bw == MMRC_BW_4MHZ ? 4 :
 			    ratei.bw == MMRC_BW_8MHZ ? 8 : ratei.bw == MMRC_BW_16MHZ ? 16 : 1;
-			seq_printf(file, "%2uMHz ", bw);
-			col_idx++;
-			seq_printf(file, "%*s ", (int)strlen(cols[col_idx++]),
-					ratei.guard == MMRC_GUARD_SHORT ? "SGI" : "LGI");
-			seq_printf(file, "%*d ", (int)strlen(cols[col_idx++]),
-					rate_stats->evidence);
+			seq_printf(file, " %2uMHz ", bw);
+			seq_printf(file, "  %cGI", ratei.guard == MMRC_GUARD_SHORT ? 'S' : 'L');
+			seq_printf(file, "   %-4d ", rate_stats->evidence);
 
 			/* Display rate selection of last update */
-			seq_printf(file, "    %c%c%c%c%c ",
-				ratei.index == tb->best_tp.index ? 'A' : ' ',
-				ratei.index == tb->second_tp.index ? 'B' : ' ',
-				ratei.index == tb->baseline.index ? 'C' : ' ',
-				ratei.index == tb->best_prob.index ? 'P' : ' ',
-				ratei.index == tb->current_lookaround_rate_index ? 'L' : ' '
-			);
-			col_idx++;
+			if (ratei.index == tb->best_tp.index)
+				seq_puts(file, "A");
+			else
+				seq_puts(file, " ");
+			if (ratei.index == tb->second_tp.index)
+				seq_puts(file, "B");
+			else
+				seq_puts(file, " ");
+			if (ratei.index == tb->baseline.index)
+				seq_puts(file, "C");
+			else
+				seq_puts(file, " ");
+			if (ratei.index == tb->best_prob.index)
+				seq_puts(file, "P");
+			else
+				seq_puts(file, " ");
+			if (ratei.index == tb->current_lookaround_rate_index)
+				seq_puts(file, "L");
+			else
+				seq_puts(file, " ");
 
-			seq_printf(file, "MCS%-2u ", ratei.rate);
-			col_idx++;
-			seq_printf(file, "%*u ", (int)strlen(cols[col_idx++]), ratei.ss + 1);
-			seq_printf(file, "%*u ", (int)strlen(cols[col_idx++]), ratei.index);
-			seq_printf(file, "%*u ", (int)strlen(cols[col_idx++]), get_tx_time(&ratei));
+			seq_printf(file, "   MCS%-2u/%1u", ratei.rate, ratei.ss + 1);
+			seq_printf(file, "%4u", ratei.index);
+			seq_printf(file, "%9u", get_tx_time(&ratei));
 
 			/* Maximum TP for this rate */
-			seq_printf(file, "%2u.%02u ",
+			seq_printf(file, "%4u.%02u",
 				   rate_stats->max_throughput / 1000000,
 				   rate_stats->max_throughput % 1000000 / 10000);
-			col_idx++;
-
 			/* Running average TP for this rate */
 			avg_throughput =
 			    rate_stats->sum_throughput / rate_stats->avg_throughput_counter;
-			seq_printf(file, "%2u.%02u ", avg_throughput / 1000000,
+			seq_printf(file, "%6u.%02u", avg_throughput / 1000000,
 				   avg_throughput % 1000000 / 10000);
-			col_idx++;
 
-			seq_printf(file, "%*u ", (int)strlen(cols[col_idx++]), rate_stats->prob);
-
-			seq_printf(file, "%*u ", (int)strlen(cols[col_idx++]),
-					rate_stats->sent - rate_stats->sent_success);
-			seq_printf(file, "%*u ", (int)strlen(cols[col_idx++]),
-					rate_stats->sent_success);
-			seq_printf(file, "%*u ", (int)strlen(cols[col_idx++]), rate_stats->sent);
-
-			seq_printf(file, "%*u ", (int)strlen(cols[col_idx++]),
-					rate_stats->total_success);
-			seq_printf(file, "%*u ", (int)strlen(cols[col_idx++]),
-					rate_stats->total_sent);
-			seq_printf(file, "%*u ", (int)strlen(cols[col_idx++]),
-					rate_stats->back_mpdu_success);
-			seq_printf(file, "%*u\n", (int)strlen(cols[col_idx++]),
-					rate_stats->back_mpdu_failure);
+			seq_printf(file, "%6u", rate_stats->prob);
+			seq_printf(file, "%7u", rate_stats->sent - rate_stats->sent_success);
+			seq_printf(file, "%9u", rate_stats->sent_success);
+			seq_printf(file, "%9u", rate_stats->sent);
+			seq_printf(file, "%11u", rate_stats->total_success);
+			seq_printf(file, "%9u", rate_stats->total_sent);
+			seq_printf(file, "%7u", rate_stats->back_mpdu_success);
+			seq_printf(file, "%9u\n", rate_stats->back_mpdu_failure);
 			total_sent_packets += rate_stats->total_sent;
 		}
 		seq_printf(file,

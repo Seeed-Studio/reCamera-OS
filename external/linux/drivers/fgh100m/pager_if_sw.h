@@ -4,8 +4,6 @@
 /*
  * Copyright 2021 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 #include "pager_if.h"
 
@@ -23,10 +21,10 @@ struct morse_pager_sw_entry {
 	u8 id:4;
 	u8 aci:4;
 	u8 flags;		/* Indicate direction of ring buffer */
-	__le16 size;		/* size of ring buffer, should be 2^N */
-	__le32 base;		/* Ring buffer base address */
-	__le32 head;		/* Ring buffer head address */
-	__le32 tail;		/* Ring buffer tail address */
+	u16 size;		/* size of ring buffer, should be 2^N */
+	u32 base;		/* Ring buffer base address */
+	u32 head;		/* Ring buffer head address */
+	u32 tail;		/* Ring buffer tail address */
 } __packed;
 
 int morse_pager_sw_read_table(struct morse *mors, struct morse_pager_sw_table *tbl_ptr);

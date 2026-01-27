@@ -1,7 +1,5 @@
 /*
  * Copyright 2022-2023 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #include <linux/timer.h>
 

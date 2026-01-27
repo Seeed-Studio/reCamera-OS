@@ -1,8 +1,6 @@
 /*
  * Copyright 2017-2023 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include <linux/module.h>
@@ -1182,7 +1180,6 @@ static void morse_spi_remove_irq(struct morse_spi *mspi)
 	struct morse *mors = spi_get_drvdata(spi);
 
 	free_irq(spi->irq, mspi);
-	spi->irq = 0;
 	gpio_free(mors->cfg->mm_spi_irq_gpio);
 }
 
@@ -1208,9 +1205,6 @@ static void morse_spi_remove(struct spi_device *spi)
 #endif
 {
 	struct morse *mors;
-	int ret;
-	bool reattach_hw = morse_hw_should_reattach();
-	bool is_hw_detached = reattach_hw;
 
 	mors = spi_get_drvdata(spi);
 	if (mors) {
@@ -1224,11 +1218,6 @@ static void morse_spi_remove(struct spi_device *spi)
 			destroy_workqueue(mors->chip_wq);
 			flush_workqueue(mors->net_wq);
 			destroy_workqueue(mors->net_wq);
-			if (reattach_hw) {
-				ret = morse_hw_detach(mors);
-				if (ret)
-					is_hw_detached = false;
-			}
 		} else {
 			morse_spi_disable_irq(mspi);
 		}
@@ -1244,8 +1233,7 @@ static void morse_spi_remove(struct spi_device *spi)
 	}
 
 	dev_info(&spi->dev, "Morse SPI device removed\n");
-	if (!is_hw_detached)
-		morse_spi_reset(mors->cfg->mm_reset_gpio, spi);
+	morse_spi_reset(mors->cfg->mm_reset_gpio, spi);
 #if KERNEL_VERSION(5, 18, 0) > LINUX_VERSION_CODE
 	return 0;
 #endif
@@ -1334,16 +1322,10 @@ static const struct morse_bus_ops morse_spi_ops = {
 static int morse_spi_probe(struct spi_device *spi)
 {
 	int i, ret = 0;
-	struct morse *mors = NULL;
+	struct morse *mors;
 	struct morse_spi *mspi;
 	const struct of_device_id *match;
 	struct morse_chip_series *mors_chip_series;
-	bool irq_enabled = false;
-	bool if_initiated = false;
-	bool mspi_data_allocated = false;
-	bool uaccess_allocated = false;
-	const bool reset_hw = false;
-	bool attach = false;
 
 	match = of_match_device(of_match_ptr(morse_spi_of_match), &spi->dev);
 	if (match)
@@ -1374,9 +1356,8 @@ static int morse_spi_probe(struct spi_device *spi)
 		MORSE_SPI_ERR(mors, "%s Failed to allocate DMA buffers (size=%d bytes)\n",
 			      __func__, MM610X_BUF_SIZE);
 		ret = -ENOMEM;
-		goto err_exit;
+		goto err_nobuf;
 	}
-	mspi_data_allocated = true;
 
 	mspi->spi = spi;
 
@@ -1441,7 +1422,7 @@ static int morse_spi_probe(struct spi_device *spi)
 
 	if (ret) {
 		MORSE_SPI_ERR(mors, "%s: failed to init SPI with CMD63 (ret:%d)\n", __func__, ret);
-		goto err_exit;
+		goto err_cfg;
 	}
 
 	/* Digital reset the chip now if external (host) xtal initialisation is required */
@@ -1453,55 +1434,65 @@ static int morse_spi_probe(struct spi_device *spi)
 	ret = morse_chip_cfg_detect_and_init(mors, mors_chip_series);
 	if (ret) {
 		MORSE_SPI_ERR(mors, "morse_chip_cfg_detect_and_init failed: %d\n", ret);
-		goto err_exit;
+		goto err_cfg;
 	}
-	MORSE_SPI_INFO(mors, "Morse Micro SPI device found, chip ID=0x%04x\n", mors->chip_id);
 
 	/* setting gpio pin configs from device tree */
 	if (morse_of_probe(&spi->dev, mors->cfg, morse_spi_of_match) < 0)
-		goto err_exit;
+		goto err_cfg;
 
 	if (mors->cfg->mm_spi_irq_gpio < 0) {
 		MORSE_SPI_ERR(mors, "Required property spi-irq-gpios not found in device tree\n");
-		goto err_exit;
+		goto err_cfg;
 	}
 
+	ret = morse_spi_reg32_read(mors, MORSE_REG_CHIP_ID(mors), &mors->chip_id);
+	if (ret) {
+		MORSE_SPI_ERR(mors, "failed to read chip id: %d\n", ret);
+		goto err_cfg;
+	}
+
+	/* Find out if the chip id matches our records */
+	if (!morse_hw_is_valid_chip_id(mors->chip_id, mors->cfg->valid_chip_ids)) {
+		MORSE_SPI_ERR(mors, "%s Morse chip (ChipId=0x%x) not supported\n",
+					__func__, mors->chip_id);
+		goto err_cfg;
+	}
 	mors->board_serial = serial;
+
+	MORSE_SPI_INFO(mors, "Morse Micro SPI device found, chip ID=0x%04x\n", mors->chip_id);
 	MORSE_SPI_INFO(mors, "Board serial: %s\n", mors->board_serial);
 
 	/* OTP BXW check is done only for MM610x */
 	if (enable_otp_check && !is_otp_xtal_wait_supported(mors)) {
 		MORSE_SPI_ERR(mors, "OTP check failed\n");
 		ret = -EIO;
-		goto err_exit;
+		goto err_cfg;
 	}
 
 #ifdef CONFIG_MORSE_USER_ACCESS
 	morse_spi_uaccess = uaccess_alloc();
-	uaccess_allocated = true;
 	if (IS_ERR(morse_spi_uaccess)) {
 		MORSE_PR_ERR(FEATURE_ID_SPI, "uaccess_alloc() failed\n");
-		ret = PTR_ERR(morse_spi_uaccess);
-		goto err_exit;
+		return PTR_ERR(morse_spi_uaccess);
 	}
+
 	ret = uaccess_init(morse_spi_uaccess);
 	if (ret) {
 		MORSE_PR_ERR(FEATURE_ID_SPI, "uaccess_init() failed: %d\n", ret);
-		goto err_exit;
+		goto err_uaccess;
 	}
 
 	ret = uaccess_device_register(mors, morse_spi_uaccess, &spi->dev);
 	if (ret) {
 		MORSE_SPI_ERR(mors, "uaccess_device_register() failed: %d\n", ret);
-		goto err_exit;
+		goto err_uaccess;
 	}
 #endif
 
-	ret = morse_firmware_prepare_and_init(mors, reset_hw, morse_hw_should_reattach());
-	if (ret == -EALREADY)
-		attach = true;
-	else if (ret)
-		goto err_exit;
+	ret = morse_firmware_init(mors, test_mode);
+	if (ret)
+		goto err_fw;
 
 	/*
 	 * Now that a valid chip id has been found, let's enable burst mode.
@@ -1512,8 +1503,8 @@ static int morse_spi_probe(struct spi_device *spi)
 	morse_spi_config_burst_mode(mors, true);
 
 	MORSE_SPI_INFO(mors, "clock=%d MHz, delay bytes=%d, max block count=%d\n",
-			 spi_clock_speed / 1000000, mspi->inter_block_delay_bytes,
-			 mspi->max_block_count);
+		       spi_clock_speed / 1000000, mspi->inter_block_delay_bytes,
+		       mspi->max_block_count);
 
 	if (morse_test_mode_is_interactive(test_mode)) {
 		mors->chip_wq = create_singlethread_workqueue("MorseChipIfWorkQ");
@@ -1521,50 +1512,40 @@ static int morse_spi_probe(struct spi_device *spi)
 			MORSE_SPI_ERR(mors,
 				      "create_singlethread_workqueue(MorseChipIfWorkQ) failed\n");
 			ret = -ENOMEM;
-			goto err_exit;
+			goto err_fw;
 		}
 		mors->net_wq = create_singlethread_workqueue("MorseNetWorkQ");
 		if (!mors->net_wq) {
 			MORSE_SPI_ERR(mors,
 				      "create_singlethread_workqueue(MorseNetWorkQ) failed\n");
 			ret = -ENOMEM;
-			goto err_exit;
+			goto err_net_wq;
 		}
 		ret = mors->cfg->ops->init(mors);
 		if (ret) {
 			MORSE_SPI_ERR(mors, "chip_if_init failed: %d\n", ret);
-			goto err_exit;
+			goto err_buffs;
 		}
-		if_initiated = true;
 
 		ret = morse_firmware_parse_extended_host_table(mors);
 		if (ret) {
 			MORSE_SPI_ERR(mors, "failed to parse extended host table: %d\n", ret);
-			goto err_exit;
+			goto err_buffs;
 		}
-	}
 
-	/* Enable SPI interrupts before callng ieee80211_register_hw() or morse_wiphy_register */
-	ret = morse_spi_setup_irq(mspi);
-	irq_enabled = true;
-	if (ret) {
-		MORSE_SPI_ERR(mors, "morse_spi_setup_irq() failed: %d\n", ret);
-		goto err_exit;
-	}
-
-	if (morse_test_mode_is_interactive(test_mode)) {
 		ret = morse_mac_register(mors);
 		if (ret) {
 			MORSE_SPI_ERR(mors, "morse_mac_register failed: %d\n", ret);
-			goto err_exit;
+			goto err_mac;
 		}
 	}
 
-	if (attach)
-		ret = morse_hw_attach(mors);
-
-	if (ret)
-		goto err_exit;
+	/* Now all set, enable SPI interrupts */
+	ret = morse_spi_setup_irq(mspi);
+	if (ret) {
+		MORSE_SPI_ERR(mors, "morse_spi_setup_irq() failed: %d\n", ret);
+		goto err_irq;
+	}
 
 #ifdef CONFIG_MORSE_ENABLE_TEST_MODES
 	if (test_mode == MORSE_CONFIG_TEST_MODE_BUS)
@@ -1578,30 +1559,37 @@ static int morse_spi_probe(struct spi_device *spi)
 
 	return ret;
 
-err_exit:
-	if (irq_enabled)
-		morse_spi_remove_irq(mspi);
-	if (if_initiated)
+err_irq:
+	morse_spi_remove_irq(mspi);
+	if (morse_test_mode_is_interactive(test_mode))
+		morse_mac_unregister(mors);
+err_mac:
+	if (morse_test_mode_is_interactive(test_mode))
 		mors->cfg->ops->finish(mors);
-	if (mors && mors->net_wq) {
+err_buffs:
+	if (morse_test_mode_is_interactive(test_mode)) {
 		flush_workqueue(mors->net_wq);
 		destroy_workqueue(mors->net_wq);
 	}
-	if (mors && mors->chip_wq) {
+err_net_wq:
+	if (morse_test_mode_is_interactive(test_mode)) {
 		flush_workqueue(mors->chip_wq);
 		destroy_workqueue(mors->chip_wq);
 	}
+err_fw:
 #ifdef CONFIG_MORSE_USER_ACCESS
-	if (uaccess_allocated) {
-		morse_spi_disable_irq(mspi);
-		uaccess_cleanup(morse_spi_uaccess);
-	}
+err_uaccess:
+	morse_spi_disable_irq(mspi);
+	uaccess_cleanup(morse_spi_uaccess);
 #endif
-	if (mspi_data_allocated)
-		kfree(mspi->data);
-	if (mors)
-		morse_mac_destroy(mors);
+err_cfg:
+	kfree(mspi->data);
+err_nobuf:
+	morse_mac_destroy(mors);
+
+err_exit:
 	pr_err("%s failed. The driver has not been loaded!\n", __func__);
+
 	return ret;
 }
 

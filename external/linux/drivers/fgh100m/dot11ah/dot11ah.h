@@ -4,8 +4,6 @@
 /*
  * Copyright 2017-2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include <linux/types.h>
@@ -49,12 +47,6 @@
 #define WLAN_EID_S1G_RELAY_ACTIVATION			(236)
 
 #if KERNEL_VERSION(5, 10, 11) > MAC80211_VERSION_CODE
-
-#define WLAN_EID_AID_REQUEST				(210)
-#define WLAN_EID_AID_RESPONSE				(211)
-#endif
-
-#if KERNEL_VERSION(5, 8, 0) > MAC80211_VERSION_CODE
 #define IEEE80211_NDP_FTYPE_CF_END			(0)
 #define IEEE80211_NDP_FTYPE_PS_POLL			(1)
 #define IEEE80211_NDP_FTYPE_ACK				(2)
@@ -65,6 +57,8 @@
 #define IEEE80211_NDP_FTYPE_PREQ			(7)
 
 #define WLAN_EID_REDUCED_NEIGHBOR_REPORT		(201)
+#define WLAN_EID_AID_REQUEST				(210)
+#define WLAN_EID_AID_RESPONSE				(211)
 #define WLAN_EID_S1G_BCN_COMPAT				(213)
 #define WLAN_EID_S1G_SHORT_BCN_INTERVAL			(214)
 #define WLAN_EID_S1G_CAPABILITIES			(217)
@@ -384,7 +378,6 @@ enum morse_dot11ah_region {
 	MORSE_AU,
 	MORSE_CA,
 	MORSE_EU,
-	MORSE_GB,
 	MORSE_IN,
 	MORSE_JP,
 	MORSE_KR,
@@ -454,10 +447,6 @@ struct s1g_operation_params_expanded {
 	u8 op_bw;
 };
 
-#define QOS_TRAFFIC_UP_SHIFT	(4)
-#define QOS_TRAFFIC_UP_MASK		(0x70)
-#define QOS_TRAFFIC_CAP_SIZE	(3)
-
 /** CAC control field - 0: centralized control, 1: distributed control */
 #define DOT11AH_S1G_CAC_CONTROL		BIT(0)
 /** CAC deferral field - 0: use a threshold value, 1: use a deferral time */
@@ -480,6 +469,12 @@ struct dot11ah_s1g_auth_control_ie {
 #define MORSE_OPERATING_CHAN_DEFAULT 38
 #define MORSE_OPERATING_CH_WIDTH_DEFAULT 2
 #define MORSE_PRIM_CH_WIDTH_DEFAULT 2
+
+struct country_ie_triplet {
+	u8 first_chan;
+	u8 chan_num;
+	u8 max_eirp_dbm;
+} __packed;
 
 struct country_operating_triplet {
 	u8 op_triplet_id;
@@ -597,18 +592,6 @@ void morse_dot11ah_mask_ies(struct dot11ah_ies_mask *ies_mask, bool mask_ext_cap
 void morse_dot11ah_ies_mask_clear(struct dot11ah_ies_mask *ies_mask);
 
 u8 *morse_dot11_insert_ie_from_ies_mask(u8 *pos, const struct dot11ah_ies_mask *ies_mask, u8 eid);
-
-/**
- * morse_dot11ah_ies_to_ies_mask()	- Create new ies mask from raw S1G IEs.
- * @ies: Raw S1G IEs to create ies mask from.
- * @ies_len: Length of the raw IEs.
- *
- * Return: Parsed S1G IEs.
- *
- * The caller gets the ownership of the returned structure. It is the caller's responsibility to
- * free it using morse_dot11ah_ies_mask_free().
- */
-struct dot11ah_ies_mask *morse_dot11ah_ies_to_ies_mask(const u8 *ies, u16 ies_len);
 
 /**
  * morse_dot11ah_11n_to_s1g_tx_packet() - translate the packet header only in place.
@@ -836,14 +819,6 @@ const char *morse_dot11ah_get_region_str(void);
 
 int morse_dot11ah_get_num_channels(void);
 
-/**
- * @brief Mark S1G channel as disabled
- * @param S1G operating channel index
- *
- * @return ENOENT if channel not found
- */
-int morse_dot11ah_ignore_channel(int chan_s1g);
-
 const struct morse_regdomain *morse_reg_alpha_lookup(const char *alpha);
 
 /**
@@ -871,7 +846,7 @@ int morse_mac_set_country_info_from_regdom(const struct morse_regdomain *morse_d
  * Return: Channel bandwith.
  */
 
-#if KERNEL_VERSION(5, 10, 4) > MAC80211_VERSION_CODE
+#if KERNEL_VERSION(5, 10, 11) > MAC80211_VERSION_CODE
 u8 ch_flag_to_chan_bw(enum morse_dot11ah_channel_flags flags);
 #else
 u8 ch_flag_to_chan_bw(enum ieee80211_channel_flags flags);

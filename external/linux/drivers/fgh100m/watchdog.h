@@ -1,7 +1,5 @@
 /*
  * Copyright 2017-2024 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #pragma once
 
@@ -18,7 +16,7 @@ typedef int (*watchdog_callback_t)(struct morse *);
  *
  * Return 0 if success else error code
  */
-int morse_watchdog_init(struct morse *mors, uint interval_s,
+int morse_watchdog_init(struct morse *mors, int interval_s,
 	watchdog_callback_t ping);
 
 /**
@@ -91,4 +89,4 @@ int morse_watchdog_resume(struct morse *mors);
  *
  * Return interval (if greater than 0) else error code
  */
-uint morse_watchdog_get_interval(struct morse *mors);
+int morse_watchdog_get_interval(struct morse *mors);

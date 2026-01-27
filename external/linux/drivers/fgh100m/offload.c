@@ -1,7 +1,5 @@
 /*
  * Copyright 2022-2023 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #include <linux/inetdevice.h>
@@ -11,32 +9,17 @@
 #include "debug.h"
 #include "mac.h"
 #include "offload.h"
-#include "wiphy.h"
 
 #define DHCP_OFFLOAD_MAX_CMD_SIZE			(256)
 
-static struct wireless_dev *morse_get_sta_wdev(struct morse *mors)
-{
-	struct morse_vif *mors_vif;
-
-	if (is_fullmac_mode()) {
-		mors_vif = morse_wiphy_get_sta_vif(mors);
-		if (!mors_vif)
-			return NULL;
-		return &mors_vif->wdev;
-	}
-
-	return ieee80211_vif_to_wdev(morse_get_sta_vif(mors));
-}
-
-static int append_ip_addr_to_string(char *str, int n, __le32 ip)
+static int append_ip_addr_to_string(char *str, int n, u32 ip)
 {
 	u8 *ptr = (u8 *)&ip;
 
 	return snprintf(str, n, "%d.%d.%d.%d ", ptr[0], ptr[1], ptr[2], ptr[3]);
 }
 
-int morse_offload_dhcpc_set_address(struct morse *mors, struct morse_cmd_evt_dhcp_lease_update *evt)
+int morse_offload_dhcpc_set_address(struct morse *mors, struct morse_evt_dhcp_lease_update *evt)
 {
 	int ret = 0;
 	static const char *const envp[] = { "HOME=/", NULL };
@@ -45,7 +28,7 @@ int morse_offload_dhcpc_set_address(struct morse *mors, struct morse_cmd_evt_dhc
 	char *const argv[] = { "/bin/sh", "-c", cmd, NULL };
 	int idx = 0;
 
-	struct wireless_dev *wdev = morse_get_sta_wdev(mors);
+	struct wireless_dev *wdev = ieee80211_vif_to_wdev(morse_get_sta_vif(mors));
 
 	if (!wdev || !wdev->netdev)
 		return -1;

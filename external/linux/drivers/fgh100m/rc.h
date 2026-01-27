@@ -1,8 +1,6 @@
 /*
  * Copyright 2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #ifndef _MORSE_RC_H_
@@ -44,12 +42,6 @@ bool _morse_rc_set_fixed_rate(struct morse *mors,
 			      struct ieee80211_sta *sta,
 			      int mcs, int bw, int ss, int guard, const char *caller);
 
-bool morse_rc_get_enable_fixed_rate(void);
-int morse_rc_get_fixed_bandwidth(void);
-int morse_rc_get_fixed_mcs(void);
-int morse_rc_get_fixed_ss(void);
-int morse_rc_get_fixed_guard(void);
-
 void morse_rc_sta_remove(struct morse *mors, struct ieee80211_sta *sta);
 
 void morse_rc_sta_fill_tx_rates(struct morse *mors,
@@ -57,9 +49,8 @@ void morse_rc_sta_fill_tx_rates(struct morse *mors,
 				struct sk_buff *skb,
 				struct ieee80211_sta *sta, int tx_bw, bool rts_allowed);
 
-void morse_rc_sta_feedback_rates(struct morse *mors, struct sk_buff *skb,
-				 struct ieee80211_sta *sta, struct morse_skb_tx_status *tx_sts,
-				 int tx_attempts);
+void morse_rc_sta_feedback_rates(struct morse *mors,
+				 struct sk_buff *skb, struct morse_skb_tx_status *tx_sts);
 
 void morse_rc_sta_state_check(struct morse *mors,
 			      struct ieee80211_vif *vif, struct ieee80211_sta *sta,

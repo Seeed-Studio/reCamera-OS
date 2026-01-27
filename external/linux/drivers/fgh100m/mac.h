@@ -4,8 +4,6 @@
 /*
  * Copyright 2017-2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 #include <linux/skbuff.h>
 #include <linux/crc32.h>
@@ -15,25 +13,6 @@
 
 /* The maximum number of frames to send after a DTIM to firmware */
 #define MORSE_MAX_MC_FRAMES_AFTER_DTIM (10)
-
-/**
- * struct morse_queue_params - QoS parameters
- *
- * @uapsd: access category status for UAPSD
- * @aci: access category index
- * @aifs: arbitration interframe space [0..255]
- * @cw_min: minimum contention window
- * @cw_max: maximum contention window
- * @txop: maximum burst time in units of usecs, 0 meaning disabled
- */
-struct morse_queue_params {
-	u8 uapsd;
-	u8 aci;
-	u8 aifs;
-	u16 cw_min;
-	u16 cw_max;
-	u32 txop;
-};
 
 /* Check if MAC80211_MESH is enabled in .config */
 #define MESH_CONFIG_ENABLED(value) \
@@ -58,7 +37,7 @@ void morse_mac_skb_free(struct morse *mors, struct sk_buff *skb);
 void morse_mac_update_custom_s1g_capab(struct morse_vif *mors_vif,
 				       struct dot11ah_ies_mask *ies_mask,
 				       enum nl80211_iftype vif_type);
-int morse_mac_pkt_to_s1g(struct morse *mors, const struct ieee80211_sta *sta,
+int morse_mac_pkt_to_s1g(struct morse *mors, struct morse_sta *mors_sta,
 			 struct sk_buff **skb, int *tx_bw_mhz);
 
 /**
@@ -68,13 +47,6 @@ int morse_mac_pkt_to_s1g(struct morse *mors, const struct ieee80211_sta *sta,
  * Return: true if powersave can be enabled.
  */
 bool morse_mac_ps_enabled(struct morse *mors);
-
-/**
- * Get slow clock mode
- *
- * Return: Slow clock mode. It will be a value from @ref enum morse_cmd_slow_clock_mode
- */
-enum morse_cmd_slow_clock_mode morse_mac_slow_clock_mode(void);
 
 int morse_mac_watchdog_create(struct morse *mors);
 void morse_mac_mcs0_10_stats_dump(struct morse *mors, struct seq_file *file);
@@ -307,25 +279,6 @@ static inline u32 morse_vif_generate_cssid(struct ieee80211_vif *vif)
 }
 
 /**
- * @brief Notify RSSI event to mac80211
- *
- * @param vif Interface pointer to VIF
- * @param event The RSSI event
- * @param rssi Current RSSI level
- * @param gfp context flags
- */
-static inline void morse_mac_cqm_rssi_notify(struct ieee80211_vif *vif,
-					enum nl80211_cqm_rssi_threshold_event event, s32 rssi,
-					gfp_t gfp)
-{
-#if KERNEL_VERSION(4, 11, 0) <= MAC80211_VERSION_CODE
-	ieee80211_cqm_rssi_notify(vif, event, rssi, GFP_KERNEL);
-#else
-	ieee80211_cqm_rssi_notify(vif, event, GFP_KERNEL);
-#endif
-}
-
-/**
  * @brief Check if MESH config is enabled and set in interface modes
  *
  * @param wiphy the wiphy device registered with cfg80211
@@ -339,8 +292,8 @@ static inline bool morse_mac_mesh_enabled(struct wiphy *wiphy)
 }
 
 bool morse_mac_is_subband_enable(void);
-uint morse_mac_get_max_rate_tries(void);
-uint morse_mac_get_max_rate(void);
+int morse_mac_get_max_rate_tries(void);
+int morse_mac_get_max_rate(void);
 
 int morse_mac_get_watchdog_interval_secs(void);
 
@@ -349,9 +302,6 @@ int morse_mac_send_vendor_wake_action_frame(struct morse *mors, const u8 *dest_a
 
 int morse_mac_traffic_control(struct morse *mors, int interface_id,
 			      bool pause_data_traffic, int sources);
-
-int morse_cqm_rssi_notify_event(struct morse *mors, struct ieee80211_vif *vif,
-		struct morse_cmd_evt_cqm_rssi_notify *cqm_notify);
 
 /**
  * Function for filling the Tx meta info (rate info) for driver
@@ -400,16 +350,6 @@ u8 *morse_mac_get_ie_pos(struct sk_buff *skb, int *ies_len, int *header_length, 
 int morse_mac_tx_mgmt_frame(struct ieee80211_vif *vif, struct sk_buff *skb);
 
 /**
- * morse_mac_get_tx_attempts - Utility func to calculate tx attempts from status
- *
- * @mors: pointer to morse struct
- * @tx_sts: Tx status
- *
- * Return: 0 on success, else relevant error
- */
-int morse_mac_get_tx_attempts(struct morse *mors, struct morse_skb_tx_status *tx_sts);
-
-/**
  * morse_mac_process_tx_finish - Process Tx completion of frames
  *
  * @mors: pointer to morse struct
@@ -425,9 +365,5 @@ u64 morse_mac_generate_timestamp_for_frame(struct morse_vif *mors_vif);
  * Return: true if enabled
  */
 bool morse_mac_is_1mhz_probe_req_enabled(void);
-
-u8 morse_mac_get_mcs10_mode(void);
-u16 morse_mac_get_mcs_mask(void);
-bool morse_mac_is_rts_8mhz_enabled(void);
 
 #endif /* !_MORSE_MAC_H_ */

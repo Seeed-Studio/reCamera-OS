@@ -4,11 +4,8 @@
 /*
  * Copyright 2017-2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 #include <linux/firmware.h>
-#include <linux/completion.h>
 #include "capabilities.h"
 #include "misc.h"
 #include "yaps-hw.h"
@@ -59,7 +56,6 @@ enum morse_fw_extended_host_table_tag {
 	MORSE_FW_HOST_TABLE_TAG_INSERT_SKB_CHECKSUM = 2,
 	MORSE_FW_HOST_TABLE_TAG_YAPS_TABLE = 3,
 	MORSE_FW_HOST_TABLE_TAG_PAGER_PKT_MEMORY = 4,
-	MORSE_FW_HOST_TABLE_TAG_PAGER_BYPASS_CMD_RESP = 5,
 };
 
 struct extended_host_table_tlv_hdr {
@@ -109,11 +105,6 @@ struct extended_host_table_pager_bypass_tx_status {
 	__le32 tx_status_buffer_addr;
 };
 
-struct extended_host_table_pager_bypass_cmd_resp {
-	struct extended_host_table_tlv_hdr header;
-	__le32 cmd_resp_buffer_addr;
-};
-
 struct extended_host_table_insert_skb_checksum {
 	struct extended_host_table_tlv_hdr header;
 	u8 insert_and_validate_checksum;
@@ -149,16 +140,14 @@ struct extended_host_table {
 int morse_firmware_init(struct morse *mors, uint test_mode);
 
 /**
- * @brief Do necessary preparation and then initialise firmware
+ * @brief Perform non-destructive-reset of the chip,
+ *		  preserving the existing SDIO enumeration whilst
+ *		  resetting the firmware state
  *
  * @param mors The global morse config object
- * @param reset_hw Perform non-destructive reset of the chip,
- *                 preserving the existing sdio enumeration whilst
- *                 resetting the firmware state
- * @param reattach_hw Reattach to running hardware
- * @return 0 if success else error code
+ * @return int 0 if the firmware resets to initial state, -error otherwise
  */
-int morse_firmware_prepare_and_init(struct morse *mors, bool reset_hw, bool reattach_hw);
+int morse_firmware_exec_ndr(struct morse *mors);
 
 /**
  * morse_firmware_build_fw_path() - Build path to the firmware image.
@@ -175,35 +164,10 @@ char *morse_firmware_build_fw_path(struct morse *mors);
  *
  * @mors pointer to the chip object
  *
- * Return: 0 if the table was read successfully, error otherwise.
+ * Return: 0 if the table was read successfully, error if otherwise.
  */
 int morse_firmware_parse_extended_host_table(struct morse *mors);
 
-/**
- * morse_firmware_get_host_table_ptr - Read the host table
- *
- * @mors pointer to the chip object
- *
- * Return: 0 if the table was read successfully, error otherwise.
- */
 int morse_firmware_get_host_table_ptr(struct morse *mors);
-
-/**
- * morse_firmware_magic_verify - Verify magic number from host table
- *
- * @mors pointer to the chip object
- *
- * Return: 0 if successfully verified, error otherwise.
- */
-int morse_firmware_magic_verify(struct morse *mors);
-
-/**
- * morse_firmware_check_compatibility - Verify that the driver is compatible with the firmware
- *
- * @mors pointer to the chip object
- *
- * Return: 0 if compatible, error otherwise.
- */
-int morse_firmware_check_compatibility(struct morse *mors);
 
 #endif /* !_MORSE_FW_H_ */

@@ -8,18 +8,14 @@ DEBFLAGS = -O2
 endif
 
 # Set 0 to a version number. This is done to match the Linux expectations
-override MORSE_VERSION = "0-rel_1_16_4_2025_Sep_18"
+override MORSE_VERSION = "0-rel_1_14_1_2024_Dec_05"
 
 #ccflags-y += $(DEBFLAGS) -Werror
 ccflags-y += "-DMORSE_VERSION=$(MORSE_VERSION)"
 
 ifneq ($(CONFIG_DISABLE_MORSE_RC),y)
 	ccflags-y += "-DCONFIG_MORSE_RC"
-ifeq ($(CONFIG_ANDROID),y)
-	ccflags-y += "-I$(srctree)/$(src)/../mmrc"
-else
 	ccflags-y += "-I$(src)/../mmrc"
-endif
 endif
 
 ifneq ($(CONFIG_BACKPORT_VERSION),)

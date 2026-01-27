@@ -2,8 +2,6 @@
 #define _MBSSID_H_
 /*
  * Copyright 2023 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #include <linux/types.h>
@@ -123,12 +121,12 @@ int morse_process_beacon_from_mbssid_ie(struct morse *mors, struct sk_buff *skb,
  *                                    which is transmitting and non-transmitting iface.
  *
  * @mors_vif:    AP iface
- * @req_mbssid: morsectrl command context
+ * @cmd_mbssid: morsectrl command context
  *
  * Return:  0 on success, -EFAULT on failure
  */
 int morse_command_process_bssid_info(struct morse_vif *mors_vif,
-				     struct morse_cmd_req_mbssid *req_mbssid);
+				     struct morse_cmd_mbssid *cmd_mbssid);
 /**
  * morse_mbssid_ie_deinit_bss - Deinitialise MBSSID IE context buffer on this interface.
  *                              Free up beacon skb allocated from mac80211

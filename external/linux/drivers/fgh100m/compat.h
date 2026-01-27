@@ -1,7 +1,5 @@
 /*
  * Copyright 2023 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 /*
@@ -69,20 +67,3 @@
 #else
     #define MORSE_IEEE80211_CSA_COMPLETE(_vif)  ieee80211_csa_is_complete(_vif)
 #endif
-
-#if KERNEL_VERSION(4, 17, 0) > MAC80211_VERSION_CODE
-/**
- * ieee80211_get_tid - get the QoS TID for a frame
- *
- * @hdr: Frame header
- *
- * @returns: TID
- */
-static inline u8 ieee80211_get_tid(struct ieee80211_hdr *hdr)
-{
-	u8 *qc = ieee80211_get_qos_ctl(hdr);
-
-	return qc[0] & IEEE80211_QOS_CTL_TID_MASK;
-}
-#endif
-#define MORSE_IEEE80211_GET_TID(_hdr) ieee80211_get_tid(_hdr)

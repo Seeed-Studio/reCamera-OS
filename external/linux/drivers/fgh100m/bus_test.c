@@ -1,8 +1,6 @@
 /*
  * Copyright 2017-2023 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 #include <linux/math64.h>
 #include <linux/ip.h>
@@ -15,7 +13,7 @@
 #ifdef CONFIG_MORSE_ENABLE_TEST_MODES
 
 #define BUS_TEST_MAX_BLOCK_SIZE	(64 * 1024)
-#define	BUS_TEST_SIZE_LIST {512, 560, 2048, 2048 + 128, \
+#define	BUS_TEST_SIZE_LIST	{512, 560, 2048, 2048 + 128, \
 				4 * 1024, 4 * 1024 + 3 * 128, \
 				6 * 1024 + 508, 16 * 1024, \
 				32 * 1024, BUS_TEST_MAX_BLOCK_SIZE}
@@ -113,19 +111,17 @@ int morse_bus_test(struct morse *mors, const char *bus_name)
 
 	MORSE_WARN(mors, "---==[ START %s BUS TEST ]==---\n", bus_name);
 	morse_claim_bus(mors);
-
 	ret = morse_reg32_read(mors, MORSE_REG_CHIP_ID(mors), &chip_id);
-	if (ret) {
-		MORSE_ERR(mors, "%s: Chip ID read failed %d\n", __func__, ret);
-		goto exit;
-	}
-	if (chip_id != mors->chip_id) {
-		MORSE_ERR(mors, "%s Chip ID read 0x%04X does not match expected 0x%04X\n",
-			  __func__, chip_id, mors->chip_id);
+	if (!morse_hw_is_valid_chip_id(chip_id, mors->cfg->valid_chip_ids)) {
+		MORSE_ERR(mors, "%s Chip ID 0x%x is not valid\n", __func__, mors->chip_id);
 		ret = -1;
 		goto exit;
 	}
-	MORSE_INFO(mors, "%s: Chip ID read passed 0x%04X\n", __func__, chip_id);
+	MORSE_INFO(mors, "%s: Reading Chip ID 0x%04X: %s\n",
+		   __func__, chip_id, ret < 0 ? "FAILED" : "PASSED");
+
+	if (ret < 0)
+		goto exit;
 
 	for (size_idx = 0; size_idx < ARRAY_SIZE(cmp_size_list); size_idx++) {
 		int cmp_size = cmp_size_list[size_idx];
@@ -422,92 +418,6 @@ exit:
 	kfree(send_buffer);
 }
 
-static struct {
-	ktime_t start;
-	ktime_t end;
-	struct completion *handled;
-} irq_profiling = {
-	.start = 0,
-	.end = 0,
-	.handled = NULL
-};
-
-void morse_bus_interrupt_profiler_irq(struct morse *mors)
-{
-	if (!irq_profiling.handled)
-		return;
-
-	irq_profiling.end = ktime_get_boottime();
-	complete(irq_profiling.handled);
-}
-
-static void morse_bus_interrupt_profiler(struct morse *mors)
-{
-	int ret;
-	unsigned int i;
-	const unsigned int rounds = PROFILER_BATCH_SIZE;
-	const unsigned int timeout_ms = 1000;
-	DECLARE_COMPLETION_ONSTACK(irq_handled);
-	ktime_t *irq_delays = NULL;
-	char *print_buffer = NULL;
-	int count;
-
-	irq_delays = kcalloc(rounds, sizeof(*irq_delays), GFP_KERNEL);
-	if (!irq_delays)
-		goto exit;
-	print_buffer = kzalloc(PROFILER_TIMING_PRINT_BUFFER_SIZE, GFP_KERNEL);
-	if (!print_buffer)
-		goto exit;
-
-	dev_info(mors->dev, "Interrupt profiling (%u round(s))\n", rounds);
-	morse_hw_irq_clear(mors);
-	morse_hw_irq_enable(mors, MORSE_INT_BUS_IRQ_SELF_TEST_NUM, true);
-
-	for (i = 0; i < rounds; i++) {
-		morse_claim_bus(mors);
-		irq_profiling.handled = &irq_handled;
-		irq_profiling.start = ktime_get_boottime();
-		morse_reg32_write(mors, MORSE_REG_INT1_SET(mors), MORSE_INT_BUS_IRQ_SELF_TEST);
-		morse_release_bus(mors);
-
-		ret = wait_for_completion_timeout(&irq_handled, msecs_to_jiffies(timeout_ms));
-
-		/* Claim bus to prevent race on irq_profiling */
-		morse_claim_bus(mors);
-		irq_profiling.handled = NULL;
-		if (ret == 0)
-			irq_delays[i] = 0;
-		else
-			irq_delays[i] = ktime_sub(irq_profiling.end, irq_profiling.start);
-		reinit_completion(&irq_handled);
-		morse_release_bus(mors);
-	}
-
-	morse_hw_irq_enable(mors, MORSE_INT_BUS_IRQ_SELF_TEST_NUM, false);
-	morse_hw_irq_clear(mors);
-
-	dev_info(mors->dev, "    timing (us)\n");
-	count = snprintf(print_buffer, PROFILER_TIMING_PRINT_BUFFER_SIZE, "    %-11s:",
-			 "irq delay");
-	for (i = 0; i < rounds; i++) {
-		ktime_t delay = irq_delays[i];
-
-		if (delay == 0)
-			count += snprintf(print_buffer + count,
-					  (PROFILER_TIMING_PRINT_BUFFER_SIZE - count),
-					  " %4s", "?");
-		else
-			count += snprintf(print_buffer + count,
-					  (PROFILER_TIMING_PRINT_BUFFER_SIZE - count),
-					  " %4lld", ktime_to_us(delay));
-	}
-
-	dev_info(mors->dev, "%s\n", print_buffer);
-exit:
-	kfree(print_buffer);
-	kfree(irq_delays);
-}
-
 void morse_bus_throughput_profiler(struct morse *mors)
 {
 	const char *mm610x_hw_str =  "MM610";
@@ -520,7 +430,6 @@ void morse_bus_throughput_profiler(struct morse *mors)
 	morse_bus_tput_test(mors);
 	morse_bus_tput_timing_test(mors);
 	morse_skb_allocator_test(mors);
-	morse_bus_interrupt_profiler(mors);
 }
 
 #endif

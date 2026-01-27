@@ -1,8 +1,6 @@
 /*
  * Copyright 2017-2024 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include <linux/string.h>
@@ -102,8 +100,13 @@ int morse_mac_set_country_info_from_regdom(const struct morse_regdomain *morse_d
 				struct s1g_operation_parameters *params,
 				struct dot11ah_country_ie *country_ie)
 {
+	const struct ieee80211_freq_range *fr;
 	struct country_operating_triplet *oper_triplet;
-	const struct morse_dot11ah_channel *dot11ah_channel;
+	int i;
+	int start_chan = 0;
+	int end_chan = 0;
+	int eirp;
+	int bw;
 	int ret;
 
 	u8 op_bw_mhz = MORSE_OPERATING_CH_WIDTH_DEFAULT;
@@ -111,7 +114,6 @@ int morse_mac_set_country_info_from_regdom(const struct morse_regdomain *morse_d
 	u8 chan_centre_freq_num = MORSE_OPERATING_CHAN_DEFAULT;
 	u8 pri_1mhz_chan_idx = 0;
 	u8 pri_ch_op_class = 0;
-	u32 centre_freq_hz = 0;
 
 	if (params) {
 		op_bw_mhz = params->op_bw_mhz;
@@ -137,16 +139,25 @@ int morse_mac_set_country_info_from_regdom(const struct morse_regdomain *morse_d
 	oper_triplet->coverage_class = 0;
 	oper_triplet->start_chan = morse_dot11ah_calc_prim_s1g_chan(op_bw_mhz, pri_bw_mhz,
 						    chan_centre_freq_num, pri_1mhz_chan_idx);
+
 	oper_triplet->chan_num = 1;
 
-	centre_freq_hz = morse_dot11ah_s1g_chan_to_s1g_freq(chan_centre_freq_num);
-	dot11ah_channel = morse_dot11ah_s1g_freq_to_s1g(centre_freq_hz, op_bw_mhz);
+	for (i = 0; i < morse_domain->n_reg_rules; i++) {
+		fr = &morse_domain->reg_rules[i].dot11_reg.freq_range;
+		eirp = morse_domain->reg_rules[i].dot11_reg.power_rule.max_eirp;
+		bw = KHZ_TO_MHZ(morse_domain->reg_rules[i].dot11_reg.freq_range.max_bandwidth_khz);
 
-	if (dot11ah_channel)
-		oper_triplet->max_eirp_dbm = MBM_TO_DBM(dot11ah_channel->ch.max_reg_power);
-	else
-		dot11ah_warn("Could not find channel, max power unset\n");
-
+		if (fr->start_freq_khz > MORSE_S1G_FREQ_MIN_KHZ &&
+			fr->end_freq_khz < MORSE_S1G_FREQ_MAX_KHZ) {
+			start_chan =  morse_dot11ah_freq_khz_bw_mhz_to_chan(fr->start_freq_khz, bw);
+			end_chan = morse_dot11ah_freq_khz_bw_mhz_to_chan(fr->end_freq_khz, bw);
+		}
+		if (oper_triplet->start_chan >= start_chan &&
+			oper_triplet->start_chan < end_chan) {
+			/* TODO: SW-7983 - Advertise minimum of EIRP from BCF vs reg rule */
+			oper_triplet->max_eirp_dbm = MBM_TO_DBM(eirp);
+		}
+	}
 	return 0;
 }
 EXPORT_SYMBOL(morse_mac_set_country_info_from_regdom);

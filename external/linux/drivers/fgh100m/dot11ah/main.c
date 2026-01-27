@@ -1,7 +1,5 @@
 /*
  * Copyright 2020 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #include <linux/types.h>
@@ -132,8 +130,6 @@ void morse_dot11ah_store_cssid(struct dot11ah_ies_mask *ies_mask, u16 capab_info
 	if (stored) {
 		int s1g_ies_len_updated = s1g_ies_len;
 		bool update_beacon = (vals && vals->cssid_ies);
-		bool stored_ies_needs_update;
-		u8 *s1g_ies_updated;
 
 		if (stored->capab_info != capab_info && capab_info != 0)
 			stored->capab_info = capab_info;
@@ -151,44 +147,38 @@ void morse_dot11ah_store_cssid(struct dot11ah_ies_mask *ies_mask, u16 capab_info
 			if (rsnx_ie && !ies_mask->ies[WLAN_EID_RSNX].ptr)
 				s1g_ies_len_updated += *(rsnx_ie + 1) + 2;
 		}
-		s1g_ies_updated = kmalloc(s1g_ies_len_updated, GFP_ATOMIC);
 
-		/*
-		 * Take a copy of the new beacon's IEs and insert the stored RSN IEs, in order to
-		 * check for differences other than in the RSN IEs.
-		 */
-		if (s1g_ies && s1g_ies_updated) {
-			memcpy(s1g_ies_updated, s1g_ies, s1g_ies_len);
+		if (stored->ies_len != s1g_ies_len_updated && s1g_ies) {
+			kfree(stored->ies);
+
+			stored->ies = kmalloc(s1g_ies_len_updated, GFP_ATOMIC);
+			if (!stored->ies) {
+				stored->ies_len = 0;
+				goto exit;
+			}
+
+			memcpy(stored->ies, s1g_ies, s1g_ies_len);
+			stored->ies_len = s1g_ies_len_updated;
 
 			/* Update beacon IEs with stored RSN and RSNX IE (from probe response)
 			 * before storing again.
 			 */
 			if (update_beacon)
-				morse_dot11_insert_rsn_and_rsnx_ie(s1g_ies_updated + s1g_ies_len,
-								   vals, ies_mask);
-		}
-
-		stored_ies_needs_update = (s1g_ies_updated &&
-				(stored->ies_len != s1g_ies_len_updated ||
-				 memcmp(stored->ies, s1g_ies_updated, stored->ies_len) != 0));
-
-		if (stored_ies_needs_update) {
-			kfree(stored->ies);
-			stored->ies = s1g_ies_updated;
-			stored->ies_len = s1g_ies_len_updated;
-		} else {
-			kfree(s1g_ies_updated);
+				morse_dot11_insert_rsn_and_rsnx_ie(stored->ies + s1g_ies_len, vals,
+								   ies_mask);
 		}
 
 		memcpy(stored->bssid, bssid, ETH_ALEN);
-		goto exit;
+
+		spin_unlock_bh(&cssid_list_lock);
+		return;
 	}
 
 	item = kmalloc(sizeof(*item), GFP_ATOMIC);
 	if (!item)
 		goto exit;
 
-	item->cssid = cpu_to_le32(cssid);
+	item->cssid = cssid;
 	item->ssid_len = length;
 	item->last_seen = jiffies;
 	item->capab_info = capab_info;
@@ -454,7 +444,7 @@ EXPORT_SYMBOL(morse_dot11ah_is_page_slicing_enabled_on_bss);
 module_init(morse_dot11ah_init);
 module_exit(morse_dot11ah_exit);
 
-MODULE_AUTHOR("Morse Micro");
+MODULE_AUTHOR("Morse Micro, Inc.");
 MODULE_DESCRIPTION("S1G support for Morse Micro drivers");
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_VERSION(DOT11AH_VERSION);

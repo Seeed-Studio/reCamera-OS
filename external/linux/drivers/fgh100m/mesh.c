@@ -1,7 +1,5 @@
 /*
  * Copyright 2023 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #include <linux/timer.h>
 #include <linux/bitfield.h>
@@ -39,8 +37,7 @@ static void morse_schedule_mesh_probe_timer(struct morse_mesh *mesh, int delay)
 	mod_timer(&mesh->mesh_probe_timer, timeout);
 }
 
-int morse_cmd_process_mbca_conf(struct morse_vif *mors_vif,
-				struct morse_cmd_req_set_mcba_conf *mbca)
+int morse_cmd_process_mbca_conf(struct morse_vif *mors_vif, struct morse_cmd_mbca *mbca)
 {
 	struct morse_mesh *mesh;
 
@@ -51,14 +48,14 @@ int morse_cmd_process_mbca_conf(struct morse_vif *mors_vif,
 	mesh->mbca.config = mbca->mbca_config;
 	mesh->mbca.beacon_timing_report_interval = mbca->beacon_timing_report_interval;
 	mesh->mbca.min_beacon_gap_ms = mbca->min_beacon_gap_ms;
-	mesh->mbca.tbtt_adj_interval_ms = le16_to_cpu(mbca->tbtt_adj_interval_ms);
-	mesh->mbca.mbss_start_scan_duration_ms = le16_to_cpu(mbca->mbss_start_scan_duration_ms);
+	mesh->mbca.tbtt_adj_interval_ms = mbca->tbtt_adj_interval_ms;
+	mesh->mbca.mbss_start_scan_duration_ms = mbca->mbss_start_scan_duration_ms;
 
 	return 0;
 }
 
 int morse_cmd_process_dynamic_peering_conf(struct morse_vif *mors_vif,
-					   struct morse_cmd_req_dynamic_peering_config *req)
+					   struct morse_cmd_dynamic_peering *conf)
 {
 	struct morse_mesh *mesh;
 	struct morse *mors;
@@ -69,9 +66,9 @@ int morse_cmd_process_dynamic_peering_conf(struct morse_vif *mors_vif,
 	mors = morse_vif_to_morse(mors_vif);
 
 	mesh = mors_vif->mesh;
-	mesh->dynamic_peering = req->enabled;
-	mesh->rssi_margin = req->rssi_margin;
-	mesh->blacklist_timeout = le32_to_cpu(req->blacklist_timeout);
+	mesh->dynamic_peering = conf->enabled;
+	mesh->rssi_margin = conf->rssi_margin;
+	mesh->blacklist_timeout = conf->blacklist_timeout;
 
 	MORSE_MESH_INFO(mors, "dynamic_peering=%u, rssi_margin=%u, timeout=%u\n",
 			mesh->dynamic_peering, mesh->rssi_margin, mesh->blacklist_timeout);
@@ -184,10 +181,11 @@ exit:
 }
 
 int morse_cmd_set_mesh_config(struct morse_vif *mors_vif,
-			      struct morse_cmd_req_set_mesh_config *mesh_req,
+			      struct morse_cmd_mesh_config *mesh_config_cmd,
 			      struct morse_mesh_config_list *stored_config)
 {
 	struct ieee80211_vif *vif;
+	struct morse *mors;
 	struct morse_mesh *mesh;
 	struct morse_mesh_config *mesh_config;
 
@@ -195,27 +193,24 @@ int morse_cmd_set_mesh_config(struct morse_vif *mors_vif,
 		return -EFAULT;
 
 	vif = morse_vif_to_ieee80211_vif(mors_vif);
+	mors = morse_vif_to_morse(mors_vif);
 	mesh = mors_vif->mesh;
 
 	if (!ieee80211_vif_is_mesh(vif) || mesh->is_mesh_active)
 		return -ENOENT;
 
-	if (stored_config) {
+	if (stored_config)
 		mesh_config = &stored_config->mesh_conf;
-		if (mesh_config->mesh_id_len  > IEEE80211_MAX_SSID_LEN)
-			return -EINVAL;
-		memcpy(mesh->mesh_id, mesh_config->mesh_id, mesh_config->mesh_id_len);
-		mesh->mesh_id_len = mesh_config->mesh_id_len;
-		mesh->mesh_beaconless_mode = mesh_config->mesh_beaconless_mode;
-		mesh->max_plinks = mesh_config->max_plinks;
-	} else {
-		if (mesh_req->mesh_id_len  > IEEE80211_MAX_SSID_LEN)
-			return -EINVAL;
-		memcpy(mesh->mesh_id, mesh_req->mesh_id, mesh_req->mesh_id_len);
-		mesh->mesh_id_len = mesh_req->mesh_id_len;
-		mesh->mesh_beaconless_mode = mesh_req->mesh_beaconless_mode;
-		mesh->max_plinks = mesh_req->max_plinks;
-	}
+	else
+		mesh_config = &mesh_config_cmd->cfg;
+
+	if (mesh_config->mesh_id_len > IEEE80211_MAX_SSID_LEN)
+		return -EINVAL;
+
+	memcpy(mesh->mesh_id, mesh_config->mesh_id, mesh_config->mesh_id_len);
+	mesh->mesh_id_len = mesh_config->mesh_id_len;
+	mesh->mesh_beaconless_mode = mesh_config->mesh_beaconless_mode;
+	mesh->max_plinks = mesh_config->max_plinks;
 
 	if (morse_cmd_cfg_mesh_bss(mors_vif, false))
 		return -EPERM;
@@ -243,6 +238,7 @@ static void morse_mesh_probe_timer_cb(struct timer_list *t)
 #endif
 	struct morse_vif *mors_vif = mesh->mors_vif;
 	struct ieee80211_vif *vif;
+	struct morse *mors;
 	u8 bcast_addr[ETH_ALEN];
 	u32 next_probe_delay;
 
@@ -252,6 +248,7 @@ static void morse_mesh_probe_timer_cb(struct timer_list *t)
 		return;
 	}
 	vif = morse_vif_to_ieee80211_vif(mors_vif);
+	mors = morse_vif_to_morse(mors_vif);
 
 	if (!ieee80211_vif_is_mesh(vif))
 		return;
@@ -350,11 +347,13 @@ int morse_mac_add_meshid_ie(struct morse_vif *mors_vif, struct sk_buff *skb,
 	u8 mesh_id[IEEE80211_MAX_SSID_LEN];
 	struct ie_element *ssid_ie = &ies_mask->ies[WLAN_EID_SSID];
 	struct ie_element *mesh_id_ie = &ies_mask->ies[WLAN_EID_MESH_ID];
+	struct ieee80211_vif *vif;
 	struct morse_mesh *mesh;
 
 	if (!mors_vif || !ies_mask)
 		return -EFAULT;
 
+	vif = morse_vif_to_ieee80211_vif(mors_vif);
 	mesh = mors_vif->mesh;
 
 	if (!mesh || !mesh->mesh_id_len)
@@ -375,6 +374,7 @@ int morse_mac_process_mesh_tx_mgmt(struct morse_vif *mors_vif,
 				   struct sk_buff *skb, struct dot11ah_ies_mask *ies_mask)
 {
 	struct ieee80211_vif *vif;
+	struct ie_element *mesh_id_ie;
 	struct ieee80211_hdr *hdr;
 	struct morse_mesh *mesh;
 	struct morse *mors;
@@ -385,6 +385,7 @@ int morse_mac_process_mesh_tx_mgmt(struct morse_vif *mors_vif,
 		return -EFAULT;
 
 	hdr = (struct ieee80211_hdr *)skb->data;
+	mesh_id_ie = &ies_mask->ies[WLAN_EID_MESH_ID];
 	vif = morse_vif_to_ieee80211_vif(mors_vif);
 	mors = morse_vif_to_morse(mors_vif);
 	mesh = mors_vif->mesh;
@@ -414,8 +415,8 @@ int morse_mac_process_mesh_tx_mgmt(struct morse_vif *mors_vif,
 			}
 			/* Add this mesh peer into cssid list */
 			morse_dot11ah_add_mesh_peer(ies_mask,
-					le16_to_cpu(mgt_probe_resp->u.probe_resp.capab_info),
-					hdr->addr1);
+						    mgt_probe_resp->u.probe_resp.capab_info,
+						    hdr->addr1);
 
 		} else if (mesh->mbca.config != 0) {
 			u8 *ptr = ies_mask->ies[WLAN_EID_MESH_CONFIG].ptr;
@@ -433,43 +434,6 @@ int morse_mac_process_mesh_tx_mgmt(struct morse_vif *mors_vif,
 	return 0;
 }
 
-struct lowest_peer_rssi_iter {
-	const struct ieee80211_vif *on_vif;
-	bool is_set;
-	s16 rssi;
-	u8 peer[ETH_ALEN];
-};
-
-static void peer_with_lowest_rssi(void *data, struct ieee80211_sta *sta)
-{
-	struct lowest_peer_rssi_iter *iter_data = data;
-	struct morse_vif *mors_vif =
-		ieee80211_vif_to_morse_vif((struct ieee80211_vif *)iter_data->on_vif);
-	const struct morse *mors = morse_vif_to_morse(mors_vif);
-	struct morse_sta *msta = (struct morse_sta *)sta->drv_priv;
-
-	if (!msta) {
-		MORSE_WARN_ON(FEATURE_ID_MESH, 1);
-		return;
-	}
-
-	if (msta->vif != iter_data->on_vif)
-		return;
-
-	MORSE_MESH_DBG(mors, "msta %pM with rssi %d and peerings=%u\n",
-		       msta->addr, msta->avg_rssi, msta->mesh_no_of_peerings);
-
-	/* Ignore if number of peerings is 1 */
-	if (msta->mesh_no_of_peerings == 1)
-		return;
-
-	if (!iter_data->is_set || iter_data->rssi > msta->avg_rssi) {
-		iter_data->is_set = true;
-		iter_data->rssi = msta->avg_rssi;
-		memcpy(iter_data->peer, msta->addr, sizeof(iter_data->peer));
-	}
-}
-
 /**
  * morse_mac_check_for_dynamic_peering() - Checks if a link can be established with the
  * new peer by kicking out one of existing peer (with low signal strength).
@@ -484,13 +448,13 @@ static void morse_mac_check_for_dynamic_peering(struct morse_vif *mors_vif, u8 *
 {
 	struct morse_mesh *mesh = mors_vif->mesh;
 	struct morse *mors = morse_vif_to_morse(mors_vif);
+	struct list_head *morse_sta_list = &mors_vif->ap->stas;
+	struct list_head *pos;
+	s16 peer_rssi = 0;
+	u8 *peer_addr = NULL;
 	struct ie_element *mesh_id_ie = &ies_mask->ies[WLAN_EID_MESH_ID];
 	struct ie_element *mesh_conf_ie = &ies_mask->ies[WLAN_EID_MESH_CONFIG];
 	struct ieee80211_vif *vif = morse_vif_to_ieee80211_vif(mors_vif);
-	struct lowest_peer_rssi_iter data = {
-		.is_set = false,
-		.on_vif = vif
-	};
 	bool accept_additional_peer;
 
 	/* Check if number of peers reached the limit */
@@ -515,23 +479,45 @@ static void morse_mac_check_for_dynamic_peering(struct morse_vif *mors_vif, u8 *
 	if (!accept_additional_peer)
 		return;
 
-	ieee80211_iterate_stations_atomic(mors->hw, peer_with_lowest_rssi, &data);
+	rcu_read_lock();
+	/* Find the peer with lowest rssi */
+	list_for_each(pos, morse_sta_list) {
+		struct morse_sta *msta = list_entry(pos, struct morse_sta, list);
+
+		if (!msta) {
+			MORSE_MESH_WARN(mors, "%s: msta NULL\n", __func__);
+			continue;
+		}
+
+		MORSE_MESH_DBG(mors, "msta %pM with rssi %d and peerings=%u\n",
+			       msta->addr, msta->avg_rssi, msta->mesh_no_of_peerings);
+
+		/* Ignore if number of peerings is 1 */
+		if (msta->mesh_no_of_peerings == 1)
+			continue;
+
+		if (!peer_addr || peer_rssi > msta->avg_rssi) {
+			peer_rssi = msta->avg_rssi;
+			peer_addr = msta->addr;
+		}
+	}
+	rcu_read_unlock();
 
 	/* Check if the new peer has better signal than existing peer */
-	if (data.is_set && (data.rssi + mesh->rssi_margin) < rssi) {
-		struct morse_mesh_peer_addr_vendor_evt event;
+	if (peer_addr && (peer_rssi + mesh->rssi_margin) < rssi) {
+		struct morse_event event;
 		int ret;
 
-		memcpy(event.addr, data.peer, ETH_ALEN);
+		memcpy(event.peer_addr_evt.addr, peer_addr, ETH_ALEN);
 
 		/* New peer has better rssi - indicate peer to supplicant to kick out */
 		ret = morse_vendor_send_peer_addr_event(vif, &event);
 		if (!ret) {
-			memcpy(mesh->kickout_peer_addr, data.peer, ETH_ALEN);
+			memcpy(mesh->kickout_peer_addr, peer_addr, ETH_ALEN);
 			mesh->kickout_ts = jiffies;
 		}
 		MORSE_MESH_INFO(mors, "Kickout Peer %pM rssi %d, new peer %pM rssi %d, ret=%d\n",
-				mesh->kickout_peer_addr, data.rssi, sa, rssi, ret);
+				mesh->kickout_peer_addr, peer_rssi, sa, rssi, ret);
 	}
 }
 

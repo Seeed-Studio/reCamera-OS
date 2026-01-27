@@ -1,7 +1,5 @@
 /*
  * Copyright 2017-2022 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #ifndef _RAW_H_
@@ -25,25 +23,9 @@
 	((x) & ~MORSE_RAW_AID_PRIO_MASK)
 #define MORSE_RAW_AID_DEVICE_MASK		GENMASK(7, 0)
 
-/* EMA smoothing factor: 1/8 */
-#define EMA_SHIFT       3
-#define EMA_ALPHA       BIT(EMA_SHIFT)
-/* Calculate exponential moving average */
-#define EMA_AVG_CALC(cur, new) (((cur) * (EMA_ALPHA - 1) + (new)) >> EMA_SHIFT)
-
-/* Initialize EMA if previous is zero */
-#define EMA_INIT(prev, new_val) \
-	((prev) == 0 ? (new_val) : EMA_AVG_CALC(prev, new_val))
-
-/* Update EMA for u32 values */
-static inline u32 ema_update_u32(u32 prev, u32 sample)
-{
-	return EMA_INIT(prev, sample);
-}
-
 struct morse;
 struct morse_vif;
-struct morse_cmd_req_config_raw;
+struct morse_cmd_raw_cfg;
 
 /**
  * enum ieee80211_s1g_rps_raw_type - types of RAW possible in the RPS IE
@@ -211,14 +193,6 @@ struct morse_raw_config {
 		u16 last_aid;
 	} beacon_spreading;
 
-	/**
-	 * Struct for MM dynamic RAW configuration settings.
-	 */
-	struct {
-		/** The insertion index of this configuration into the current raw cycle. */
-		u16 insert_at_idx;
-	} dynamic;
-
 	/** RAW type specific configuration information. */
 	union {
 		/** Generic RAW specific configuration information. */
@@ -255,30 +229,6 @@ struct morse_raw {
 	u8 *rps_ie;
 	/** The size of the currently generated RPS IE */
 	u8 rps_ie_len;
-	struct {
-		/**
-		 * Number of static configurations active across active_raws and active_praws.
-		 * Static configurations are configured and set once on UMAC start.
-		 */
-		int num_static;
-		/**
-		 * Number of dynamic configurations active in active_raws.
-		 * Dynamic configurations are removed and added over the lifetime of the interface.
-		 */
-		int num_dynamic;
-	} configs;
-
-	/**
-	 * Dynamic RAW configurations are installed and removed once they reach
-	 * their lifetime expiry.
-	 */
-	struct {
-		/* The number of beacons passed in the current configuration cycle */
-		int current_num;
-		/* Maximum number of beacons in the current configuration cycle */
-		u8 num_beacons;
-	} dynamic;
-
 	/** An ordered list of AIDs, for use in generating the RPS IE */
 	struct morse_aid_list *aid_list;
 	/** All RAW configs */
@@ -305,54 +255,6 @@ static inline bool morse_raw_cfg_is_periodic(const struct morse_raw_config * con
 }
 
 /**
- * morse_raw_has_dynamic_config() - Returns true if the dynamic RAW config is active.
- *
- * @cfg: RAW context
- * Returns true if dynamic RAW, else false
- */
-static inline bool morse_raw_has_dynamic_config(struct morse_raw *raw)
-{
-	return raw->configs.num_dynamic > 0;
-}
-
-/**
- * morse_raw_has_static_config() - Returns true if the static RAW config is active.
- *
- * @raw: RAW context
- * Returns true if static RAW, else false
- */
-static inline bool morse_raw_has_static_config(struct morse_raw *raw)
-{
-	return raw->configs.num_static > 0;
-}
-
-/**
- * morse_raw_cfg_has_bcn_idx() - Returns true if the RAW configuration has a beacon index.
- *
- * @cfg: config to test
- * Returns true if RAW config has index, else false
- */
-static inline bool morse_raw_cfg_has_bcn_idx(const struct morse_raw_config *cfg)
-{
-	return cfg->dynamic.insert_at_idx != U16_MAX;
-}
-
-/**
- * morse_raw_process_rx_mgmt() - Process management frames in RAW module
- *
- * @mors:      Morse device
- * @vif:       VIF struct
- * @sta:       pointer to ieee80211_sta
- * @skb:       Rx management frame SKB
- * @ies_mask:  IEs Mask
- *
- * Return: 0 if frame was processed successfully, otherwise error code
- */
-int morse_raw_process_rx_mgmt(struct morse *mors, struct ieee80211_vif *vif,
-			struct ieee80211_sta *sta, const struct sk_buff *skb,
-			struct dot11ah_ies_mask *ies_mask);
-
-/**
  * morse_raw_get_rps_ie_size() - Gets the size of the RPS IE for current RAW settings.
  * @mors_vif: Morse VIF structure
  *
@@ -374,10 +276,10 @@ u8 *morse_raw_get_rps_ie(struct morse_vif *mors_vif);
  * morse_raw_process_cmd() - Execute command to enable/disable/configure RAW
  *
  * @mors_vif:	Morse VIF structure
- * @req:	Command from morsectrl or hostapd or smart manager
+ * @cmd:	Command from morsectrl
  * Return: 0 if command was processed successfully, otherwise error code
  */
-int morse_raw_process_cmd(struct morse_vif *mors_vif, struct morse_cmd_req_config_raw *req);
+int morse_raw_process_cmd(struct morse_vif *mors_vif, struct morse_cmd_raw_cfg *cmd);
 
 /**
  * morse_raw_create_or_find_by_id() - Create a RAW config with the specified ID if it does not
@@ -447,12 +349,6 @@ int morse_raw_init(struct morse_vif *mors_vif, bool enable);
 void morse_raw_finish(struct morse_vif *mors_vif);
 
 /**
- * morse_dynamic_raw_init() - Clean up dynamic RAW and reinitialize.
- * @mors_vif: Morse VIF structure
- */
-void morse_dynamic_raw_init(struct morse_vif *mors_vif);
-
-/**
  * morse_raw_activate_config() - Activate and schedule a RAW config
  *
  * @raw: RAW context
@@ -463,10 +359,9 @@ void morse_raw_activate_config(struct morse_raw *raw, struct morse_raw_config *c
 /**
  * morse_raw_deactivate_config() - Deactivate and unschedule a RAW config
  *
- * @raw: RAW context
  * @cfg: The config to deactivate
  */
-void morse_raw_deactivate_config(struct morse_raw *raw, struct morse_raw_config *cfg);
+void morse_raw_deactivate_config(struct morse_raw_config *cfg);
 
 /**
  * morse_raw_is_config_active() - Test if a config is active

@@ -1,8 +1,6 @@
 /*
  * Copyright 2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #ifndef _MORSE_OFFLOAD_H_
@@ -32,7 +30,6 @@
  * @param evt lease update event
  * @return int 0 on success else error number
  */
-int morse_offload_dhcpc_set_address(struct morse *mors,
-				    struct morse_cmd_evt_dhcp_lease_update *evt);
+int morse_offload_dhcpc_set_address(struct morse *mors, struct morse_evt_dhcp_lease_update *evt);
 
 #endif /* !_MORSE_OFFLOAD_H_ */

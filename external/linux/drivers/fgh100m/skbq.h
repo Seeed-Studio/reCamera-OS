@@ -4,8 +4,6 @@
 /*
  * Copyright 2017-2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 #include <linux/skbuff.h>
 #include <linux/workqueue.h>
@@ -45,28 +43,15 @@ u32 morse_skbq_space(struct morse_skbq *mq);
 u32 morse_skbq_size(struct morse_skbq *mq);
 int morse_skbq_deq_num_items(struct morse_skbq *mq, struct sk_buff_head *skbq, int num_items);
 struct sk_buff *morse_skbq_alloc_skb(struct morse_skbq *mq, unsigned int length);
-
-/**
- * morse_skbq_skb_tx() - Enqueue a skb to be passed to the chip on the given channel.
- * @mq: The Morse SKBQ.
- * @skb: The skb to enqueue.
- * @tx_info: Transmission parameters (copied into the skb header).
- * @channel: The skb channel. Indicates to the chip how to treat this packet.
- *
- * The skb is always consumed by this function, even if an error occurs.
- *
- * Return: error code on failure.
- */
 int morse_skbq_skb_tx(struct morse_skbq *mq, struct sk_buff **skb,
 		      struct morse_skb_tx_info *tx_info, u8 channel);
-
 int morse_skbq_put(struct morse_skbq *mq, struct sk_buff *skb);
 int morse_skbq_enq(struct morse_skbq *mq, struct sk_buff_head *skbq);
 int morse_skbq_enq_prepend(struct morse_skbq *mq, struct sk_buff_head *skbq);
 int morse_skbq_tx_complete(struct morse_skbq *mq, struct sk_buff_head *skbq);
 struct sk_buff *morse_skbq_tx_pending(struct morse_skbq *mq);
 void morse_skbq_show(const struct morse_skbq *mq, struct seq_file *file);
-void morse_skbq_init(struct morse *mors, struct morse_skbq *mq, u16 flags);
+void morse_skbq_init(struct morse *mors, bool from_chip, struct morse_skbq *mq, u16 flags);
 void morse_skbq_finish(struct morse_skbq *mq);
 void morse_skb_remove_hdr_after_sent_to_chip(struct sk_buff *skb);
 

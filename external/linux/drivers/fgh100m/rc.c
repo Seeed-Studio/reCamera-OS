@@ -1,8 +1,6 @@
 /*
  * Copyright 2022-2023 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include <linux/slab.h>
@@ -20,26 +18,26 @@ static bool enable_fixed_rate __read_mostly;
 module_param(enable_fixed_rate, bool, 0644);
 MODULE_PARM_DESC(enable_fixed_rate, "Enable the fixed rate");
 
-/* Set the fixed mcs (Takes effect when enable_fixed_rate is activated) */
+/* Set the fixed mcs (Take effect when enable_fixed_rate is activated) */
 static int fixed_mcs __read_mostly = 4;
 module_param(fixed_mcs, int, 0644);
-MODULE_PARM_DESC(fixed_mcs, "Fixed MCS (only used when enable_fixed_rate is on)");
+MODULE_PARM_DESC(fixed_mcs, "Set the fixed mcs (work when enable_fixed_rate is on)");
 
-/* Set the fixed bandwidth (Takes effect when enable_fixed_rate is activated) */
+/* Set the fixed bandwidth (Take effect when enable_fixed_rate is activated) */
 static int fixed_bw __read_mostly = 2;
 module_param(fixed_bw, int, 0644);
-MODULE_PARM_DESC(fixed_bw, "Fixed bandwidth (only used when enable_fixed_rate is on)");
+MODULE_PARM_DESC(fixed_bw, "Set the fixed bandwidth (work when enable_fixed_rate is on)");
 
-/* Set the fixed spatial stream (Takes effect when enable_fixed_rate is activated) */
+/* Set the fixed spatial stream (Take effect when enable_fixed_rate is activated) */
 static int fixed_ss __read_mostly = 1;
 module_param(fixed_ss, int, 0644);
 MODULE_PARM_DESC(fixed_ss,
-		 "Fixed spatial streams (only used when enable_fixed_rate is on)");
+		 "Set the fixed spatial stream value (work when enable_fixed_rate is on)");
 
-/* Set the fixed guard (Takes effect when enable_fixed_rate is activated) */
+/* Set the fixed guard (Take effect when enable_fixed_rate is activated) */
 static int fixed_guard __read_mostly;
 module_param(fixed_guard, int, 0644);
-MODULE_PARM_DESC(fixed_guard, "Fixed guard interval (only used when enable_fixed_rate is on)");
+MODULE_PARM_DESC(fixed_guard, "Set the fixed guard value (work when enable_fixed_rate is on)");
 
 #define MORSE_RC_MMRC_BW_TO_FLAGS(X)				\
 	(((X) == MMRC_BW_1MHZ) ? MORSE_SKB_RATE_FLAGS_1MHZ :	\
@@ -172,8 +170,9 @@ static void morse_rc_sta_config_guard_per_bw(bool enable_sgi_rc,
 
 static void morse_rc_sta_add_vht_sta_caps(struct morse *mors,
 					  struct mmrc_sta_capabilities *caps,
-					  struct ieee80211_vht_mcs_info *vht_mcs)
+					  struct ieee80211_sta_vht_cap *vht_cap)
 {
+	struct ieee80211_vht_mcs_info *vht_mcs = &vht_cap->vht_mcs;
 	int nss_idx;
 
 	for (nss_idx = 0; nss_idx < min(NL80211_VHT_NSS_MAX, MMRC_SPATIAL_STREAM_MAX); nss_idx++) {
@@ -223,6 +222,17 @@ static void morse_rc_sta_add_vht_sta_caps(struct morse *mors,
 	}
 }
 
+static void morse_rc_sta_add_mandatory_caps(struct morse *mors, struct mmrc_sta_capabilities *caps)
+{
+	caps->rates |= MMRC_MASK(MMRC_MCS0) | MMRC_MASK(MMRC_MCS1);
+	caps->rates |= MMRC_MASK(MMRC_MCS2) | MMRC_MASK(MMRC_MCS3);
+	caps->rates |= MMRC_MASK(MMRC_MCS4) | MMRC_MASK(MMRC_MCS5);
+	caps->rates |= MMRC_MASK(MMRC_MCS6) | MMRC_MASK(MMRC_MCS7);
+	caps->rates |= MMRC_MASK(MMRC_MCS10);
+
+	caps->spatial_streams |= MMRC_MASK(MMRC_SPATIAL_STREAM_1);
+}
+
 /**
  * @morse_rc_sta_vht_caps_available() - Check whether VHT STA capabilities contains valid
  *					information.
@@ -252,7 +262,6 @@ static bool morse_rc_sta_vht_caps_available(struct morse *mors,
 int morse_rc_sta_add(struct morse *mors, struct ieee80211_vif *vif, struct ieee80211_sta *sta)
 {
 	struct ieee80211_sta_vht_cap *vht_cap = morse_mac_sta_vht_cap(sta);
-	struct ieee80211_vht_mcs_info *vht_mcs;
 	struct morse_sta *msta = (struct morse_sta *)sta->drv_priv;
 	struct mmrc_sta_capabilities caps;
 	int oper_bw_mhz = mors->custom_configs.channel_info.op_bw_mhz;
@@ -265,23 +274,23 @@ int morse_rc_sta_add(struct morse *mors, struct ieee80211_vif *vif, struct ieee8
 	MORSE_RC_DBG(mors, "%s: VHT Cap: 0x%08x (%s)", __func__,
 		     vht_cap->cap, vht_cap->vht_supported ? "True" : "False");
 
+	MORSE_RC_DBG(mors, "%s: VHT MCS:", __func__);
+
 	if (morse_rc_sta_vht_caps_available(mors, vht_cap)) {
 		MORSE_RC_DBG(mors, "%s: VHT MCS map available", __func__);
-		vht_mcs = &vht_cap->vht_mcs;
+		morse_rc_sta_add_vht_sta_caps(mors, &caps, vht_cap);
 	} else {
 		/* IBSS doesn't support VHT STA CAPs which are usually filled during association.
-		 * Use settings derived from device capability.
+		 * Use mandatory supported settings for now.
 		 */
 		if (vif->type == NL80211_IFTYPE_ADHOC)
-			MORSE_RC_DBG(mors, "%s: ADHOC MCS map obtained from host table", __func__);
+			MORSE_RC_DBG(mors, "%s: ADHOC MCS", __func__);
 		else
 			MORSE_RC_WARN(mors, "%s: No VHT support or VHT MCS map empty", __func__);
 
-		vht_mcs = &mors_band_5ghz.vht_cap.vht_mcs;
+		morse_rc_sta_add_mandatory_caps(mors, &caps);
 	}
-	morse_rc_sta_add_vht_sta_caps(mors, &caps, vht_mcs);
 
-	MORSE_RC_DBG(mors, "%s: MMRC rates: 0x%02x", __func__, caps.rates);
 	MORSE_RC_DBG(mors, "%s: MMRC spatial streams: 0x%02x", __func__, caps.spatial_streams);
 
 	/* Configure STA for support up to 8MHZ */
@@ -326,52 +335,58 @@ int morse_rc_sta_add(struct morse *mors, struct ieee80211_vif *vif, struct ieee8
 	return 0;
 }
 
-static void rc_reinit_sta(void *data, struct ieee80211_sta *sta)
-{
-	struct ieee80211_vif *vif = data;
-	struct morse_sta *msta = (struct morse_sta *)sta->drv_priv;
-	struct morse_vif *mors_vif = ieee80211_vif_to_morse_vif(vif);
-	struct morse *mors = morse_vif_to_morse(mors_vif);
-	int oper_bw_mhz = mors->custom_configs.channel_info.op_bw_mhz;
-
-	if (!msta) {
-		MORSE_WARN_ON(FEATURE_ID_RATECONTROL, 1);
-		return;
-	}
-
-	if (msta->vif != vif)
-		return;
-
-	MORSE_RC_INFO(mors, "%s: Reinitialize sta %pM with new op_bw=%d, ts=%ld\n", __func__,
-		      sta->addr, oper_bw_mhz, jiffies);
-
-	morse_rc_sta_remove(mors, sta);
-
-	/* Enable VHT Caps if STA supports it when moving to 8MHz channel, hostapd is
-	 * disabling 8MHz SGI Cap of associated STAs if it is brought up in 1/2/4 MHz
-	 * channel.
-	 */
-	if (oper_bw_mhz == 8) {
-		struct ieee80211_sta_vht_cap *vht_cap = morse_mac_sta_vht_cap(sta);
-
-		if ((msta->s1g_cap0 & S1G_CAP0_SGI_8MHZ) &&
-			(mors_vif->ecsa_channel_info.s1g_cap0 & S1G_CAP0_SGI_8MHZ))
-			vht_cap->cap |= IEEE80211_VHT_CAP_SHORT_GI_160;
-
-		if ((msta->s1g_cap0 & S1G_CAP0_SUPP_CH_WIDTH) >= S1G_CAP0_SUPP_8MHZ)
-			vht_cap->cap |= IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160MHZ;
-	}
-
-	morse_rc_sta_add(mors, vif, sta);
-
-	/* Set fixed rate */
-	if (enable_fixed_rate)
-		morse_rc_set_fixed_rate(mors, sta, fixed_mcs, fixed_bw, fixed_ss, fixed_guard);
-}
-
 void morse_rc_reinit_stas(struct morse *mors, struct ieee80211_vif *vif)
 {
-	ieee80211_iterate_stations_atomic(mors->hw, rc_reinit_sta, vif);
+	struct list_head *pos;
+	struct morse_vif *mors_vif = ieee80211_vif_to_morse_vif(vif);
+	struct list_head *morse_sta_list = &mors_vif->ap->stas;
+
+	/* Must be held while finding and dereferencing sta pointers */
+	rcu_read_lock();
+
+	MORSE_RC_INFO(mors, "%s: no_of_stations=%d\n", __func__, mors_vif->ap->num_stas);
+	list_for_each(pos, morse_sta_list) {
+		struct morse_sta *msta = list_entry(pos, struct morse_sta, list);
+		int oper_bw_mhz = mors->custom_configs.channel_info.op_bw_mhz;
+		struct ieee80211_sta *sta =
+		    container_of((void *)msta, struct ieee80211_sta, drv_priv);
+		struct ieee80211_sta_vht_cap *vht_cap;
+
+		if (msta) {
+			MORSE_RC_INFO(mors,
+				      "%s:Reinitialize the sta %pM with new op_bw=%d, ts=%ld\n",
+				      __func__, sta->addr, oper_bw_mhz, jiffies);
+		} else {
+			MORSE_RC_WARN(mors, "%s:msta NULL\n", __func__);
+			continue;
+		}
+
+		morse_rc_sta_remove(mors, sta);
+
+		/* Enable VHT Caps if STA supports it when moving to 8MHz channel, hostapd is
+		 * disabling 8MHz SGI Cap of associated STAs if it is brought up in 1/2/4 MHz
+		 * channel.
+		 */
+		if (oper_bw_mhz == 8) {
+			vht_cap = morse_mac_sta_vht_cap(sta);
+
+			if ((msta->s1g_cap0 & S1G_CAP0_SGI_8MHZ) &&
+				(mors_vif->ecsa_channel_info.s1g_cap0 & S1G_CAP0_SGI_8MHZ))
+				vht_cap->cap |= IEEE80211_VHT_CAP_SHORT_GI_160;
+
+			if ((msta->s1g_cap0 & S1G_CAP0_SUPP_CH_WIDTH) >= S1G_CAP0_SUPP_8MHZ)
+				vht_cap->cap |= IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160MHZ;
+		}
+
+		morse_rc_sta_add(mors, vif, sta);
+
+		/* Set fixed rate */
+		if (enable_fixed_rate)
+			morse_rc_set_fixed_rate(mors, sta, fixed_mcs, fixed_bw, fixed_ss,
+						fixed_guard);
+	}
+
+	rcu_read_unlock();
 }
 
 bool _morse_rc_set_fixed_rate(struct morse *mors,
@@ -471,55 +486,36 @@ static int morse_rc_sta_get_rates(struct morse *mors,
 	return ret;
 }
 
-struct lowest_mcast_rate_iter {
-	const struct ieee80211_vif *on_vif;
-	bool is_set;
-	u32 throughput;
-	struct mmrc_rate rate;
-};
-
-static void rc_find_lowest_mcast_rate(void *data, struct ieee80211_sta *sta)
-{
-	struct lowest_mcast_rate_iter *iter_data = data;
-	struct morse_sta *msta = (struct morse_sta *)sta->drv_priv;
-	struct mmrc_rate rate;
-	u32 throughput;
-
-	if (!msta) {
-		MORSE_WARN_ON(FEATURE_ID_RATECONTROL, 1);
-		return;
-	}
-
-	if (msta->vif != iter_data->on_vif)
-		return;
-
-	rate = mmrc_sta_get_best_rate(msta->rc.tb);
-	throughput = mmrc_calculate_theoretical_throughput(rate);
-
-	if (!iter_data->is_set || iter_data->throughput > throughput) {
-		iter_data->is_set = true;
-		iter_data->throughput = throughput;
-		iter_data->rate = rate;
-	}
-}
-
 void morse_rc_vif_update_mcast_rate(struct morse *mors, struct morse_vif *mors_vif)
 {
-	struct lowest_mcast_rate_iter data = {
-		.is_set = false,
-		.on_vif = morse_vif_to_ieee80211_vif(mors_vif),
-	};
+	struct list_head *pos;
+	struct list_head *morse_sta_list = &mors_vif->ap->stas;
+	u32 best_rate_throughput = 0;
+	u32 mcast_throughput = 0;
+	struct mmrc_rate best_rate;
 
-	ieee80211_iterate_stations_atomic(mors->hw, rc_find_lowest_mcast_rate, &data);
-
-	if (data.is_set) {
-		mors_vif->mcast_tx_rate_throughput = data.throughput;
-		mors_vif->mcast_tx_rate = data.rate;
-	} else {
+	if (!mors_vif->ap->num_stas) {
 		/* If there are no STAs connected, reset the throughput to use basic rates
 		 * for multicast traffic.
 		 */
 		mors_vif->mcast_tx_rate_throughput = 0;
+		return;
+	}
+
+	/* Iterate through the STAs connected and find the lowest rate used */
+	list_for_each(pos, morse_sta_list) {
+		struct morse_sta *msta = list_entry(pos, struct morse_sta, list);
+
+		if (!msta)
+			continue;
+
+		best_rate = mmrc_sta_get_best_rate(msta->rc.tb);
+		best_rate_throughput = mmrc_calculate_theoretical_throughput(best_rate);
+		if (!mcast_throughput || mcast_throughput > best_rate_throughput) {
+			mcast_throughput = best_rate_throughput;
+			mors_vif->mcast_tx_rate_throughput = mcast_throughput;
+			mors_vif->mcast_tx_rate = best_rate;
+		}
 	}
 }
 
@@ -531,12 +527,8 @@ static bool morse_rc_use_basic_rates(struct ieee80211_sta *sta, struct sk_buff *
 	if (!sta)
 		return true;
 
-	if (ieee80211_is_qos_nullfunc(hdr->frame_control) ||
-	    ieee80211_is_nullfunc(hdr->frame_control))
-		return true;
-
 	if (!ieee80211_is_data_qos(hdr->frame_control) &&
-	    !morse_dot11ah_is_pv1_qos_data(le16_to_cpu(hdr->frame_control)))
+		     !morse_dot11ah_is_pv1_qos_data(hdr->frame_control))
 		return true;
 
 	/* Use basic rates for EAPOL exchanges or when instructed */
@@ -640,6 +632,22 @@ void morse_rc_sta_fill_tx_rates(struct morse *mors,
 	}
 }
 
+static int morse_rc_sta_get_attempts(struct morse *mors, struct morse_skb_tx_status *tx_sts)
+{
+	int attempts = 0;
+	int i;
+	int count = min_t(int, MORSE_SKB_MAX_RATES, IEEE80211_TX_MAX_RATES);
+
+	for (i = 0; i < count; i++) {
+		if (tx_sts->rates[i].count > 0)
+			attempts += tx_sts->rates[i].count;
+		else
+			break;
+	}
+
+	return attempts;
+}
+
 static void morse_rc_sta_set_rates(struct morse *mors,
 				   struct morse_sta *msta,
 				   struct mmrc_rate_table *rates,
@@ -663,10 +671,11 @@ static void morse_rc_sta_set_rates(struct morse *mors,
 	spin_unlock_bh(&mors->mrc.lock);
 }
 
-void morse_rc_sta_feedback_rates(struct morse *mors, struct sk_buff *skb,
-				 struct ieee80211_sta *sta, struct morse_skb_tx_status *tx_sts,
-				 int attempts)
+void morse_rc_sta_feedback_rates(struct morse *mors,
+				 struct sk_buff *skb, struct morse_skb_tx_status *tx_sts)
 {
+	int attempts;
+	struct ieee80211_sta *sta;
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
 	struct ieee80211_tx_info *txi = IEEE80211_SKB_CB(skb);
 	struct ieee80211_tx_rate *r = &txi->status.rates[0];
@@ -678,7 +687,15 @@ void morse_rc_sta_feedback_rates(struct morse *mors, struct sk_buff *skb,
 	u32 agg_success, agg_packets;
 	struct morse_vif *mors_vif;
 
+	/* Must be held while finding and dereferencing sta */
+	rcu_read_lock();
+
 	vif = txi->control.vif ? txi->control.vif : morse_get_vif_from_tx_status(mors, tx_sts);
+
+	if (morse_dot11ah_is_pv1_qos_data(hdr->frame_control))
+		sta = morse_pv1_find_sta(vif, (struct dot11ah_mac_pv1_hdr *)hdr);
+	else
+		sta = ieee80211_find_sta(vif, hdr->addr1);
 
 	/* Don't update rate info if basic rates were used */
 	if (morse_rc_use_basic_rates(sta, skb, hdr))
@@ -690,6 +707,7 @@ void morse_rc_sta_feedback_rates(struct morse *mors, struct sk_buff *skb,
 
 	mors_vif = ieee80211_vif_to_morse_vif(vif);
 
+	attempts = morse_rc_sta_get_attempts(mors, tx_sts);
 	if (attempts <= 0)
 		/* Did we really send the packet? */
 		goto exit;
@@ -728,8 +746,8 @@ void morse_rc_sta_feedback_rates(struct morse *mors, struct sk_buff *skb,
 	}
 
 	if (tx_sts->ampdu_info) {
-		agg_success = MORSE_TXSTS_AMPDU_INFO_GET_SUC(le16_to_cpu(tx_sts->ampdu_info));
-		agg_packets = MORSE_TXSTS_AMPDU_INFO_GET_LEN(le16_to_cpu(tx_sts->ampdu_info));
+		agg_success = MORSE_TXSTS_AMPDU_INFO_GET_SUC(tx_sts->ampdu_info);
+		agg_packets = MORSE_TXSTS_AMPDU_INFO_GET_LEN(tx_sts->ampdu_info);
 		morse_rc_sta_set_rates(mors, msta, &rates, attempts, true, agg_success,
 				       agg_packets - agg_success);
 	} else {
@@ -739,11 +757,11 @@ void morse_rc_sta_feedback_rates(struct morse *mors, struct sk_buff *skb,
 exit:
 	ieee80211_tx_info_clear_status(txi);
 
-	if (!(le32_to_cpu(tx_sts->flags) & MORSE_TX_STATUS_FLAGS_NO_ACK) &&
+	if (!(tx_sts->flags & MORSE_TX_STATUS_FLAGS_NO_ACK) &&
 	    !(txi->flags & IEEE80211_TX_CTL_NO_ACK))
 		txi->flags |= IEEE80211_TX_STAT_ACK;
 
-	if (le32_to_cpu(tx_sts->flags) & MORSE_TX_STATUS_FLAGS_PS_FILTERED) {
+	if (tx_sts->flags & MORSE_TX_STATUS_FLAGS_PS_FILTERED) {
 		mors->debug.page_stats.tx_ps_filtered++;
 		txi->flags |= IEEE80211_TX_STAT_TX_FILTERED;
 
@@ -780,6 +798,7 @@ exit:
 		ieee80211_sta_eosp(sta);
 	}
 
+	rcu_read_unlock();
 	MORSE_IEEE80211_TX_STATUS(mors->hw, skb);
 }
 
@@ -829,29 +848,4 @@ void morse_rc_sta_state_check(struct morse *mors,
 		MORSE_RC_INFO(mors, "Remove stale sta from rc list\n");
 		morse_rc_sta_remove(mors, sta);
 	}
-}
-
-bool morse_rc_get_enable_fixed_rate(void)
-{
-	return enable_fixed_rate;
-}
-
-int morse_rc_get_fixed_bandwidth(void)
-{
-	return fixed_bw;
-}
-
-int morse_rc_get_fixed_mcs(void)
-{
-	return fixed_mcs;
-}
-
-int morse_rc_get_fixed_ss(void)
-{
-	return fixed_ss;
-}
-
-int morse_rc_get_fixed_guard(void)
-{
-	return fixed_guard;
 }

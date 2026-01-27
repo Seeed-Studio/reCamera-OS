@@ -1,8 +1,6 @@
 /*
  * Copyright 2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 /* This initial value is for Minstrel, and there is another in rc.h for MMRC */

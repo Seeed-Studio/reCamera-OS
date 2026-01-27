@@ -30,7 +30,7 @@ u16 crc16xmodem_rem(u16 crc, unsigned int val, unsigned int bits);
 u16 crc16xmodem_byte(u16 crc, void const *mem, size_t len);
 
 /* Compute the CRC a word at a time. */
-u16 crc16xmodem_word(__le16 crc, void const *mem, size_t len);
+u16 crc16xmodem_word(u16 crc, void const *mem, size_t len);
 
 /* Compute the combination of two CRCs. */
 u16 crc16xmodem_comb(u16 crc1, u16 crc2, u64 len2);

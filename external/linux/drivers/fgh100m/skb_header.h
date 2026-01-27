@@ -4,8 +4,6 @@
 /*
  * Copyright 2021 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 
 #include <linux/types.h>
@@ -89,7 +87,6 @@ enum morse_tx_status_and_conf_flags {
  * @MORSE_RX_STATUS_FLAGS_UPLINK: This frame had an uplink indication
  * @MORSE_RX_STATUS_FLAGS_RI: Response Indication Value Bits 9-10
  * @MORSE_RX_STATUS_FLAGS_NDP_TYPE: NDP type
- * @MORSE_RX_STATUS_FLAGS_CRC_ERROR: The frame's MAC CRC was invalid
  */
 enum morse_rx_status_flags {
 	MORSE_RX_STATUS_FLAGS_ERROR = BIT(0),
@@ -101,7 +98,6 @@ enum morse_rx_status_flags {
 	MORSE_RX_STATUS_FLAGS_UPLINK = BIT(8),
 	MORSE_RX_STATUS_FLAGS_RI = (BIT(9) | BIT(10)),
 	MORSE_RX_STATUS_FLAGS_NDP_TYPE = (BIT(11) | BIT(12) | BIT(13)),
-	MORSE_RX_STATUS_FLAGS_CRC_ERROR  =  BIT(14),
 	MORSE_RX_STATUS_FLAGS_VIF_ID = GENMASK(24, 17),
 };
 
@@ -249,24 +245,22 @@ struct morse_skb_tx_info {
  * @flags: RX flags for this frame
  * @morse_ratecode: The morse rate code at which this MPDU was received.
  * @rssi: The RSSI of the received frame
- * @freq_100khz: The frequency the frame was received on in 100kHz
+ * @freq_mhz: The frequency the frame was received on in MHz
  * @rx_timestamp_us: When STA or AP, this is the value of the TSF timer.
  *                   In monitor mode this is the value of the chip's local timer
  *                   when the frame was first detected.
  *                   Note: currently TSF is not implemented so
  *                   when STA or AP the chip's local timer is used.
  * @bss_color: The BSS color of the received frame (Valid only for Dot11ah)
- * @noise_dbm: The most recent noise level measured by the PHY
  */
 struct morse_skb_rx_status {
 	__le32 flags;
 	morse_rate_code_t morse_ratecode;
 	__le16 rssi;
-	__le16 freq_100khz;
+	__le16 freq_mhz;
 	u8 bss_color;
-	s8 noise_dbm;
 	/** Padding for word alignment */
-	u8 padding[2];
+	u8 padding[3];
 	__le64 rx_timestamp_us;
 } __packed;
 

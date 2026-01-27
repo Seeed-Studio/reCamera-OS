@@ -1,7 +1,5 @@
 /*
  * Copyright 2023 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #include <linux/timer.h>
 #include <linux/bitfield.h>
@@ -12,16 +10,18 @@
 #include "mbssid.h"
 
 int morse_command_process_bssid_info(struct morse_vif *mors_vif,
-				     struct morse_cmd_req_mbssid *req_mbssid)
+				     struct morse_cmd_mbssid *cmd_mbssid)
 {
 	int vif_id;
 	struct morse_vif *mors_tx_if;
 	struct ieee80211_vif *vif_tmp = NULL;
+	struct ieee80211_vif *vif;
 	struct morse *mors;
 
 	if (!mors_vif)
 		return -EFAULT;
 
+	vif = morse_vif_to_ieee80211_vif(mors_vif);
 	mors = morse_vif_to_morse(mors_vif);
 
 	if (!morse_mbssid_ie_enabled(mors))
@@ -33,7 +33,7 @@ int morse_command_process_bssid_info(struct morse_vif *mors_vif,
 		if (!vif_tmp)
 			continue;
 
-		if (strcmp(morse_vif_name(vif_tmp), (char *)req_mbssid->transmitter_iface) == 0) {
+		if (strcmp(morse_vif_name(vif_tmp), cmd_mbssid->transmitter_iface) == 0) {
 			/* Transmitter iface found. Let's break here */
 			break;
 		}
@@ -44,10 +44,10 @@ int morse_command_process_bssid_info(struct morse_vif *mors_vif,
 
 	mors_tx_if = ieee80211_vif_to_morse_vif(vif_tmp);
 
-	if (req_mbssid->max_bssid_indicator > mors->max_vifs)
+	if (cmd_mbssid->max_bssid_indicator > mors->max_vifs)
 		mors_vif->mbssid_info.max_bssid_indicator = mors->max_vifs;
 	else
-		mors_vif->mbssid_info.max_bssid_indicator = req_mbssid->max_bssid_indicator;
+		mors_vif->mbssid_info.max_bssid_indicator = cmd_mbssid->max_bssid_indicator;
 	mors_vif->mbssid_info.transmitter_vif_id = mors_tx_if->id;
 
 	if (mors_vif->id != mors_tx_if->mbssid_info.transmitter_vif_id) {
@@ -218,6 +218,8 @@ int morse_process_beacon_from_mbssid_ie(struct morse *mors, struct sk_buff *skb,
 					struct ieee80211_vif *vif,
 					const struct morse_skb_rx_status *hdr_rx_status)
 {
+	struct ieee80211_hdr *hdr;
+	struct ieee80211_mgmt *mgmt;
 	const struct ieee80211_ext *s1g_beacon;
 	u8 new_bssid[ETH_ALEN];
 	const u8 *mbssid_index_ie;
@@ -269,6 +271,8 @@ int morse_process_beacon_from_mbssid_ie(struct morse *mors, struct sk_buff *skb,
 			continue;
 
 		s1g_beacon = (struct ieee80211_ext *)skb_beacon->data;
+		hdr = (struct ieee80211_hdr *)skb_beacon->data;
+		mgmt = (struct ieee80211_mgmt *)hdr;
 
 		cfg80211_gen_new_bssid(s1g_beacon->u.s1g_beacon.sa,
 				       max_bssid_indicator, mbssid_index, new_bssid);

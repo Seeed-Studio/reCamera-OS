@@ -1,7 +1,5 @@
 /*
- * Copyright 2022 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later OR LicenseRef-MorseMicroCommercial
+ * Copyright 2022 Morse Micro.
  *
  */
 
@@ -618,9 +616,6 @@ static void mmrc_fill_retry_rates(struct mmrc_table *tb)
 		if (tb->unconverged && tb->second_tp.rate > MMRC_MCS4)
 			tb->second_tp.rate = MMRC_MCS4;
 		rate_update_index(tb, &tb->second_tp);
-	} else if (tb->second_tp.bw > MMRC_BW_1MHZ) {
-		tb->second_tp.bw--;
-		rate_update_index(tb, &tb->second_tp);
 	}
 
 	tb->best_prob = tb->second_tp;
@@ -629,19 +624,11 @@ static void mmrc_fill_retry_rates(struct mmrc_table *tb)
 		if (tb->unconverged && tb->best_prob.rate > MMRC_MCS2)
 			tb->best_prob.rate = MMRC_MCS2;
 		rate_update_index(tb, &tb->best_prob);
-	} else if (tb->best_prob.bw > MMRC_BW_1MHZ) {
-		tb->best_prob.bw--;
-		rate_update_index(tb, &tb->best_prob);
 	}
 
 	tb->baseline = tb->best_prob;
-	if (tb->baseline.rate != MMRC_MCS0) {
-		tb->baseline.rate = MMRC_MCS0;
-		rate_update_index(tb, &tb->baseline);
-	} else if (tb->baseline.bw > MMRC_BW_1MHZ) {
-		tb->baseline.bw--;
-		rate_update_index(tb, &tb->baseline);
-	}
+	tb->baseline.rate = MMRC_MCS0;
+	rate_update_index(tb, &tb->baseline);
 }
 
 /**
@@ -865,7 +852,8 @@ void mmrc_get_rates(struct mmrc_table *tb,
 	bool is_lookaround;
 	int lookaround_index = -1;
 	int best_index = 0;
-	int random_tp = 0;
+	int theoretical_random_tp = 0;
+	int theoretical_best_tp = 0;
 	int best_tp;
 	int lookaround_fail_count;
 	bool try_current_lookaround = false;
@@ -883,10 +871,6 @@ void mmrc_get_rates(struct mmrc_table *tb,
 				((tb->lookaround_cnt == 0) ||
 				((tb->last_lookaround_cycle + LOOKAROUND_MAX_RC_CYCLES) <=
 					 tb->cycle_cnt));
-
-	/* Also skip sampling if we don't yet have data for our best rate */
-	if (tb->table[tb->best_tp.index].evidence == 0)
-		is_lookaround = false;
 
 	if (tb->lookaround_wrap != LOOKAROUND_RATE_STABLE) {
 		if (tb->stability_cnt >= tb->stability_cnt_threshold) {
@@ -911,6 +895,8 @@ void mmrc_get_rates(struct mmrc_table *tb,
 		if (tb->current_lookaround_rate_attempts < LOOKAROUND_RATE_ATTEMPTS)
 			try_current_lookaround = true;
 
+		theoretical_best_tp =
+			mmrc_calculate_theoretical_throughput(tb->best_tp);
 		best_tp = calculate_throughput(tb, tb->best_tp.index);
 
 		/* Generate a lookaround */
@@ -934,13 +920,16 @@ void mmrc_get_rates(struct mmrc_table *tb,
 			if (random.rate == MMRC_MCS10)
 				continue;
 #endif
-			if (tb->table[random_index].evidence > 0)
-				random_tp = calculate_throughput(tb, random_index);
-			else
-				random_tp = mmrc_calculate_theoretical_throughput(random);
+			/*
+			 * Add looking down the rates limitation in a form of percentage
+			 * of the best throughput rate theoretical performance.
+			 */
+			theoretical_random_tp = mmrc_calculate_theoretical_throughput(random);
+			if (MAX_ALLOWED_GAP(theoretical_best_tp, theoretical_random_tp, 33))
+				continue;
 
 			/* Skip rates that can only be worse than the current best */
-			if (random_tp <= best_tp)
+			if (theoretical_random_tp < best_tp)
 				continue;
 
 			/*
@@ -949,8 +938,7 @@ void mmrc_get_rates(struct mmrc_table *tb,
 			 * In case of better environment conditions MMRC will collect
 			 * enough statistics to climb up the rates one by one.
 			 */
-			if (random.rate > tb->best_tp.rate + 1 || random.bw > tb->best_tp.bw + 1 ||
-			    (random.rate > tb->best_tp.rate && random.bw > tb->best_tp.bw))
+			if (random.rate > (tb->best_tp.rate + 1))
 				continue;
 
 			if (tb->current_lookaround_rate_index == random_index) {
@@ -965,7 +953,6 @@ void mmrc_get_rates(struct mmrc_table *tb,
 
 		if (lookaround_fail_count >= LOOKAROUND_FAIL_MAX) {
 			is_lookaround = false;
-			tb->current_lookaround_rate_index = tb->best_tp.index;
 		} else {
 			lookaround0 = random;
 			lookaround1 = tb->best_tp;
@@ -1023,11 +1010,9 @@ void mmrc_get_rates(struct mmrc_table *tb,
 		}
 	}
 
-	/* Give the best rate at least 2 attempts to keep peak throughput unless it is too low */
-	if (out->rates[best_index].attempts == 1 && out->rates[best_index].rate > MMRC_MCS1)
+	/* Give the best rate at least 2 attempts to keep peak throughput */
+	if (out->rates[best_index].attempts == 1)
 		out->rates[best_index].attempts = MMRC_ATTEMPTS_TO_BITFIELD(2);
-	else if (out->rates[best_index].rate <= MMRC_MCS1)
-		out->rates[best_index].attempts = 1;
 }
 
 static u32 calc_ewma_average(u32 avg, u32 latest, u32 weight)
@@ -1121,7 +1106,6 @@ void mmrc_update(struct mmrc_table *tb)
 	u32 success_for_stats;
 	u32 min_stats;
 	u32 throughput;
-	u32 evidence_sent;
 
 	tb->cycle_cnt++;
 
@@ -1153,10 +1137,8 @@ void mmrc_update(struct mmrc_table *tb)
 
 		scaled_ewma = scale * EWMA / 100;
 
-		/* Only count new packets for evidence if we will process them */
-		evidence_sent = tb->table[i].sent >= min_stats ? tb->table[i].sent : 0;
 		tb->table[i].evidence = calc_ewma_average(tb->table[i].evidence,
-							  evidence_sent * EVIDENCE_SCALE,
+							  tb->table[i].sent * EVIDENCE_SCALE,
 							  scaled_ewma);
 
 		if (tb->table[i].evidence > EVIDENCE_MAX)

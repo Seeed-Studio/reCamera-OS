@@ -4,8 +4,6 @@
 /*
  * Copyright 2017-2022 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 #include "pager_if.h"
 
@@ -25,9 +23,9 @@ struct morse_pager_hw_table {
 struct morse_pager_hw_entry {
 	u8 flags;		/* Indicate direction of pager */
 	u8 padding;
-	__le16 page_size;		/* Page size in bytes */
-	__le32 pop_addr;		/* Pager hardware instance pop address */
-	__le32 push_addr;		/* Pager hardware instance push address */
+	u16 page_size;		/* Page size in bytes */
+	u32 pop_addr;		/* Pager hardware instance pop address */
+	u32 push_addr;		/* Pager hardware instance push address */
 } __packed;
 
 int morse_pager_hw_read_table(struct morse *mors, struct morse_pager_hw_table *tbl_ptr);

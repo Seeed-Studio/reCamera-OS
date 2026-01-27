@@ -1,8 +1,6 @@
 /*
  * Copyright 2021-2023 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 #include <linux/bitops.h>
 #include "pager_if_hw.h"
@@ -147,6 +145,7 @@ static int _morse_pager_hw_pop(struct morse_pager *pager,
 	u32 pop_val;
 
 	ret = morse_reg32_read(pager->mors, aux_data->pop_addr, &pop_val);
+	pop_val = le32_to_cpu(pop_val);
 
 	if (!ret) {
 		/* Pager has no pages left */
@@ -199,7 +198,7 @@ static int _morse_pager_hw_put(struct morse_pager *pager,
 	int ret;
 
 	pageset_trace_log(pager, PAGESET_TRACE_EVENT_ID_PUT_PAGE, page->addr);
-	ret = morse_reg32_write(pager->mors, aux_data->put_addr, page->addr);
+	ret = morse_reg32_write(pager->mors, aux_data->put_addr, cpu_to_le32(page->addr));
 
 	if (!ret) {
 		page->addr = 0;
@@ -399,7 +398,7 @@ int morse_pager_hw_pagesets_init(struct morse *mors)
 		}
 
 		ret = morse_pager_init(mors, pager,
-				       __le16_to_cpu(pager_entry[i].page_size),
+				       __le32_to_cpu(pager_entry[i].page_size),
 				       pager_entry[i].flags, i);
 		if (ret) {
 			MORSE_ERR(mors, "morse_pager_init failed %d\n", ret);
@@ -462,8 +461,7 @@ int morse_pager_hw_pagesets_init(struct morse *mors)
 	mors->chip_if->from_chip_pageset = &mors->chip_if->pagesets[1];
 	INIT_WORK(&mors->chip_if_work, morse_pagesets_work);
 	INIT_WORK(&mors->tx_stale_work, morse_pagesets_stale_tx_work);
-	INIT_KFIFO(mors->chip_if->bypass.tx_sts.to_process);
-	INIT_KFIFO(mors->chip_if->bypass.cmd_resp.to_process);
+	INIT_KFIFO(mors->chip_if->tx_status_addrs);
 
 	/* pager irq will claim and release the bus */
 	morse_release_bus(mors);
@@ -472,7 +470,6 @@ int morse_pager_hw_pagesets_init(struct morse *mors)
 	morse_pager_irq_enable(tx_return, true);
 	morse_pager_irq_enable(rx_data, true);
 	morse_pager_tx_status_irq_enable(mors, true);
-	morse_pager_cmd_resp_irq_enable(mors, true);
 	morse_hw_enable_stop_notifications(mors, true);
 	devm_kfree(mors->dev, pager_entry);
 
@@ -524,7 +521,6 @@ void morse_pager_hw_pagesets_finish(struct morse *mors)
 	cancel_work_sync(&mors->tx_stale_work);
 
 	morse_pager_tx_status_irq_enable(mors, false);
-	morse_pager_cmd_resp_irq_enable(mors, false);
 	for (pager = mors->chip_if->pagers, count = 0;
 	     count < mors->chip_if->pager_count; pager++, count++) {
 		morse_pager_irq_enable(pager, false);

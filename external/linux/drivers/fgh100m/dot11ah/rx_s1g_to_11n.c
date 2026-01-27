@@ -1,7 +1,5 @@
 /*
  * Copyright 2020 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #include <linux/types.h>
@@ -13,7 +11,6 @@
 #include "dot11ah.h"
 #include "tim.h"
 #include "debug.h"
-#include "../debug.h"
 #include "../morse.h"
 #include "../mesh.h"
 #include "../s1g_ies.h"
@@ -106,11 +103,11 @@ static const struct ieee80211_wmm_param_ie __wmm_ie = {
 		}, {
 			.aci_aifsn = (0x2 << 4) | 1,
 			.cw = (4 << 4) | 3,
-			.txop_limit = cpu_to_le16(94)
+			.txop_limit = 94
 		}, {
 			.aci_aifsn = (0x3 << 4) | 1,
 			.cw = (3 << 4) | 2,
-			.txop_limit = cpu_to_le16(47)
+			.txop_limit = 47
 		}
 	}
 };
@@ -133,7 +130,6 @@ static const u8  __s1g_supp_rates_ie[] = {
 static u8 *morse_dot11_insert_ht_cap_ie(u8 *pos, const struct dot11ah_ies_mask *ies_mask)
 {
 	struct ieee80211_ht_cap ht_cap;
-	u8 s1g_cap3;
 	u8 ampdu_len_exp;
 	u8 ampdu_mss;
 
@@ -144,9 +140,8 @@ static u8 *morse_dot11_insert_ht_cap_ie(u8 *pos, const struct dot11ah_ies_mask *
 
 	if (ies_mask->ies[WLAN_EID_S1G_CAPABILITIES].ptr) {
 		/* A-MPDU parameters */
-		s1g_cap3 = ies_mask->ies[WLAN_EID_S1G_CAPABILITIES].ptr[3];
-		ampdu_len_exp = S1G_CAP3_GET_MAX_AMPDU_LEN_EXP(s1g_cap3);
-		ampdu_mss = S1G_CAP3_GET_MIN_AMPDU_START_SPC(s1g_cap3);
+		ampdu_len_exp = (ies_mask->ies[WLAN_EID_S1G_CAPABILITIES].ptr[5] >> 3) & 0x3;
+		ampdu_mss = (ies_mask->ies[WLAN_EID_S1G_CAPABILITIES].ptr[5] >> 5) & 0x7;
 		ht_cap.ampdu_params_info = ampdu_len_exp | (ampdu_mss << 2);
 
 		/* SGI parameters
@@ -156,8 +151,8 @@ static u8 *morse_dot11_insert_ht_cap_ie(u8 *pos, const struct dot11ah_ies_mask *
 				       S1G_CAP0_SGI_2MHZ |
 				       S1G_CAP0_SGI_4MHZ |
 				       S1G_CAP0_SGI_8MHZ)) {
-			ht_cap.cap_info |= cpu_to_le16(IEEE80211_HT_CAP_SGI_20);
-			ht_cap.cap_info |= cpu_to_le16(IEEE80211_HT_CAP_SGI_40);
+			ht_cap.cap_info |= IEEE80211_HT_CAP_SGI_20;
+			ht_cap.cap_info |= IEEE80211_HT_CAP_SGI_40;
 		}
 	}
 
@@ -324,19 +319,19 @@ static u8 *morse_dot11_insert_wmm_ie(u8 *pos, const struct dot11ah_ies_mask *ies
 		memcpy(&wmm_ie, &__wmm_ie, sizeof(wmm_ie));
 		wmm_ie.ac[0].aci_aifsn = edca->ac_be.aifsn;
 		wmm_ie.ac[0].cw = edca->ac_be.ecw_min_max;
-		wmm_ie.ac[0].txop_limit = cpu_to_le16(edca->ac_be.txop_limit);
+		wmm_ie.ac[0].txop_limit = edca->ac_be.txop_limit;
 
 		wmm_ie.ac[1].aci_aifsn = edca->ac_bk.aifsn;
 		wmm_ie.ac[1].cw = edca->ac_bk.ecw_min_max;
-		wmm_ie.ac[1].txop_limit = cpu_to_le16(edca->ac_bk.txop_limit);
+		wmm_ie.ac[1].txop_limit = edca->ac_bk.txop_limit;
 
 		wmm_ie.ac[2].aci_aifsn = edca->ac_vi.aifsn;
 		wmm_ie.ac[2].cw = edca->ac_vi.ecw_min_max;
-		wmm_ie.ac[2].txop_limit = cpu_to_le16(edca->ac_vi.txop_limit);
+		wmm_ie.ac[2].txop_limit = edca->ac_vi.txop_limit;
 
 		wmm_ie.ac[3].aci_aifsn = edca->ac_vo.aifsn;
 		wmm_ie.ac[3].cw = edca->ac_vo.ecw_min_max;
-		wmm_ie.ac[3].txop_limit = cpu_to_le16(edca->ac_vo.txop_limit);
+		wmm_ie.ac[3].txop_limit = edca->ac_vo.txop_limit;
 
 		/* ieee80211_wmm_param_ie already contains both element_id and element_length as
 		 * members. We do not want to insert those twice, so use the _no_header version.
@@ -680,18 +675,18 @@ static int morse_dot11ah_s1g_to_beacon_size(struct ieee80211_vif *vif, struct sk
 	/* Some optional fields may appear before the variable IEs, make sure to account for this
 	 * when determining the start of the IEs.
 	 */
-	if (le16_to_cpu(s1g_beacon->frame_control) & IEEE80211_FC_NEXT_TBTT) {
+	if (s1g_beacon->frame_control & IEEE80211_FC_NEXT_TBTT)	{
 		next_tbtt_ptr = s1g_ies;
 		s1g_ies += 3;
 		s1g_ies_len -= 3;
 	}
 
-	if (le16_to_cpu(s1g_beacon->frame_control) & IEEE80211_FC_COMPRESS_SSID) {
+	if (s1g_beacon->frame_control & IEEE80211_FC_COMPRESS_SSID)	{
 		s1g_ies += 4;
 		s1g_ies_len -= 4;
 	}
 
-	if (le16_to_cpu(s1g_beacon->frame_control) & IEEE80211_FC_ANO) {
+	if (s1g_beacon->frame_control & IEEE80211_FC_ANO) {
 		ano_ptr = s1g_ies;
 		s1g_ies += 1;
 		s1g_ies_len -= 1;
@@ -955,24 +950,24 @@ static void morse_dot11ah_s1g_to_beacon(struct ieee80211_vif *vif, struct sk_buf
 
 	updated_vals.cssid_ies = NULL;
 	updated_vals.cssid_ies_len = 0;
-	updated_vals.capab_info = cpu_to_le16(WLAN_CAPABILITY_ESS);
+	updated_vals.capab_info = WLAN_CAPABILITY_ESS;
 	updated_vals.bcn_int = cpu_to_le16(100);
 
 	if (beacon_len <= 0)
 		goto exit;
 
-	if (le16_to_cpu(s1g_beacon->frame_control) & IEEE80211_FC_NEXT_TBTT) {
+	if (s1g_beacon->frame_control & IEEE80211_FC_NEXT_TBTT)	{
 		next_tbtt_ptr = s1g_ies;
 		s1g_ies += 3;
 		s1g_ies_len -= 3;
 	}
 
-	if (le16_to_cpu(s1g_beacon->frame_control) & IEEE80211_FC_COMPRESS_SSID) {
+	if (s1g_beacon->frame_control & IEEE80211_FC_COMPRESS_SSID) {
 		s1g_ies += 4;
 		s1g_ies_len -= 4;
 	}
 
-	if (le16_to_cpu(s1g_beacon->frame_control) & IEEE80211_FC_ANO) {
+	if (s1g_beacon->frame_control & IEEE80211_FC_ANO) {
 		ano_ptr = s1g_ies;
 		s1g_ies += 1;
 		s1g_ies_len -= 1;
@@ -1000,8 +995,8 @@ static void morse_dot11ah_s1g_to_beacon(struct ieee80211_vif *vif, struct sk_buf
 
 	/* Store SSID or restore it */
 	if (ies_mask->ies[network_id_eid].ptr) {
-		morse_dot11ah_store_cssid(ies_mask, le16_to_cpu(updated_vals.capab_info),
-				s1g_ies, s1g_ies_len, s1g_beacon->u.s1g_beacon.sa, &updated_vals);
+		morse_dot11ah_store_cssid(ies_mask, updated_vals.capab_info, s1g_ies, s1g_ies_len,
+					  s1g_beacon->u.s1g_beacon.sa, &updated_vals);
 
 		/* Fill in fc_bss_bw_subfield here, otherwise it will be
 		 * always set to 255 when DTIM period is 1 (no short beacons)
@@ -1010,7 +1005,7 @@ static void morse_dot11ah_s1g_to_beacon(struct ieee80211_vif *vif, struct sk_buf
 		item = morse_dot11ah_find_bssid(s1g_beacon->u.s1g_beacon.sa);
 		if (item)
 			item->fc_bss_bw_subfield =
-				IEEE80211AH_GET_FC_BSS_BW(le16_to_cpu(s1g_beacon->frame_control));
+					IEEE80211AH_GET_FC_BSS_BW(s1g_beacon->frame_control);
 		else
 			spin_unlock_bh(&cssid_list_lock);
 	} else {
@@ -1020,7 +1015,7 @@ static void morse_dot11ah_s1g_to_beacon(struct ieee80211_vif *vif, struct sk_buf
 
 		if (item) {
 			item->fc_bss_bw_subfield =
-				IEEE80211AH_GET_FC_BSS_BW(le16_to_cpu(s1g_beacon->frame_control));
+				IEEE80211AH_GET_FC_BSS_BW(s1g_beacon->frame_control);
 			/* Reparse for stored beacon */
 			if (morse_dot11ah_parse_ies(item->ies, item->ies_len, ies_mask) < 0) {
 				dot11ah_warn("Failed to parse stored beacon\n");
@@ -1046,7 +1041,7 @@ static void morse_dot11ah_s1g_to_beacon(struct ieee80211_vif *vif, struct sk_buf
 			if (s1g_bcn_comp)
 				updated_vals.capab_info = s1g_bcn_comp->information;
 			else
-				updated_vals.capab_info = cpu_to_le16(item->capab_info);
+				updated_vals.capab_info = item->capab_info;
 		} else {
 			spin_unlock_bh(&cssid_list_lock);
 		}
@@ -1063,8 +1058,8 @@ static void morse_dot11ah_s1g_to_beacon(struct ieee80211_vif *vif, struct sk_buf
 	else if (s1g_bcn_comp)
 		updated_vals.bcn_int = s1g_bcn_comp->beacon_interval;
 
-	if (item) /* Update bcn interval in the cssid item */
-		item->beacon_int = le16_to_cpu(updated_vals.bcn_int);
+	if (item)
+		item->beacon_int = updated_vals.bcn_int; /* Update bcn interval in the cssid item */
 
 	beacon->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT) |
 		cpu_to_le16(IEEE80211_STYPE_BEACON);
@@ -1075,7 +1070,7 @@ static void morse_dot11ah_s1g_to_beacon(struct ieee80211_vif *vif, struct sk_buf
 	/* Update capab_info and copy other fields */
 	beacon->u.beacon.capab_info = updated_vals.capab_info;
 	beacon->u.beacon.beacon_int = updated_vals.bcn_int;
-	beacon->u.beacon.timestamp = cpu_to_le64(le32_to_cpu(s1g_beacon->u.s1g_beacon.timestamp));
+	beacon->u.beacon.timestamp = s1g_beacon->u.s1g_beacon.timestamp;
 
 	pos = beacon->u.beacon.variable;
 
@@ -1250,12 +1245,11 @@ static void morse_dot11ah_s1g_to_probe_resp(struct ieee80211_vif *vif, struct sk
 		memcpy(da, vif->addr, ETH_ALEN);
 
 	/* SW-2241: Restore short slot time bit for 80211g compatibility. */
-	s1g_probe_resp->u.probe_resp.capab_info |= cpu_to_le16(WLAN_CAPABILITY_SHORT_SLOT_TIME);
+	s1g_probe_resp->u.probe_resp.capab_info |= WLAN_CAPABILITY_SHORT_SLOT_TIME;
 
 	/* Create/Update the S1G IES for this cssid/bssid entry */
-	morse_dot11ah_store_cssid(ies_mask,
-				  le16_to_cpu(s1g_probe_resp->u.probe_resp.capab_info),
-				  s1g_ies, s1g_ies_len, s1g_probe_resp->bssid, NULL);
+	morse_dot11ah_store_cssid(ies_mask, s1g_probe_resp->u.probe_resp.capab_info, s1g_ies,
+				  s1g_ies_len, s1g_probe_resp->bssid, NULL);
 
 	probe_resp = kmalloc(length_11n, GFP_KERNEL);
 	if (!probe_resp)
@@ -1467,8 +1461,7 @@ static void morse_dot11ah_s1g_to_assoc_resp(struct ieee80211_vif *vif, struct sk
 
 	/* Fill in the new association request header, copied from incoming frame */
 	memcpy(assoc_resp, s1g_assoc_resp, header_length);
-	assoc_resp->u.assoc_resp.aid =
-		cpu_to_le16(*((u16 *)&ies_mask->ies[WLAN_EID_AID_RESPONSE].ptr[0]));
+	assoc_resp->u.assoc_resp.aid = *((u16 *)&ies_mask->ies[WLAN_EID_AID_RESPONSE].ptr[0]);
 
 	spin_lock_bh(&cssid_list_lock);
 	bssid_item = morse_dot11ah_find_bssid(assoc_resp->bssid);

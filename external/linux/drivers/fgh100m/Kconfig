@@ -25,11 +25,6 @@ config MORSE_SDIO
 	  for the host/device interface.
 	  Both SDIO and SPI drivers may be enabled simultaneously.
 
-config MORSE_USB
-	bool "USB support"
-	help
-	  This driver supports wireless cards connected over USB.
-
 config MORSE_SDIO_ALIGNMENT
 	int "Alignment requirements for bulk SDIO reads/writes"
 	default 2
@@ -135,23 +130,5 @@ config MORSE_DISABLE_CHANNEL_SURVEY
 	default n
 	help
 	  When set, the firmware will not perform channel surveys.
-
-config ANDROID
-	bool "Android build"
-	default n
-	help
-	  Enable to compile driver for android.
-
-config MORSE_MONITOR
-	bool "Monitor mode support"
-	default n
-	help
-	  Enable to monitor traffic in a wireless channel.
-
-config MORSE_DEBUGFS
-	bool "DebugFS support"
-	default n
-	help
-	  Enable for debugging support.
 
 endif # WLAN_VENDOR_MORSE

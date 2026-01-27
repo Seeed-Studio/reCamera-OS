@@ -1,10 +1,8 @@
-#ifndef _MORSE_DEBUG_H_
-#define _MORSE_DEBUG_H_
 /*
  * Copyright 2017-2023 Morse Micro
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
+
+#pragma once
 
 #include "morse.h"
 #include "skb_header.h"
@@ -50,8 +48,6 @@ enum morse_feature_id {
 	FEATURE_ID_BEACON,
 	FEATURE_ID_YAPS,
 	FEATURE_ID_USB,
-	FEATURE_ID_HWCLOCK,
-	FEATURE_ID_APF,
 	NUM_FEATURE_IDS
 };
 
@@ -188,5 +184,3 @@ void morse_log_modparams(struct morse *mors);
 void mmrc_s1g_add_sta_debugfs(struct morse *mors);
 void mmrc_s1g_add_mesh_debugfs(struct morse *mors);
 #endif
-
-#endif	/* !_MORSE_DEBUG_H_ */

@@ -1,8 +1,6 @@
 /*
  * Copyright 2022-2023 Morse Micro
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *
  */
 #include <linux/gpio.h>
 #include <linux/random.h>
@@ -56,6 +54,12 @@ static struct morse_skbq *skbq_yaps_tc_q_from_aci(struct morse *mors, int aci)
 	return &yaps->data_tx_qs[aci];
 }
 
+static void skbq_yaps_close(struct morse_skbq *mq)
+{
+	/* This line disabled due to causing a bug. See SW-6768 */
+	/* (cancel_work_sync(&mq->dispatch_work); */
+}
+
 static void skbq_yaps_get_tx_qs(struct morse *mors, struct morse_skbq **qs, int *num_qs)
 {
 	*qs = mors->chip_if->yaps->data_tx_qs;
@@ -92,64 +96,14 @@ static int yaps_irq_handler(struct morse *mors, u32 status)
 	return 0;
 }
 
-static int morse_hw_restarted(struct morse *mors)
-{
-	int ret = 0;
-	int err = 0;
-
-	ret = morse_hw_enable_stop_notifications(mors, true);
-	if (ret) {
-		MORSE_ERR(mors, "%s: morse_hw_enable_stop_notifications failed: %d\n",
-			__func__, ret);
-		err = ret;
-	}
-
-	return err;
-}
-
-/**
- * Flush data in tx queues
- *
- * @yaps: Pointer to yaps struct
- */
-static void morse_yaps_flush_tx_data(struct morse *mors)
-{
-	int i;
-	struct morse_yaps *yaps = mors->chip_if->yaps;
-
-	if ((yaps->flags & MORSE_CHIP_IF_FLAGS_DIR_TO_CHIP) &&
-	    (yaps->flags & (MORSE_CHIP_IF_FLAGS_DATA | MORSE_CHIP_IF_FLAGS_BEACON))) {
-		morse_skbq_tx_flush(&yaps->beacon_q);
-		morse_skbq_tx_flush(&yaps->mgmt_q);
-		for (i = 0; i < ARRAY_SIZE(yaps->data_tx_qs); i++)
-			morse_skbq_tx_flush(&yaps->data_tx_qs[i]);
-	}
-}
-
-/**
- * Flush commands in cmd queues
- *
- * @yaps: Pointer to yaps struct
- */
-static void morse_yaps_flush_cmds(struct morse *mors)
-{
-	struct morse_yaps *yaps = mors->chip_if->yaps;
-
-	if (yaps->flags & MORSE_CHIP_IF_FLAGS_COMMAND) {
-		morse_skbq_finish(&yaps->cmd_q);
-		morse_skbq_finish(&yaps->cmd_resp_q);
-	}
-}
-
 const struct chip_if_ops morse_yaps_ops = {
 	.init = morse_yaps_hw_init,
-	.hw_restarted = morse_hw_restarted,
-	.flush_tx_data = morse_yaps_flush_tx_data,
-	.flush_cmds = morse_yaps_flush_cmds,
+	.flush_tx_data = morse_yaps_hw_yaps_flush_tx_data,
 	.skbq_get_tx_status_pending_count = morse_yaps_get_tx_status_pending_count,
 	.skbq_get_tx_buffered_count = morse_yaps_get_tx_buffered_count,
 	.finish = morse_yaps_hw_finish,
 	.skbq_get_tx_qs = skbq_yaps_get_tx_qs,
+	.skbq_close = skbq_yaps_close,
 	.skbq_bcn_tc_q = skbq_yaps_bcn_q,
 	.skbq_mgmt_tc_q = skbq_yaps_mgmt_q,
 	.skbq_cmd_tc_q = skbq_yaps_cmd_q,
@@ -221,7 +175,7 @@ static int morse_yaps_read_pkt(struct morse_yaps *yaps, struct sk_buff *skb)
 	}
 
 	/* Check there is room in the skbq */
-	skb_len = sizeof(*hdr) + hdr->offset + le16_to_cpu(hdr->len);
+	skb_len = sizeof(*hdr) + le16_to_cpu(hdr->offset) + le16_to_cpu(hdr->len);
 	skb_bytes_remaining = morse_skbq_space(mq);
 
 #ifdef MORSE_YAPS_SUPPORTS_BENCHMARK
@@ -513,10 +467,6 @@ void morse_yaps_work(struct work_struct *work)
 	unsigned long *flags = &mors->chip_if->event_flags;
 	struct morse_yaps *yaps = mors->chip_if->yaps;
 
-	/* Don't attempt to interact with device once it becomes unresponsive */
-	if (test_bit(MORSE_STATE_FLAG_CHIP_UNRESPONSIVE, &mors->state_flags))
-		return;
-
 	if (!*flags)
 		return;
 
@@ -599,10 +549,13 @@ void morse_yaps_work(struct work_struct *work)
 		}
 	}
 
-	if (test_and_clear_bit(MORSE_UPDATE_HW_CLOCK_REFERENCE, flags))
-		morse_hw_clock_update(mors);
-
 exit:
+	/* This bit is set when the SDIO interrupt lock up is detected */
+	if (test_and_clear_bit(MORSE_YAPS_STATUS_REG_READ_PEND, flags)) {
+		/* This operation will clear the SDIO interrupt lock up */
+		yaps->ops->update_status(yaps);
+	}
+
 	if (ps_bus_timeout_ms)
 		morse_ps_bus_activity(mors, ps_bus_timeout_ms);
 
@@ -610,9 +563,6 @@ exit:
 	morse_release_bus(mors);
 	morse_ps_enable(mors);
 
-	/* Don't requeue work if we are shutting down. */
-	if (yaps->finish)
-		return;
 	/* Evaluate all events except MORSE_TX_DATA_PEND in case data tx queue is full */
 	if ((*flags) & ~(1 << MORSE_TX_DATA_PEND))
 		queue_work(mors->chip_wq, &mors->chip_if_work);
@@ -710,23 +660,18 @@ int morse_yaps_init(struct morse *mors, struct morse_yaps *yaps, u8 flags)
 
 	if (yaps->flags & MORSE_CHIP_IF_FLAGS_DATA) {
 		/* YAPS is bi-directional */
-		morse_skbq_init(mors, &yaps->data_rx_q,
-				MORSE_CHIP_IF_FLAGS_DATA | MORSE_CHIP_IF_FLAGS_DIR_TO_HOST);
-		morse_skbq_init(mors, &yaps->beacon_q,
-				MORSE_CHIP_IF_FLAGS_DATA | MORSE_CHIP_IF_FLAGS_DIR_TO_HOST);
-		morse_skbq_init(mors, &yaps->mgmt_q,
-				MORSE_CHIP_IF_FLAGS_DATA | MORSE_CHIP_IF_FLAGS_DIR_TO_HOST);
+		morse_skbq_init(mors, true, &yaps->data_rx_q, MORSE_CHIP_IF_FLAGS_DATA);
+		morse_skbq_init(mors, true, &yaps->beacon_q, MORSE_CHIP_IF_FLAGS_DATA);
+		morse_skbq_init(mors, true, &yaps->mgmt_q, MORSE_CHIP_IF_FLAGS_DATA);
 		for (i = 0; i < ARRAY_SIZE(yaps->data_tx_qs); i++)
-			morse_skbq_init(mors, &yaps->data_tx_qs[i],
-					MORSE_CHIP_IF_FLAGS_DATA | MORSE_CHIP_IF_FLAGS_DIR_TO_CHIP);
+			morse_skbq_init(mors, false, &yaps->data_tx_qs[i],
+					MORSE_CHIP_IF_FLAGS_DATA);
 	}
 
 	if (yaps->flags & MORSE_CHIP_IF_FLAGS_COMMAND) {
 		/* YAPS is bi-directional */
-		morse_skbq_init(mors, &yaps->cmd_q,
-				MORSE_CHIP_IF_FLAGS_COMMAND | MORSE_CHIP_IF_FLAGS_DIR_TO_CHIP);
-		morse_skbq_init(mors, &yaps->cmd_resp_q,
-				MORSE_CHIP_IF_FLAGS_COMMAND | MORSE_CHIP_IF_FLAGS_DIR_TO_HOST);
+		morse_skbq_init(mors, false, &yaps->cmd_q, MORSE_CHIP_IF_FLAGS_COMMAND);
+		morse_skbq_init(mors, true, &yaps->cmd_resp_q, MORSE_CHIP_IF_FLAGS_COMMAND);
 	}
 
 	morse_tx_chip_full_timer_init(yaps);
@@ -737,8 +682,6 @@ int morse_yaps_init(struct morse *mors, struct morse_yaps *yaps, u8 flags)
 void morse_yaps_finish(struct morse_yaps *yaps)
 {
 	int i;
-
-	yaps->finish = true;
 
 	if (yaps->flags & MORSE_CHIP_IF_FLAGS_DATA) {
 		morse_skbq_finish(&yaps->data_rx_q);
@@ -754,6 +697,16 @@ void morse_yaps_finish(struct morse_yaps *yaps)
 	}
 
 	morse_tx_chip_full_timer_finish(yaps);
+}
+
+void morse_yaps_flush_tx_data(struct morse_yaps *yaps)
+{
+	int i;
+
+	morse_skbq_tx_flush(&yaps->beacon_q);
+	morse_skbq_tx_flush(&yaps->mgmt_q);
+	for (i = 0; i < ARRAY_SIZE(yaps->data_tx_qs); i++)
+		morse_skbq_tx_flush(&yaps->data_tx_qs[i]);
 }
 
 void morse_yaps_show(struct morse_yaps *yaps, struct seq_file *file)
