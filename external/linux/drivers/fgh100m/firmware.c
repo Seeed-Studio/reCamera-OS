@@ -885,11 +885,6 @@ int morse_firmware_init(struct morse *mors, enum morse_config_test_mode test_mod
 	char *p;
 	bool use_full_path = true;
 
-#ifdef CONFIG_ANDROID
-	/* Use filenames only - Android sets the path */
-	use_full_path = false;
-#endif
-
 	fw_path = morse_firmware_build_fw_path(mors);
 	if (!fw_path) {
 		ret = -ENOMEM;

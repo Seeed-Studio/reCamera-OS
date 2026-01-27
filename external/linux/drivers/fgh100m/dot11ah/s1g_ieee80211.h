@@ -81,7 +81,7 @@ enum ieee80211_s1g_chanwidth {
 #define IEEE80211_PV1_FCTL_FROMDS          0x0100
 
 /* These structures are already in K5.10, lets use them */
-#if KERNEL_VERSION(5, 10, 11) > MAC80211_VERSION_CODE
+#if KERNEL_VERSION(5, 10, 4) > MAC80211_VERSION_CODE
 
 #define IEEE80211_STYPE_S1G_BEACON	0x0010
 

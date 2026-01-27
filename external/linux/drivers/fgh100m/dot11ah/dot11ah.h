@@ -46,7 +46,7 @@
 #define WLAN_EID_S1G_MAX_AWAY_DURATION			(235)
 #define WLAN_EID_S1G_RELAY_ACTIVATION			(236)
 
-#if KERNEL_VERSION(5, 10, 11) > MAC80211_VERSION_CODE
+#if KERNEL_VERSION(5, 10, 4) > MAC80211_VERSION_CODE
 #define IEEE80211_NDP_FTYPE_CF_END			(0)
 #define IEEE80211_NDP_FTYPE_PS_POLL			(1)
 #define IEEE80211_NDP_FTYPE_ACK				(2)
@@ -846,7 +846,7 @@ int morse_mac_set_country_info_from_regdom(const struct morse_regdomain *morse_d
  * Return: Channel bandwith.
  */
 
-#if KERNEL_VERSION(5, 10, 11) > MAC80211_VERSION_CODE
+#if KERNEL_VERSION(5, 10, 4) > MAC80211_VERSION_CODE
 u8 ch_flag_to_chan_bw(enum morse_dot11ah_channel_flags flags);
 #else
 u8 ch_flag_to_chan_bw(enum ieee80211_channel_flags flags);

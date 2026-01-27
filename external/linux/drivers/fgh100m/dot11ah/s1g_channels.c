@@ -433,7 +433,7 @@ struct morse_dot11ah_channel *lookup_s1g_chan_from_5g_chan(int chan_5g)
 	return NULL;
 }
 
-#if KERNEL_VERSION(5, 10, 11) > MAC80211_VERSION_CODE
+#if KERNEL_VERSION(5, 10, 4) > MAC80211_VERSION_CODE
 u8 ch_flag_to_chan_bw(enum morse_dot11ah_channel_flags flags)
 #else
 u8 ch_flag_to_chan_bw(enum ieee80211_channel_flags flags)
