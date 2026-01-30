@@ -74,7 +74,21 @@
 };
 
 &i2c1 {
-	status = "disabled";
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    adc@48 {
+        compatible = "ti,ads1015";
+        reg = <0x48>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        channel@4 {
+            reg = <4>;
+            ti,gain = <1>;
+            ti,datarate = <2>;
+        };
+    };
 };
 
 &i2c2 {
