@@ -26,6 +26,10 @@ int cvi_board_init(void)
     PINMUX_CONFIG(SD0_D2, SDIO0_D_2);
     PINMUX_CONFIG(SD0_D3, SDIO0_D_3);
 
+    // ADC
+    PINMUX_CONFIG(PAD_MIPI_TXM2, IIC1_SDA);
+    PINMUX_CONFIG(PAD_MIPI_TXP2, IIC1_SCL);
+
 	return 0;
 }
 

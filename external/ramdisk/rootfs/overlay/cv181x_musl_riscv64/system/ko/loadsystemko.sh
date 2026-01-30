@@ -14,7 +14,6 @@ function init_sd_pin() {
     $PINMUX -w SD0_D1/SDIO0_D_1
     $PINMUX -w SD0_D2/SDIO0_D_2
     $PINMUX -w SD0_D3/SDIO0_D_3
-    $PINMUX -w SD0_PWR_EN/XGPIOA_14
 }
 
 #
@@ -58,6 +57,12 @@ insmod /mnt/system/ko/mac80211.ko
 init_sd_pin
 sleep 1
 insmod /mnt/system/ko/morse.ko country=$COUNTRY
+
+[ -e /dev/morse_io ] && {
+    insmod /mnt/system/ko/kfifo_buf.ko
+    insmod /mnt/system/ko/industrialio-triggered-buffer.ko
+    insmod /mnt/system/ko/ti-ads1015.ko
+}
 
 echo 3 > /proc/sys/vm/drop_caches
 dmesg -n 4
