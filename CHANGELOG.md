@@ -1,3 +1,11 @@
+## 0.2.4 (2026-03-17)
+
+### sg2002_recamera_emmc
+
+- New Features:
+    - Support wifi halow
+    - Supports battery voltage detection
+
 ## 0.2.3 (2026-01-27)
 
 ### sg2002_recamera_emmc
