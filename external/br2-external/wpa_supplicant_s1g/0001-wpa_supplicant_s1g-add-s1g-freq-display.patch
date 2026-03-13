@@ -1,0 +1,287 @@
+diff --git a/wpa_supplicant/ctrl_iface.c b/wpa_supplicant/ctrl_iface.c
+index 9abfeb2..34ced23 100644
+--- a/wpa_supplicant/ctrl_iface.c
++++ b/wpa_supplicant/ctrl_iface.c
+@@ -3027,6 +3027,205 @@ static char * wpa_supplicant_wps_ie_txt(struct wpa_supplicant *wpa_s,
+ }
+ 
+ 
++/* S1G frequency display support */
++#ifndef WLAN_EID_S1G_OPERATION
++#define WLAN_EID_S1G_OPERATION 232
++#endif
++
++#ifndef WLAN_EID_SUPPORTED_OPERATING_CLASSES
++#define WLAN_EID_SUPPORTED_OPERATING_CLASSES 124
++#endif
++
++struct s1g_map {
++	int ch5g;          /* 5GHz channel (frequency in MHz) */
++	int freq_s1g;      /* S1G frequency in MHz */
++	int bw;            /* Bandwidth: 1, 2, 4, or 8 MHz */
++	int ch;            /* S1G channel number */
++	int has_off;       /* Channel offset flag (for driver bug workaround) */
++};
++
++/* US S1G channel mapping table (1-11) */
++static const struct s1g_map s1g_us[] = {
++	/* ch5g, freq_s1g, bw, ch, has_off */
++	{36,  902, 1, 1,  0},  /* US 1MHz ch1 */
++	{36,  903, 1, 2,  0},  /* US 1MHz ch2 */
++	{40,  904, 1, 3,  0},  /* US 1MHz ch3 */
++	{40,  905, 1, 4,  0},  /* US 1MHz ch4 */
++	{44,  906, 1, 5,  0},  /* US 1MHz ch5 */
++	{36,  903, 2, 6,  1},  /* US 2MHz ch6 - driver bug workaround */
++	{44,  907, 1, 6,  0},  /* US 1MHz ch6 */
++	{48,  908, 1, 7,  0},  /* US 1MHz ch7 */
++	{52,  909, 1, 8,  0},  /* US 1MHz ch8 */
++	{56,  910, 1, 9,  0},  /* US 1MHz ch9 */
++	{60,  911, 1, 10, 0},  /* US 1MHz ch10 */
++	{64,  912, 1, 11, 0},  /* US 1MHz ch11 */
++	{36,  902, 2, 1,  0},  /* US 2MHz ch1 */
++	{40,  904, 2, 2,  0},  /* US 2MHz ch2 */
++	{44,  906, 2, 3,  0},  /* US 2MHz ch3 */
++	{48,  908, 2, 4,  0},  /* US 2MHz ch4 */
++	{52,  910, 2, 5,  0},  /* US 2MHz ch5 */
++	{36,  902, 4, 1,  0},  /* US 4MHz ch1 */
++	{44,  906, 4, 2,  0},  /* US 4MHz ch2 */
++	{52,  910, 4, 3,  0},  /* US 4MHz ch3 */
++	{36,  902, 8, 1,  0},  /* US 8MHz ch1 */
++	{52,  910, 8, 2,  0},  /* US 8MHz ch2 */
++};
++
++/* AU S1G channel mapping table (1-11) */
++static const struct s1g_map s1g_au[] = {
++	/* ch5g, freq_s1g, bw, ch, has_off */
++	{36,  917, 1, 1,  0},  /* AU 1MHz ch1 */
++	{36,  918, 1, 2,  0},  /* AU 1MHz ch2 */
++	{40,  919, 1, 3,  0},  /* AU 1MHz ch3 */
++	{40,  920, 1, 4,  0},  /* AU 1MHz ch4 */
++	{44,  921, 1, 5,  0},  /* AU 1MHz ch5 */
++	{44,  922, 1, 6,  0},  /* AU 1MHz ch6 */
++	{48,  923, 1, 7,  0},  /* AU 1MHz ch7 */
++	{48,  924, 1, 8,  0},  /* AU 1MHz ch8 */
++	{52,  925, 1, 9,  0},  /* AU 1MHz ch9 */
++	{52,  926, 1, 10, 0},  /* AU 1MHz ch10 */
++	{56,  927, 1, 11, 0},  /* AU 1MHz ch11 */
++	{36,  917, 2, 1,  0},  /* AU 2MHz ch1 */
++	{40,  919, 2, 2,  0},  /* AU 2MHz ch2 */
++	{44,  921, 2, 3,  0},  /* AU 2MHz ch3 */
++	{48,  923, 2, 4,  0},  /* AU 2MHz ch4 */
++	{52,  925, 2, 5,  0},  /* AU 2MHz ch5 */
++	{36,  917, 4, 1,  0},  /* AU 4MHz ch1 */
++	{44,  921, 4, 2,  0},  /* AU 4MHz ch2 */
++	{52,  925, 4, 3,  0},  /* AU 4MHz ch3 */
++	{36,  917, 8, 1,  0},  /* AU 8MHz ch1 */
++	{52,  925, 8, 2,  0},  /* AU 8MHz ch2 */
++};
++
++static char halow_country[8] = "US";
++
++static int get_halow_country(void)
++{
++	FILE *fp;
++	char line[256];
++	char *value;
++
++	fp = fopen("/etc/recamera.conf/halow_country", "r");
++	if (!fp) {
++		wpa_printf(MSG_DEBUG, "S1G: Could not open /etc/recamera.conf/halow_country, defaulting to US");
++		return 0;
++	}
++
++	if (fgets(line, sizeof(line), fp)) {
++		/* Remove trailing newline */
++		line[strcspn(line, "\n")] = 0;
++		/* Remove leading/trailing whitespace */
++		value = line;
++		while (*value == ' ' || *value == '\t') value++;
++		char *end = value + strlen(value) - 1;
++		while (end > value && (*end == ' ' || *end == '\t')) {
++			*end = 0;
++			end--;
++		}
++
++		if (strlen(value) > 0 && strlen(value) < sizeof(halow_country)) {
++			strcpy(halow_country, value);
++			wpa_printf(MSG_DEBUG, "S1G: Set country to %s", halow_country);
++		}
++	}
++	fclose(fp);
++	return 0;
++}
++
++static int is_s1g_freq(int freq)
++{
++	/* S1G frequencies are in the 900MHz range (901-928MHz) */
++	return (freq >= 900 && freq <= 928);
++}
++
++static const struct s1g_map *get_s1g_info(int freq_s1g, int freq5, int *bw_out, int *ch_out)
++{
++	const struct s1g_map *table;
++	size_t table_size;
++	int i;
++
++	/* Get country-specific table */
++	if (os_strcmp(halow_country, "AU") == 0) {
++		table = s1g_au;
++		table_size = ARRAY_SIZE(s1g_au);
++	} else {
++		table = s1g_us;
++		table_size = ARRAY_SIZE(s1g_us);
++	}
++
++	/* Try exact S1G frequency match first */
++	for (i = 0; i < table_size; i++) {
++		if (table[i].freq_s1g == freq_s1g) {
++			*bw_out = table[i].bw;
++			*ch_out = table[i].ch;
++			return &table[i];
++		}
++	}
++
++	/* Try matching by 5GHz frequency (accounting for driver bug) */
++	for (i = 0; i < table_size; i++) {
++		if (table[i].ch5g == freq5) {
++			/* For US 2MHz channel 6, driver reports ch5g=36 instead of 44 */
++			if (table[i].has_off && table[i].bw == 2 && table[i].ch == 6) {
++				/* This is the buggy case, match it */
++				*bw_out = table[i].bw;
++				*ch_out = table[i].ch;
++				return &table[i];
++			}
++			/* Normal case: only match if not a special buggy entry */
++			if (!table[i].has_off) {
++				*bw_out = table[i].bw;
++				*ch_out = table[i].ch;
++				return &table[i];
++			}
++		}
++	}
++
++	return NULL;
++}
++
++static const u8 *parse_s1g_ie(const struct wpa_bss *bss, int *s1g_bw, int *s1g_ch)
++{
++	const u8 *s1g_op_ie;
++	const u8 *op_class_ie;
++
++	*s1g_bw = 0;
++	*s1g_ch = 0;
++
++	/* Try to get S1G Operation IE */
++	s1g_op_ie = wpa_bss_get_ie(bss, WLAN_EID_S1G_OPERATION);
++	if (s1g_op_ie && s1g_op_ie[1] >= 3) {
++		/* S1G Operation IE format: EID(1) + Length(1) + Primary Ch(1) + CCFS0(1) + CCFS1(1) */
++		*s1g_ch = s1g_op_ie[2];
++		/* Try to extract bandwidth from CCFS0/CCFS1 if present */
++		if (s1g_op_ie[1] >= 5) {
++			int ccfs0 = s1g_op_ie[3];
++			int ccfs1 = s1g_op_ie[4];
++			/* Estimate bandwidth based on channel separation */
++			if (ccfs1 > 0) {
++				*s1g_bw = 8; /* Assume 8MHz if multiple channels */
++			} else if (ccfs0 > 0) {
++				*s1g_bw = 4; /* Assume 4MHz if CCFS0 present */
++			} else {
++				*s1g_bw = 2; /* Assume 2MHz otherwise */
++			}
++		} else {
++			*s1g_bw = 1; /* Default to 1MHz */
++		}
++		return s1g_op_ie;
++	}
++
++	/* Try to get Supported Operating Classes IE */
++	op_class_ie = wpa_bss_get_ie(bss, WLAN_EID_SUPPORTED_OPERATING_CLASSES);
++	if (op_class_ie) {
++		/* Operating classes can indicate bandwidth */
++		*s1g_bw = 1; /* Default */
++		return op_class_ie;
++	}
++
++	return NULL;
++}
++
+ /* Format one result on one text line into a buffer. */
+ static int wpa_supplicant_ctrl_iface_scan_result(
+ 	struct wpa_supplicant *wpa_s,
+@@ -3035,6 +3234,8 @@ static int wpa_supplicant_ctrl_iface_scan_result(
+ 	char *pos, *end;
+ 	int ret;
+ 	const u8 *ie, *ie2, *osen_ie, *p2p, *mesh, *owe, *rsnxe;
++	int s1g_bw = 0, s1g_ch = 0;
++	const struct s1g_map *s1g_info = NULL;
+ 
+ 	mesh = wpa_bss_get_ie(bss, WLAN_EID_MESH_ID);
+ 	p2p = wpa_bss_get_vendor_ie(bss, P2P_IE_VENDOR_TYPE);
+@@ -3048,11 +3249,62 @@ static int wpa_supplicant_ctrl_iface_scan_result(
+ 	pos = buf;
+ 	end = buf + buflen;
+ 
+-	ret = os_snprintf(pos, end - pos, MACSTR "\t%d\t%d\t",
+-			  MAC2STR(bss->bssid), bss->freq, bss->level);
+-	if (os_snprintf_error(end - pos, ret))
+-		return -1;
+-	pos += ret;
++	/* Check if this is an S1G network and get country info */
++	get_halow_country();
++
++	/* For S1G networks, use custom output format */
++	if (is_s1g_freq(bss->freq)) {
++		/* Parse S1G IEs to get bandwidth and channel info */
++		parse_s1g_ie(bss, &s1g_bw, &s1g_ch);
++
++		/* Look up S1G mapping info based on S1G frequency and 5GHz center freq */
++		/* Try to derive 5GHz center freq from the bss data if available */
++		int freq5 = bss->freq; /* This might be 5GHz center freq in some cases */
++
++		/* If we have S1G IEs, try to match in our table */
++		if (s1g_ch > 0 || s1g_bw > 0) {
++			/* Try to find matching entry */
++			s1g_info = get_s1g_info(bss->freq, freq5, &s1g_bw, &s1g_ch);
++		} else {
++			/* No IE info, try frequency-based lookup */
++			s1g_info = get_s1g_info(bss->freq, freq5, &s1g_bw, &s1g_ch);
++		}
++
++		/* Format: bssid freq_s1g.0 bw_M ch freq_5g level flags ssid */
++		ret = os_snprintf(pos, end - pos, MACSTR "\t%d.0\t%dM\t%d\t",
++				  MAC2STR(bss->bssid), bss->freq, s1g_bw, s1g_ch);
++		if (os_snprintf_error(end - pos, ret))
++			return -1;
++		pos += ret;
++
++		/* Add 5GHz frequency if available from mapping */
++		if (s1g_info) {
++			ret = os_snprintf(pos, end - pos, "%d\t",
++					s1g_info->ch5g);
++			if (os_snprintf_error(end - pos, ret))
++				return -1;
++			pos += ret;
++		} else {
++			/* No 5GHz freq available, put 0 */
++			ret = os_snprintf(pos, end - pos, "0\t");
++			if (os_snprintf_error(end - pos, ret))
++				return -1;
++			pos += ret;
++		}
++
++		/* Add signal level */
++		ret = os_snprintf(pos, end - pos, "%d\t", bss->level);
++		if (os_snprintf_error(end - pos, ret))
++			return -1;
++		pos += ret;
++	} else {
++		/* Standard 2.4/5GHz network output */
++		ret = os_snprintf(pos, end - pos, MACSTR "\t%d\t%d\t",
++				  MAC2STR(bss->bssid), bss->freq, bss->level);
++		if (os_snprintf_error(end - pos, ret))
++			return -1;
++		pos += ret;
++	}
+ 	ie = wpa_bss_get_vendor_ie(bss, WPA_IE_VENDOR_TYPE);
+ 	if (ie)
+ 		pos = wpa_supplicant_ie_txt(pos, end, "WPA", ie, 2 + ie[1]);
