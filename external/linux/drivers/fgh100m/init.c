@@ -42,7 +42,7 @@ static int __init morse_init(void)
 {
 	int ret = 0;
 
-	pr_info("morse micro driver registration. Version %s\n", DRV_VERSION);
+	pr_info("morse micro driver registration. Version %s [S1G-FIX-v1.0.2-4MHz-926]\n", DRV_VERSION);
 
 	/*
 	 * Maintain backwards compatibility (for now)
@@ -98,6 +98,6 @@ module_init(morse_init);
 module_exit(morse_exit);
 
 MODULE_AUTHOR("Morse Micro");
-MODULE_DESCRIPTION("Driver support for Morse Micro SDIO/SPI devices");
+MODULE_DESCRIPTION("Driver support for Morse Micro SDIO/SPI devices [v1.0.2-4MHz-926]");
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_VERSION(DRV_VERSION);

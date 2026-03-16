@@ -300,7 +300,33 @@ static u8 *morse_dot11_insert_vht_oper_ie(u8 *pos, struct ieee80211_rx_status *r
 
 	op_chan = morse_dot11ah_s1g_chan_to_5g_chan(s1g_oper_params.op_ch);
 
-	__vht_oper_ie.CENTER_FREQ_SEG0_IDX = op_chan;
+	if (ies_mask->ies[WLAN_EID_S1G_OPERATION].ptr && s1g_oper_params.op_bw == 8) {
+		int pri_chan = morse_dot11ah_s1g_chan_to_5g_chan(s1g_oper_params.pri_ch);
+		/* For 160MHz, both center_freq_seg0 and center_freq_seg1 must be set */
+		__vht_oper_ie.CENTER_FREQ_SEG1_IDX = op_chan;
+		if (pri_chan > 0 && pri_chan != op_chan) {
+			if (pri_chan < op_chan)
+				__vht_oper_ie.CENTER_FREQ_SEG0_IDX = op_chan - 8;
+			else
+				__vht_oper_ie.CENTER_FREQ_SEG0_IDX = op_chan + 8;
+		} else {
+			/* Fallback: if pri_chan is invalid, use default offset */
+			__vht_oper_ie.CENTER_FREQ_SEG0_IDX = op_chan - 8;
+		}
+	} else if (ies_mask->ies[WLAN_EID_S1G_OPERATION].ptr && s1g_oper_params.op_bw == 4) {
+		/* For 4MHz (80MHz VHT), also consider primary channel position */
+		int pri_chan = morse_dot11ah_s1g_chan_to_5g_chan(s1g_oper_params.pri_ch);
+		__vht_oper_ie.CENTER_FREQ_SEG1_IDX = 0;
+		if (pri_chan > 0 && pri_chan != op_chan) {
+			/* Use primary channel as center_freq_seg0 */
+			__vht_oper_ie.CENTER_FREQ_SEG0_IDX = pri_chan;
+		} else {
+			__vht_oper_ie.CENTER_FREQ_SEG0_IDX = op_chan;
+		}
+	} else {
+		__vht_oper_ie.CENTER_FREQ_SEG0_IDX = op_chan;
+		__vht_oper_ie.CENTER_FREQ_SEG1_IDX = 0;
+	}
 
 	if (ies_mask->ies[WLAN_EID_S1G_OPERATION].ptr && s1g_oper_params.op_bw == 4)
 		__vht_oper_ie.chan_width = IEEE80211_VHT_CHANWIDTH_80MHZ;
