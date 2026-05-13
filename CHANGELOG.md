@@ -1,3 +1,10 @@
+## 0.2.5 (2026-05-13)
+
+### sg2002_recamera_emmc
+
+- New Features:
+    - support SN overwrite via efuse user area
+
 ## 0.2.4 (2026-03-17)
 
 ### sg2002_recamera_emmc
