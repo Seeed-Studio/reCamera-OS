@@ -1,0 +1,23 @@
+--- a/src/unix/thread.c	2025-03-07 06:32:56.000000000 +0800
++++ b/src/unix/thread.c	2026-10-12 20:58:09.635162927 +0800
+@@ -960,7 +960,7 @@
+   name[size - 1] = '\0';
+   return 0;
+ }
+-#else
++#elif defined(__GLIBC__)
+ int uv__thread_getname(uv_thread_t* tid, char* name, size_t size) {
+   int r;
+   char thread_name[UV_PTHREAD_MAX_NAMELEN_NP];
+@@ -972,4 +972,11 @@
+   name[size - 1] = '\0';
+   return 0;
+ }
++#else
++/* musl without pthread_getname_np: return empty name */
++int uv__thread_getname(uv_thread_t* tid, char* name, size_t size) {
++  if (size > 0)
++    name[0] = '\0';
++  return 0;
++}
+ #endif
