@@ -42,25 +42,28 @@ start() {
         rm -f $PIDFILE
     fi
 
-    local cmd="start-stop-daemon -S -q -m -b -p $PIDFILE --exec $DAEMON -- $DAEMON_OPTS"
-    echo "Starting $DESC: $NAME"
-    # Check if the current user is root
+    # userDir must be appended BEFORE cmd is built, otherwise it never
+    # reaches the daemon (cmd string snapshots DAEMON_OPTS at this point)
     if [ $(id -u) -eq 0 ]; then
-        # If root and the specified user exists, switch to that user
         if id "$USER" &>/dev/null; then
             DAEMON_USER=$USER
             DAEMON_OPTS="$DAEMON_OPTS --userDir /home/$DAEMON_USER/.node-red"
+        fi
+    else
+        DAEMON_USER=$(whoami)
+        DAEMON_OPTS="$DAEMON_OPTS --userDir /home/$DAEMON_USER/.node-red"
+    fi
+
+    local cmd="start-stop-daemon -S -q -m -b -p $PIDFILE --exec $DAEMON -- $DAEMON_OPTS"
+    echo "Starting $DESC: $NAME"
+    if [ $(id -u) -eq 0 ]; then
+        if [ -n "$DAEMON_USER" ]; then
             echo "Switching to user: $DAEMON_USER"
         else
             DAEMON_USER=root
-            echo "User $USER does not exist. Running as root."
         fi
         su $DAEMON_USER -c "$cmd"
     else
-        # If not root, use the current user to run the service
-        DAEMON_USER=$(whoami)
-        DAEMON_OPTS="$DAEMON_OPTS --userDir /home/$DAEMON_USER/.node-red"
-        echo "Running as user: $DAEMON_USER"
         $cmd
     fi
     [ $? = 0 ] && echo "OK" || echo "FAIL"
@@ -70,6 +73,15 @@ stop() {
     echo "Stopping $DESC: $NAME"
     if [ -f $PIDFILE ]; then
         start-stop-daemon -K -q -p $PIDFILE
+        # wait for the process to exit so a following start() does not race
+        # the dying process for the port (EADDRINUSE) or the pidfile
+        pid=$(cat $PIDFILE 2>/dev/null)
+        i=0
+        while [ -n "$pid" ] && [ -d /proc/$pid ] && [ $i -lt 50 ]; do
+            sleep 0.2
+            i=$((i+1))
+        done
+        [ -n "$pid" ] && [ -d /proc/$pid ] && kill -9 $pid 2>/dev/null
         rm -f $PIDFILE
     fi
     [ $? = 0 ] && echo "OK" || echo "FAIL"
@@ -82,9 +94,19 @@ restart() {
 
 status() {
     if [ -f $PIDFILE ]; then
-        echo "$NAME is running."
+        pid=$(cat $PIDFILE)
+        if [ -d /proc/$pid ] && { [ "$(cat /proc/$pid/comm 2>/dev/null)" = "node-red" ] || [ "$(cat /proc/$pid/comm 2>/dev/null)" = "node" ]; }; then
+            echo "$NAME (pid $pid) is running."
+        else
+            echo "$NAME (pid $pid) is NOT running (stale pidfile)."
+        fi
     else
-        echo "$NAME is not running."
+        pid="`pidof node-red`"
+        if [ -n "$pid" ]; then
+            echo "$NAME (pid $pid) is running."
+        else
+            echo "$NAME is not running."
+        fi
     fi
 }
 

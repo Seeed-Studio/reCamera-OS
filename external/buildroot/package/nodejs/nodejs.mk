@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-NODEJS_VERSION = 22.8.0
+NODEJS_VERSION = 20.20.2
 NODEJS_SOURCE = node-v$(NODEJS_VERSION).tar.xz
 NODEJS_SITE = http://nodejs.org/dist/v$(NODEJS_VERSION)
 # NODEJS_DL_SUBDIR = nodejs
@@ -239,7 +239,6 @@ define NODEJS_CONFIGURE_CMDS
 		$(HOST_DIR)/bin/python3 configure.py \
 		--prefix=/usr \
 		--dest-cpu=$(NODEJS_CPU) \
-		--v8-lite-mode \
 		$(if $(NODEJS_ARM_FP),--with-arm-float-abi=$(NODEJS_ARM_FP)) \
 		$(if $(NODEJS_ARM_FPU),--with-arm-fpu=$(NODEJS_ARM_FPU)) \
 		$(if $(NODEJS_MIPS_ARCH_VARIANT),--with-mips-arch-variant=$(NODEJS_MIPS_ARCH_VARIANT)) \
