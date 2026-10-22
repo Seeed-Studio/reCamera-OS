@@ -66,6 +66,21 @@ for patch in "$EXTERNAL/linux/patches"/*.patch "$EXTERNAL/linux/patches"/*.diff;
 done
 popd
 
+# patch cvi_rtsp (submodule carries local-only commits that cannot be
+# pushed upstream; ship fixes as patches here instead)
+pushd $PROJECT_OUT/cvi_rtsp
+for patch in "$EXTERNAL/cvi_rtsp/patches"/*.patch; do
+    # Skip if no patch files match
+    [ -f "$patch" ] || continue
+
+    echo "Applying cvi_rtsp patch: $(basename "$patch")"
+    patch -p1 < "$patch" || {
+        echo "Error: Failed to apply $patch"
+        exit 1
+    }
+done
+popd
+
 echo "All patches applied successfully."
 
 # patch buildroot packages

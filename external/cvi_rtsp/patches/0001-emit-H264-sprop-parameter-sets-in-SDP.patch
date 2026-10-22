@@ -1,0 +1,180 @@
+diff --git a/src/cvi_video_smss.hpp b/src/cvi_video_smss.hpp
+index 30c820f..fa797ab 100644
+--- a/src/cvi_video_smss.hpp
++++ b/src/cvi_video_smss.hpp
+@@ -1,6 +1,9 @@
+ #pragma once
+ 
+ #include <OnDemandServerMediaSubsession.hh>
++#include <cstdio>
++#include <mutex>
++#include <string>
+ #include "cvi_smss.hpp"
+ #include "cvi_jpeg_source.hpp"
+ 
+@@ -12,9 +15,23 @@ class CVI_VideoSubsession: public CVI_ServerMediaSubsession {
+         CVI_VideoSubsession(UsageEnvironment& env, const RTSP_VIDEO_ATTR &attr, float duration=0, bool reuseFirstSource=false);
+         virtual FramedSource* createNewStreamSource(unsigned clientSessionId, unsigned& estBitrate);
+         virtual RTPSink* createNewRTPSink(Groupsock* rtpGroupsock, unsigned char rtpPayloadTypeIfDynamic, FramedSource* inputSource);
++        virtual char const* getAuxSDPLine(RTPSink* rtpSink, FramedSource* inputSource);
++        virtual int writeData(uint8_t *data, uint32_t size);
++    private:
++        // Scan an Annex-B H264 buffer for the latest SPS/PPS NAL units.
++        // Emulation prevention guarantees no 00 00 sequence inside a NAL, so a
++        // NAL ends exactly at the next 00 00 (start code prefix).
++        void cacheParameterSets(uint8_t *data, uint32_t size);
++        static std::string base64Encode(const std::string &in);
+     protected:
+         CVI_RTSP_VIDEO_CODEC _codec;
+         unsigned int _bitrate;
++    private:
++        std::mutex _cacheMutex;
++        std::string _sps;
++        std::string _pps;
++        std::string _fmtpLine;
++        unsigned char _rtpPayloadFormat = 96;
+ };
+ 
+ CVI_VideoSubsession *CVI_VideoSubsession::createNew(UsageEnvironment& env, const CVI_RTSP_SESSION_ATTR &attr)
+@@ -62,6 +79,9 @@ FramedSource *CVI_VideoSubsession::createNewStreamSource(unsigned clientSessionI
+ 
+ RTPSink *CVI_VideoSubsession::createNewRTPSink(Groupsock* rtpGroupsock, unsigned char rtpPayloadTypeIfDynamic, FramedSource* inputSource)
+ {
++    // RTPSink in this live555 version exposes no numeric payload-format
++    // accessor; remember the assigned code for the SDP fmtp line instead.
++    _rtpPayloadFormat = rtpPayloadTypeIfDynamic;
+     MultiFramedRTPSink *sink = nullptr;
+ 
+     switch (_codec) {
+@@ -81,3 +101,131 @@ RTPSink *CVI_VideoSubsession::createNewRTPSink(Groupsock* rtpGroupsock, unsigned
+ 
+     return sink;
+ }
++
++// Some RTSP clients (e.g. Hikvision NVR firmwares) only initialise their
++// H264 decoder from the SDP "a=fmtp" line and never wait for in-band
++// SPS/PPS, showing a black picture when it is missing. Because this
++// subsession never reuses its source/sink, live555's stock
++// H264VideoRTPSink::auxSdpLine() cannot see any frame at DESCRIBE time
++// and the line was never emitted. Cache SPS/PPS from the continuously
++// pushed encoder data instead and emit them here.
++char const* CVI_VideoSubsession::getAuxSDPLine(RTPSink* rtpSink, FramedSource* inputSource)
++{
++    if (rtpSink != NULL && _codec == RTSP_VIDEO_H264) {
++        std::string sps, pps;
++        {
++            std::lock_guard<std::mutex> lock(_cacheMutex);
++            sps = _sps;
++            pps = _pps;
++        }
++        if (sps.size() >= 4 && !pps.empty()) {
++            char profileLevelId[8];
++            snprintf(profileLevelId, sizeof(profileLevelId), "%02X%02X%02X",
++                     (unsigned char)sps[1], (unsigned char)sps[2], (unsigned char)sps[3]);
++            _fmtpLine = "a=fmtp:";
++            _fmtpLine += std::to_string((unsigned)_rtpPayloadFormat);
++            _fmtpLine += " packetization-mode=1;profile-level-id=";
++            _fmtpLine += profileLevelId;
++            _fmtpLine += ";sprop-parameter-sets=";
++            _fmtpLine += base64Encode(sps);
++            _fmtpLine += ",";
++            _fmtpLine += base64Encode(pps);
++            _fmtpLine += "\r\n";
++            return _fmtpLine.c_str();
++        }
++    }
++    return OnDemandServerMediaSubsession::getAuxSDPLine(rtpSink, inputSource);
++}
++
++int CVI_VideoSubsession::writeData(uint8_t *data, uint32_t size)
++{
++    if (_codec == RTSP_VIDEO_H264) {
++        cacheParameterSets(data, size);
++    }
++    return CVI_ServerMediaSubsession::writeData(data, size);
++}
++
++// Each writeData delivery matches H264VideoStreamDiscreteFramer's
++// expectation of one complete NAL unit (usually without start code); also
++// scan for Annex-B start codes in case a delivery carries a concatenated
++// buffer.
++void CVI_VideoSubsession::cacheParameterSets(uint8_t *data, uint32_t size)
++{
++    if (data == NULL || size < 4) {
++        return;
++    }
++    std::string sps, pps;
++    uint8_t head = data[0] & 0x1f;
++    if (head == 7 || head == 8) {
++        // single NAL unit without start code
++        std::string nal(reinterpret_cast<char*>(data), size);
++        if (head == 7) {
++            sps = std::move(nal);
++        } else {
++            pps = std::move(nal);
++        }
++    } else {
++        uint32_t i = 0;
++        while (i + 3 < size) {
++            if (data[i] != 0 || data[i + 1] != 0 || data[i + 2] != 1) {
++                ++i;
++                continue;
++            }
++            uint32_t nal = i + 3;
++            if (nal >= size) {
++                break;
++            }
++            uint8_t type = data[nal] & 0x1f;
++            if (type == 7 || type == 8) {
++                uint32_t end = nal + 1;
++                while (end + 1 < size && !(data[end] == 0 && data[end + 1] == 0)) {
++                    ++end;
++                }
++                if (end + 1 >= size) {
++                    end = size;  // NAL runs to the end of the buffer
++                }
++                std::string nalBytes(reinterpret_cast<char*>(&data[nal]), end - nal);
++                if (type == 7) {
++                    sps = std::move(nalBytes);
++                } else {
++                    pps = std::move(nalBytes);
++                }
++            }
++            i = nal;
++        }
++    }
++    // SPS and PPS arrive as separate deliveries; keep the last seen pair.
++    {
++        std::lock_guard<std::mutex> lock(_cacheMutex);
++        if (!sps.empty()) {
++            _sps = std::move(sps);
++        }
++        if (!pps.empty()) {
++            _pps = std::move(pps);
++        }
++    }
++}
++
++std::string CVI_VideoSubsession::base64Encode(const std::string &in)
++{
++    static const char tbl[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
++    std::string out;
++    out.reserve((in.size() + 2) / 3 * 4);
++    uint32_t val = 0;
++    int bits = -6;
++    for (unsigned char c : in) {
++        val = (val << 8) + c;
++        bits += 8;
++        while (bits >= 0) {
++            out.push_back(tbl[(val >> bits) & 0x3f]);
++            bits -= 6;
++        }
++    }
++    if (bits > -6) {
++        out.push_back(tbl[((val << 8) >> (bits + 8)) & 0x3f]);
++    }
++    while (out.size() % 4) {
++        out.push_back('=');
++    }
++    return out;
++}
