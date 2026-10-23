@@ -1,3 +1,18 @@
+## 0.2.5 (2026-10-23)
+
+### sg2002_recamera_emmc
+
+- New Features:
+    - ONVIF support: the device can be added as an ONVIF camera on NVR/VMS platforms (WS-Discovery + SOAP Device/Media service, stream node ONVIF checkbox and port in Node-RED)
+    - Stream node Audio checkbox (RTSP audio track opt-in, default off for NVR compatibility)
+- Bug Fixes:
+    - ONVIF GetCapabilities response no longer truncated to invalid XML (Hikvision NVRs reported the device offline)
+    - RTSP SDP now carries a=fmtp sprop-parameter-sets so strict H264 clients (e.g. Hikvision NVRs) can initialize their decoder
+    - nghttp2 package downloads the hashed tar.xz source
+- Dependencies:
+    - sscma-example-sg200x 0.2.5 (sscma-node + supervisor, upstream)
+    - node-red-contrib-sscma 0.3.7 (upstream npm)
+
 ## 0.2.4 (2026-03-17)
 
 ### sg2002_recamera_emmc
