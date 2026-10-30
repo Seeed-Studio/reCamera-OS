@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+
+# Pass -r to qemu-user as to trick glibc into not errorings out if the host kernel
+# is older than the target kernel.
+# Toolchain variant: the node target binaries are built with a newer GCC than
+# the BSP toolchain, so resolve the dynamic loader from NODEJS_QEMU_LIBS (which
+# exposes the toolchain musl under the PT_INTERP name) and the C++ runtime from
+# NODEJS_TC_LIBDIR first; STAGING_DIR stays as fallback for staged target
+# libraries.
+exec @QEMU_USER@ -r @TOOLCHAIN_HEADERS_VERSION@ \
+    @QEMU_USERMODE_ARGS@ \
+    -L "@NODEJS_QEMU_LIBS@/" \
+    -L "${STAGING_DIR}/" \
+    -E LD_LIBRARY_PATH="@NODEJS_TC_LIBDIR@:@NODEJS_QEMU_LIBS@/lib:${STAGING_DIR}/lib:${STAGING_DIR}/usr/lib/" \
+    "$@"

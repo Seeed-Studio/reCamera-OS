@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-NODEJS_VERSION = 20.20.2
+NODEJS_VERSION = 26.13.0
 NODEJS_SOURCE = node-v$(NODEJS_VERSION).tar.xz
 NODEJS_SITE = http://nodejs.org/dist/v$(NODEJS_VERSION)
 # NODEJS_DL_SUBDIR = nodejs
@@ -16,9 +16,49 @@ NODEJS_CPE_ID_PRODUCT = node.js
 
 # HOST_NODEJS_PROVIDES = host-nodejs
 
-NODEJS_BIN_ENV = $(TARGET_CONFIGURE_OPTS) \
-	LDFLAGS="$(NODEJS_LDFLAGS)" \
-	LD="$(TARGET_CXX)" \
+# ---------------------------------------------------------------------------
+# Node >= 24 requires GCC >= 12.2 (C++20) while the BSP Xuantie toolchain is
+# GCC 10.2. The target nodejs is therefore compiled with the riscv-collab
+# riscv64-linux-musl toolchain instead, and bundles its own copies of
+# openssl/libuv/c-ares/nghttp2/zlib (the 2021.05 stack is far too old and
+# node's configure version gates would reject it). The toolchain C++ runtime
+# libs (libstdc++.so.6/libgcc_s.so.1/libatomic.so.1) must be shipped to the
+# target next to the node binary.
+NODEJS_TC_ROOT ?= /opt/toolchains/riscv64-musl
+NODEJS_TC_PREFIX = riscv64-unknown-linux-musl
+NODEJS_TC_LIBDIR = $(NODEJS_TC_ROOT)/$(NODEJS_TC_PREFIX)/lib
+NODEJS_TC_BIN = $(NODEJS_TC_ROOT)/bin/$(NODEJS_TC_PREFIX)
+# The toolchain (GCC 16) defaults to -mfence-tso, emitting fence.tso (Ztso)
+# instructions the C906 does not implement -> SIGILL at runtime. The prebuilt
+# libstdc++/libgcc_s shipped with the toolchain still contains them and is
+# binary-patched post-install instead (patch_fencetso.py).
+NODEJS_TC_ARCH_FLAGS = -mno-fence-tso
+# qemu-user lookup dir for the target binaries built by this toolchain: musl's
+# dynamic loader IS libc.so; expose it under the PT_INTERP name there.
+NODEJS_QEMU_LIBS ?= /opt/toolchains/qemu-libs
+
+NODEJS_TC_CONFIGURE_OPTS = \
+	AR="$(NODEJS_TC_BIN)-ar" \
+	AS="$(NODEJS_TC_BIN)-as" \
+	CC="$(NODEJS_TC_BIN)-gcc" \
+	CPP="$(NODEJS_TC_BIN)-cpp" \
+	CXX="$(NODEJS_TC_BIN)-g++" \
+	LD="$(NODEJS_TC_BIN)-g++" \
+	NM="$(NODEJS_TC_BIN)-nm" \
+	RANLIB="$(NODEJS_TC_BIN)-ranlib" \
+	STRIP="$(NODEJS_TC_BIN)-strip" \
+	OBJCOPY="$(NODEJS_TC_BIN)-objcopy" \
+	CFLAGS="$(TARGET_CFLAGS) $(NODEJS_TC_ARCH_FLAGS)" \
+	CXXFLAGS="$(TARGET_CXXFLAGS) $(NODEJS_TC_ARCH_FLAGS)"
+# ---------------------------------------------------------------------------
+
+# Native addons built through $(NPM) must use the same toolchain as node
+# itself: socketcan >= 4.3 needs C++20 headers (e.g. <source_location>) that
+# the BSP GCC 10.2 does not provide, and -mno-fence-tso keeps fence.tso out
+# of the generated .node files.
+NODEJS_BIN_ENV = $(NODEJS_TC_CONFIGURE_OPTS) \
+	LD="$(NODEJS_TC_BIN)-g++" \
+	PATH="$(HOST_DIR)/bin:$(BR_PATH)" \
 	npm_config_arch=$(NODEJS_CPU) \
 	npm_config_target_arch=$(NODEJS_CPU) \
 	npm_config_build_from_source=true \
@@ -39,10 +79,6 @@ NODEJS_DEPENDENCIES = \
 	host-pkgconf \
 	host-python3 \
 	host-qemu \
-	c-ares \
-	libuv \
-	nghttp2 \
-	zlib \
 	$(call qstrip,$(BR2_PACKAGE_NODEJS_MODULES_ADDITIONAL_DEPS))
 
 HOST_NODEJS_DEPENDENCIES = \
@@ -54,11 +90,10 @@ HOST_NODEJS_DEPENDENCIES = \
 	host-zlib
 NODEJS_INSTALL_STAGING = YES
 
+# All third-party libs (openssl 3, libuv 1.52, c-ares, nghttp2, zlib) are
+# bundled: the 2021.05 package versions are incompatible with node 24 and
+# sharing them adds version-gate failures without real benefit.
 NODEJS_CONF_OPTS = \
-	--shared-zlib \
-	--shared-cares \
-	--shared-libuv \
-	--shared-nghttp2 \
 	--cross-compiling \
 	--dest-os=linux \
 	--ninja
@@ -72,11 +107,11 @@ HOST_NODEJS_MAKE_OPTS = \
 	JOBS=$(PARALLEL_JOBS)
 
 NODEJS_MAKE_OPTS = \
-	$(TARGET_CONFIGURE_OPTS) \
+	$(NODEJS_TC_CONFIGURE_OPTS) \
 	NO_LOAD=cctest.target.mk \
 	PATH=$(@D)/bin:$(BR_PATH) \
 	LDFLAGS="$(NODEJS_LDFLAGS)" \
-	LD="$(TARGET_CXX)" \
+	LD="$(NODEJS_TC_BIN)-g++" \
 	JOBS=$(PARALLEL_JOBS)
 
 # nodejs's build system uses python which can be a symlink to an unsupported
@@ -89,18 +124,12 @@ endef
 HOST_NODEJS_PRE_CONFIGURE_HOOKS += NODEJS_PYTHON3_SYMLINK
 NODEJS_PRE_CONFIGURE_HOOKS += NODEJS_PYTHON3_SYMLINK
 
-ifeq ($(BR2_PACKAGE_OPENSSL),y)
-NODEJS_DEPENDENCIES += openssl
-NODEJS_CONF_OPTS += --shared-openssl
-else
-NODEJS_CONF_OPTS += --without-ssl
-endif
-
+# Keep the bundled small-icu (default) even when there is no system ICU:
+# --with-intl=none breaks Unicode property escapes in regex (e.g. /\P{ASCII}/u
+# used by node-red), while small-icu adds no external dependency.
 ifeq ($(BR2_PACKAGE_ICU),y)
 NODEJS_DEPENDENCIES += icu
 NODEJS_CONF_OPTS += --with-intl=system-icu
-else
-NODEJS_CONF_OPTS += --with-intl=none
 endif
 
 ifneq ($(BR2_PACKAGE_NODEJS_NPM),y)
@@ -114,12 +143,8 @@ define HOST_NODEJS_CONFIGURE_CMDS
 		PYTHON=$(HOST_DIR)/bin/python3 \
 		$(HOST_DIR)/bin/python3 configure.py \
 		--prefix=$(HOST_DIR) \
-		--shared-openssl \
-		--shared-openssl-includes=$(HOST_DIR)/include \
-		--shared-openssl-libpath=$(HOST_DIR)/lib \
-		--shared-zlib \
 		--no-cross-compiling \
-		--with-intl=system-icu \
+		--with-intl=none \
 		--ninja
 endef
 
@@ -173,9 +198,6 @@ else ifeq ($(BR2_aarch64),y)
 NODEJS_CPU = arm64
 else ifeq ($(BR2_RISCV_64),y)
 NODEJS_CPU = riscv64
-# ifeq ($(BR2_PACKAGE_OPENSSL),y)
-# NODEJS_CONF_OPTS += --openssl-no-asm
-# endif
 endif
 
 # MIPS architecture specific options
@@ -190,13 +212,7 @@ NODEJS_MIPS_ARCH_VARIANT = r1
 endif
 endif
 
-NODEJS_LDFLAGS = $(TARGET_LDFLAGS)
-
-ifeq ($(BR2_TOOLCHAIN_HAS_LIBATOMIC),y)
-NODEJS_LDFLAGS += -latomic
-endif
-
-NODEJS_LDFLAGS += -luv
+NODEJS_LDFLAGS = $(TARGET_LDFLAGS) -latomic
 
 # V8's JIT infrastructure requires binaries such as mksnapshot and
 # mkpeephole to be run in the host during the build. However, these
@@ -204,8 +220,12 @@ NODEJS_LDFLAGS += -luv
 # host targeting ARMv6 needs to produce a 32-bit binary). To work around this
 # issue, cross-compile the binaries for the target and run them on the
 # host with QEMU, much like gobject-introspection.
+# The toolchain variant of the wrapper additionally resolves the dynamic
+# loader and the C++ runtime from NODEJS_TC_SYSROOT first, because the
+# node binaries are linked against a newer libstdc++ than the one staged
+# by the BSP GCC 10.2 toolchain.
 define NODEJS_INSTALL_V8_QEMU_WRAPPER
-	$(INSTALL) -D -m 755 $(NODEJS_PKGDIR)/v8-qemu-wrapper.in \
+	$(INSTALL) -D -m 755 $(NODEJS_PKGDIR)/v8-qemu-wrapper-tc.in \
 		$(@D)/out/Release/v8-qemu-wrapper
 	$(SED) "s%@QEMU_USER@%$(QEMU_USER)%g" \
 		$(@D)/out/Release/v8-qemu-wrapper
@@ -213,12 +233,17 @@ define NODEJS_INSTALL_V8_QEMU_WRAPPER
 		$(@D)/out/Release/v8-qemu-wrapper
 	$(SED) "s%@QEMU_USERMODE_ARGS@%$(call qstrip,$(BR2_PACKAGE_HOST_QEMU_USER_MODE_ARGS))%g" \
 		$(@D)/out/Release/v8-qemu-wrapper
+	$(SED) "s%@NODEJS_TC_LIBDIR@%$(NODEJS_TC_LIBDIR)%g" \
+		$(@D)/out/Release/v8-qemu-wrapper
+	$(SED) "s%@NODEJS_QEMU_LIBS@%$(NODEJS_QEMU_LIBS)%g" \
+		$(@D)/out/Release/v8-qemu-wrapper
 endef
 NODEJS_PRE_CONFIGURE_HOOKS += NODEJS_INSTALL_V8_QEMU_WRAPPER
 
 define NODEJS_WRAPPER_FIXUP
 	$(SED) "s%@MAYBE_WRAPPER@%'<(PRODUCT_DIR)/v8-qemu-wrapper',%g" $(@D)/node.gyp
 	$(SED) "s%@MAYBE_WRAPPER@%'<(PRODUCT_DIR)/v8-qemu-wrapper',%g" $(@D)/tools/v8_gypfiles/v8.gyp
+	$(SED) "s%@MAYBE_WRAPPER@%'<(PRODUCT_DIR)/v8-qemu-wrapper',%g" $(@D)/tools/icu/icu-generic.gyp
 endef
 NODEJS_PRE_CONFIGURE_HOOKS += NODEJS_WRAPPER_FIXUP
 
@@ -226,15 +251,16 @@ NODEJS_PRE_CONFIGURE_HOOKS += NODEJS_WRAPPER_FIXUP
 define HOST_NODEJS_WRAPPER_FIXUP
 	$(SED) "s%@MAYBE_WRAPPER@%%g" $(@D)/node.gyp
 	$(SED) "s%@MAYBE_WRAPPER@%%g" $(@D)/tools/v8_gypfiles/v8.gyp
+	$(SED) "s%@MAYBE_WRAPPER@%%g" $(@D)/tools/icu/icu-generic.gyp
 endef
 HOST_NODEJS_PRE_CONFIGURE_HOOKS += HOST_NODEJS_WRAPPER_FIXUP
 
 define NODEJS_CONFIGURE_CMDS
 	(cd $(@D); \
-		$(TARGET_CONFIGURE_OPTS) \
+		$(NODEJS_TC_CONFIGURE_OPTS) \
 		PATH=$(@D)/bin:$(BR_PATH) \
 		LDFLAGS="$(NODEJS_LDFLAGS)" \
-		LD="$(TARGET_CXX)" \
+		LD="$(NODEJS_TC_BIN)-g++" \
 		PYTHON=$(HOST_DIR)/bin/python3 \
 		$(HOST_DIR)/bin/python3 configure.py \
 		--prefix=/usr \

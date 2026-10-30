@@ -1,2 +1,2 @@
-# From https://nodejs.org/dist/v22.8.0/SHASUMS256.txt
-sha256  7aeeacdb858299e09a3e0510d4bb8b266923894a9e3ac0058ba89d4ecf4a4cca  node-v20.20.2.tar.xz
+# From https://nodejs.org/dist/v26.13.0/SHASUMS256.txt
+sha256  263f639ecfa7a17b49438d76cdbf9aff73179e3c7cb789da69b900718427fa2e  node-v26.13.0.tar.xz

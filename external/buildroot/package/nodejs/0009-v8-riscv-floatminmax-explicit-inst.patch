@@ -1,0 +1,17 @@
+--- a/deps/v8/src/codegen/riscv/macro-assembler-riscv.cc	2026-10-29 12:50:43.568834262 +0800
++++ b/deps/v8/src/codegen/riscv/macro-assembler-riscv.cc	2026-10-29 12:50:53.902018735 +0800
+@@ -7269,6 +7269,14 @@
+   FloatMinMaxHelper<double>(dst, src1, src2, MaxMinKind::kMin);
+ }
+ 
++// Explicit instantiations: maglev-ir-riscv.cc references these directly, but
++// nothing in this TU forces their emission, leaving them undefined at link
++// time on riscv64 builds.
++template void MacroAssembler::FloatMinMaxHelper<float>(
++    FPURegister dst, FPURegister src1, FPURegister src2, MaxMinKind kind);
++template void MacroAssembler::FloatMinMaxHelper<double>(
++    FPURegister dst, FPURegister src1, FPURegister src2, MaxMinKind kind);
++
+ int MacroAssembler::CalculateStackPassedDWords(int num_gp_arguments,
+                                                int num_fp_arguments) {
+   int stack_passed_dwords = 0;

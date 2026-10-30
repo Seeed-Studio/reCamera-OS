@@ -1,0 +1,15 @@
+--- a/deps/uv/src/unix/thread.c	2026-10-29 10:22:27.545585916 +0800
++++ b/deps/uv/src/unix/thread.c	2026-10-29 10:22:27.543461173 +0800
+@@ -958,6 +958,12 @@
+   name[size - 1] = '\0';
+   return 0;
+ }
++#elif !defined(__GLIBC__)
++/* musl does not implement pthread_getname_np(); return UV_ENOSYS like the
++ * Android API < 26 case above. */
++int uv__thread_getname(uv_thread_t* tid, char* name, size_t size) {
++  return UV_ENOSYS;
++}
+ #else
+ int uv__thread_getname(uv_thread_t* tid, char* name, size_t size) {
+   int r;
