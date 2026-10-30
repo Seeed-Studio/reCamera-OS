@@ -9,7 +9,7 @@
 # libraries.
 exec @QEMU_USER@ -r @TOOLCHAIN_HEADERS_VERSION@ \
     @QEMU_USERMODE_ARGS@ \
-    -L "@NODEJS_QEMU_LIBS@/" \
     -L "${STAGING_DIR}/" \
+    -L "@NODEJS_QEMU_LIBS@/" \
     -E LD_LIBRARY_PATH="@NODEJS_TC_LIBDIR@:@NODEJS_QEMU_LIBS@/lib:${STAGING_DIR}/lib:${STAGING_DIR}/usr/lib/" \
     "$@"

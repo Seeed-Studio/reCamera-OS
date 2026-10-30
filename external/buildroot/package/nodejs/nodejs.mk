@@ -214,6 +214,25 @@ endif
 
 NODEJS_LDFLAGS = $(TARGET_LDFLAGS) -latomic
 
+# Ship the toolchain C++ runtime into the target from this package: the
+# external-toolchain pseudo-packages do not reliably deliver libstdc++ (the
+# cvitek sysroot keeps it in ABI-variant dirs the lib copy loop never
+# searches), so a clean build would otherwise end up without a libstdc++ new
+# enough for node. fence.tso in the prebuilt libstdc++ is rewritten to a full
+# fence by patch_fencetso.py; node itself is built with -mno-fence-tso.
+define NODEJS_INSTALL_TC_RUNTIME
+	$(HOST_DIR)/bin/python3 $(NODEJS_PKGDIR)/patch_fencetso.py \
+		$(NODEJS_TC_LIBDIR)/libstdc++.so.6.0.35 \
+		$(TARGET_DIR)/lib/libstdc++.so.6.0.35
+	$(INSTALL) -D -m 0755 $(NODEJS_TC_LIBDIR)/libatomic.so.1.2.0 \
+		$(TARGET_DIR)/lib/libatomic.so.1.2.0
+	$(INSTALL) -D -m 0755 $(NODEJS_TC_LIBDIR)/libgcc_s.so.1 \
+		$(TARGET_DIR)/lib/libgcc_s.so.1
+	ln -sf libstdc++.so.6.0.35 $(TARGET_DIR)/lib/libstdc++.so.6
+	ln -sf libatomic.so.1.2.0 $(TARGET_DIR)/lib/libatomic.so.1
+endef
+NODEJS_POST_INSTALL_TARGET_HOOKS += NODEJS_INSTALL_TC_RUNTIME
+
 # V8's JIT infrastructure requires binaries such as mksnapshot and
 # mkpeephole to be run in the host during the build. However, these
 # binaries must have the same bit-width as the target (e.g. a x86_64
