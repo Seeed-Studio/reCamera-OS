@@ -91,9 +91,14 @@ HOST_NODEJS_DEPENDENCIES = \
 NODEJS_INSTALL_STAGING = YES
 
 # All third-party libs (openssl 3, libuv 1.52, c-ares, nghttp2, zlib) are
-# bundled: the 2021.05 package versions are incompatible with node 24 and
+# bundled: the 2021.05 package versions are incompatible with node 24+ and
 # sharing them adds version-gate failures without real benefit.
+# Temporal (Rust) is disabled: node's gyp builds the cargo crates for the
+# build host and links them into the target binary, which breaks
+# cross-builds on hosts that happen to have a rust toolchain installed
+# (e.g. GitHub runners: x86-64 objects fed to the riscv64 linker).
 NODEJS_CONF_OPTS = \
+	--v8-disable-temporal-support \
 	--cross-compiling \
 	--dest-os=linux \
 	--ninja
