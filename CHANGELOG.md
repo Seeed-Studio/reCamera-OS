@@ -2,14 +2,15 @@
 
 ### sg2002_recamera_emmc
 
-- Upgrade Node.js to 26.13.0 LTS (V8 14.6), built with the riscv-collab
-  GCC 16.1 riscv64-musl toolchain (Node >= 24 requires GCC >= 12.2).
-  Full JIT tiering verified on C906 (V8 13.6/Node 24 is broken on
-  riscv64: tier-up runtime receives corrupted JSFunction -> SIGSEGV).
-- Upgrade socketcan to 4.3.2 (node-addon-api, ABI-stable across Node
-  majors; 4.0.5 NAN builds SIGSEGV on require under Node >= 24).
-- Ship GCC 16 C++ runtime (libstdc++/libgcc_s/libatomic) with fence.tso
-  (Ztso) instructions rewritten to full fences for C906.
+- New Features:
+    - Upgrade Node.js to 26.13.0 LTS (V8 14.6): full JIT tiering verified on the C906 core, faster Node-RED responses and lower memory footprint
+    - Node.js bundles OpenSSL 3 / libuv 1.52 / small-icu (Unicode property escapes in regex now work, e.g. `/\P{ASCII}/u` used by Node-RED)
+- Bug Fixes:
+    - socketcan upgraded to 4.3.2 (N-API): the native module no longer segfaults on require under Node.js >= 24, and its ABI now survives future Node.js major upgrades
+    - GCC 16 C++ runtime (libstdc++/libgcc_s/libatomic) ships with fence.tso instructions rewritten to full fences (C906 does not implement Ztso)
+- Dependencies:
+    - Node.js 26.13.0 LTS, cross-built with the riscv-collab GCC 16.1 riscv64-musl toolchain (Node.js >= 24 requires GCC >= 12.2; V8 13.x tier-up is broken on riscv64)
+    - socketcan 4.3.2
 
 ## 0.2.5 (2026-10-23)
 
