@@ -126,6 +126,37 @@ jobs:
         with:
             node-version: 18
 
+      - name: Cache riscv64 musl GCC toolchain
+        if: steps.changelog.outputs.skip_workflow == 'false'
+        id: riscv-tc-cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/toolchains/riscv64-musl
+          key: riscv64-musl-gcc-ubuntu-24.04-2026.10.21
+
+      - name: Set up riscv64 GCC 16 toolchain (Node.js >= 24 cross build)
+        # Node.js >= 24 requires GCC >= 12.2 (C++20); the in-tree cvitek
+        # toolchain is GCC 10.2. nodejs.mk cross-builds the target nodejs
+        # with the riscv-collab toolchain at /opt/toolchains/riscv64-musl
+        # (see external/scripts/setup-node26-toolchain.sh, which also swaps
+        # the fence.tso-free GCC 16 C++ runtime into the cvitek sysroot and
+        # prepares the qemu-libs loader dir for the v8 qemu wrapper).
+        if: steps.changelog.outputs.skip_workflow == 'false'
+        run: |
+          set -e
+          sudo mkdir -p /opt/toolchains
+          sudo chown -R "$(id -u):$(id -g)" /opt/toolchains
+          if [ ! -x /opt/toolchains/riscv64-musl/bin/riscv64-unknown-linux-musl-gcc ]; then
+            curl -fsSL --retry 5 -o /tmp/riscv64-musl.tar.xz \
+              https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/2026.10.21/riscv64-musl-ubuntu-24.04-gcc.tar.xz
+            mkdir -p /opt/toolchains/riscv64-musl
+            tar xJf /tmp/riscv64-musl.tar.xz -C /opt/toolchains/riscv64-musl --strip-components=1
+            /opt/toolchains/riscv64-musl/bin/riscv64-unknown-linux-musl-gcc --version | head -1
+          fi
+          # host-tools submodule must exist before the sysroot swap below
+          git submodule update --init --recursive --depth 1 host-tools
+          TC_ROOT=/opt/toolchains/riscv64-musl external/scripts/setup-node26-toolchain.sh
+
       - name: Build ${{ matrix.target }}
         id: build
         if: steps.changelog.outputs.skip_workflow == 'false'
