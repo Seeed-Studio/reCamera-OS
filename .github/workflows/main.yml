@@ -126,30 +126,33 @@ jobs:
         with:
             node-version: 18
 
-      - name: Cache riscv64 musl GCC toolchain
+      - name: Restore riscv64 musl GCC toolchain
         if: steps.changelog.outputs.skip_workflow == 'false'
         id: riscv-tc-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: /opt/toolchains/riscv64-musl
           key: riscv64-musl-gcc-ubuntu-24.04-2026.10.21
 
-      - name: Cache buildroot download dir
+      - name: Restore buildroot download dir
         # Keep the source tarballs between runs to skip re-downloads.
         if: steps.changelog.outputs.skip_workflow == 'false'
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: output/sg2002_recamera_emmc/buildroot-2021.05/dl
           key: buildroot-dl-v1
 
-      - name: Cache buildroot ccache
+      - name: Restore buildroot ccache
         # The V8/nodejs compile alone needs ~4.5h on a 4-core runner, which
         # does not fit the 6h job limit on a cold run. ccache makes retry
         # runs (and future releases) complete comfortably; a timed-out run
         # still saves whatever it compiled so far via the prefix keys.
         # BR2_CCACHE_DIR defaults to $(HOME)/.buildroot-ccache.
+        # Use explicit restore/save actions: the combined actions/cache only
+        # saves its post step when the job SUCCEEDS, so timed-out or failed
+        # builds would never seed the cache.
         if: steps.changelog.outputs.skip_workflow == 'false'
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ~/.buildroot-ccache
           key: buildroot-ccache-v1-${{ github.sha }}
@@ -200,6 +203,32 @@ jobs:
           DIR=output/${{ matrix.target }}/install/soc_${{ matrix.target }}
           echo "output_dir=./$DIR" >> "$GITHUB_OUTPUT"
           du -h -d1
+
+      - name: Save riscv64 musl GCC toolchain
+        # always(): timed-out/failed builds still seed the caches for the
+        # next run (the combined actions/cache would skip saving).
+        if: always() && steps.changelog.outputs.skip_workflow == 'false'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: /opt/toolchains/riscv64-musl
+          key: riscv64-musl-gcc-ubuntu-24.04-2026.10.21
+
+      - name: Save buildroot download dir
+        if: always() && steps.changelog.outputs.skip_workflow == 'false'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: output/sg2002_recamera_emmc/buildroot-2021.05/dl
+          key: buildroot-dl-v1
+
+      - name: Save buildroot ccache
+        if: always() && steps.changelog.outputs.skip_workflow == 'false'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.buildroot-ccache
+          key: buildroot-ccache-v1-${{ github.sha }}
       
       - name: Check if release exists
         id: check_release
