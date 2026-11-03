@@ -185,9 +185,20 @@ jobs:
         run: |
           echo `pwd`
           git submodule update --init --recursive --depth 1
-          make ${{ matrix.target }}
+          # Write the build log to a file: meson's install step crashes with
+          # BlockingIOError when its stdout pipe fills under the combined
+          # output of parallel package builds (libglib2 on the 4-core
+          # runner), which is fatal through the Actions log pipe.
+          set -o pipefail
+          make ${{ matrix.target }} > build.log 2>&1 || RC=$?
+          RC=${RC:-0}
+          tail -60 build.log
+          if [ "$RC" != "0" ]; then
+            grep -nE "FAILED:|Error [0-9]+|error:|\*\*\*" build.log | grep -vE "Entering|Leaving|ignored" | tail -20 || true
+            exit $RC
+          fi
           DIR=output/${{ matrix.target }}/install/soc_${{ matrix.target }}
-          echo "output_dir=./$DIR" >> $GITHUB_OUTPUT
+          echo "output_dir=./$DIR" >> "$GITHUB_OUTPUT"
           du -h -d1
       
       - name: Check if release exists
