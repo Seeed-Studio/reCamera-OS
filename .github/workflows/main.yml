@@ -134,6 +134,27 @@ jobs:
           path: /opt/toolchains/riscv64-musl
           key: riscv64-musl-gcc-ubuntu-24.04-2026.10.21
 
+      - name: Cache buildroot download dir
+        # Keep the source tarballs between runs to skip re-downloads.
+        if: steps.changelog.outputs.skip_workflow == 'false'
+        uses: actions/cache@v4
+        with:
+          path: output/sg2002_recamera_emmc/buildroot-2021.05/dl
+          key: buildroot-dl-v1
+
+      - name: Cache buildroot ccache
+        # The V8/nodejs compile alone needs ~4.5h on a 4-core runner, which
+        # does not fit the 6h job limit on a cold run. ccache makes retry
+        # runs (and future releases) complete comfortably; a timed-out run
+        # still saves whatever it compiled so far via the prefix keys.
+        if: steps.changelog.outputs.skip_workflow == 'false'
+        uses: actions/cache@v4
+        with:
+          path: output/sg2002_recamera_emmc/buildroot-2021.05/output/cvitek_CV181X_musl_riscv64/ccache
+          key: buildroot-ccache-v1-${{ github.sha }}
+          restore-keys: |
+            buildroot-ccache-v1-
+
       - name: Set up riscv64 GCC 16 toolchain (Node.js >= 24 cross build)
         # Node.js >= 24 requires GCC >= 12.2 (C++20); the in-tree cvitek
         # toolchain is GCC 10.2. nodejs.mk cross-builds the target nodejs
