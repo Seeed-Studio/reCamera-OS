@@ -37,12 +37,25 @@ NODEJS_TC_ARCH_FLAGS = -mno-fence-tso
 # dynamic loader IS libc.so; expose it under the PT_INTERP name there.
 NODEJS_QEMU_LIBS ?= /opt/toolchains/qemu-libs
 
+# Route the toolchain compilers through buildroot's ccache when enabled:
+# the NODEJS_TC_* override points directly at the riscv-collab gcc, which
+# otherwise bypasses buildroot's TARGET_CC ccache wrapper entirely (and the
+# V8/nodejs compile is exactly the part that needs caching on slow hosts).
+ifeq ($(BR2_CCACHE),y)
+NODEJS_DEPENDENCIES += host-ccache
+NODEJS_TC_CC = $(HOST_DIR)/bin/ccache $(NODEJS_TC_BIN)-gcc
+NODEJS_TC_CXX = $(HOST_DIR)/bin/ccache $(NODEJS_TC_BIN)-g++
+else
+NODEJS_TC_CC = $(NODEJS_TC_BIN)-gcc
+NODEJS_TC_CXX = $(NODEJS_TC_BIN)-g++
+endif
+
 NODEJS_TC_CONFIGURE_OPTS = \
 	AR="$(NODEJS_TC_BIN)-ar" \
 	AS="$(NODEJS_TC_BIN)-as" \
-	CC="$(NODEJS_TC_BIN)-gcc" \
+	CC="$(NODEJS_TC_CC)" \
 	CPP="$(NODEJS_TC_BIN)-cpp" \
-	CXX="$(NODEJS_TC_BIN)-g++" \
+	CXX="$(NODEJS_TC_CXX)" \
 	LD="$(NODEJS_TC_BIN)-g++" \
 	NM="$(NODEJS_TC_BIN)-nm" \
 	RANLIB="$(NODEJS_TC_BIN)-ranlib" \
