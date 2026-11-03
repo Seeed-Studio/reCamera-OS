@@ -147,10 +147,11 @@ jobs:
         # does not fit the 6h job limit on a cold run. ccache makes retry
         # runs (and future releases) complete comfortably; a timed-out run
         # still saves whatever it compiled so far via the prefix keys.
+        # BR2_CCACHE_DIR defaults to $(HOME)/.buildroot-ccache.
         if: steps.changelog.outputs.skip_workflow == 'false'
         uses: actions/cache@v4
         with:
-          path: output/sg2002_recamera_emmc/buildroot-2021.05/output/cvitek_CV181X_musl_riscv64/ccache
+          path: ~/.buildroot-ccache
           key: buildroot-ccache-v1-${{ github.sha }}
           restore-keys: |
             buildroot-ccache-v1-
