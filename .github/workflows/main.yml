@@ -192,9 +192,14 @@ jobs:
           # BlockingIOError when its stdout pipe fills under the combined
           # output of parallel package builds (libglib2 on the 4-core
           # runner), which is fatal through the Actions log pipe.
+          # A 5-minute heartbeat echoes the last build.log line into the
+          # step log so cancelled/timed-out runs still show their progress
+          # (the build.log itself dies with the runner).
           set -o pipefail
+          ( while sleep 300; do echo "[heartbeat] $(tail -c 400 build.log 2>/dev/null | tr '\n' ' ' | tail -c 250)"; done ) & MONPID=$!
           make ${{ matrix.target }} > build.log 2>&1 || RC=$?
           RC=${RC:-0}
+          kill $MONPID 2>/dev/null || true
           tail -60 build.log
           if [ "$RC" != "0" ]; then
             grep -nE "FAILED:|Error [0-9]+|error:|\*\*\*" build.log | grep -vE "Entering|Leaving|ignored" | tail -20 || true
@@ -221,6 +226,16 @@ jobs:
         with:
           path: output/sg2002_recamera_emmc/buildroot-2021.05/dl
           key: buildroot-dl-v1
+
+      - name: Quiesce ccache dir before saving
+        # Processes from a cancelled/timed-out build leave in-flight ccache
+        # temp captures (*.tmp.*) that vanish under tar ("file changed as we
+        # read it" -> cache save failed). Give the runner a moment to reap
+        # them, then delete whatever is left so the tar is race-free.
+        if: always() && steps.changelog.outputs.skip_workflow == 'false'
+        run: |
+          sleep 20
+          find ~/.buildroot-ccache -name "*.tmp.*" -delete 2>/dev/null || true
 
       - name: Save buildroot ccache
         if: always() && steps.changelog.outputs.skip_workflow == 'false'
